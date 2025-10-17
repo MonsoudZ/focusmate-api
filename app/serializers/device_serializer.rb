@@ -9,8 +9,12 @@ class DeviceSerializer
     {
       id: device.id,
       device_type: device.device_type,
-      device_name: device.device_name,
-      created_at: device.created_at.iso8601
+      device_token: device.device_token,
+      platform: device.platform,
+      app_version: device.app_version,
+      last_seen_at: device.last_seen_at&.iso8601,
+      created_at: device.created_at.iso8601,
+      updated_at: device.updated_at.iso8601
     }
   end
 end

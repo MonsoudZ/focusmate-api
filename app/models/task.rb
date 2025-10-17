@@ -44,7 +44,10 @@ class Task < ApplicationRecord
   
   # Business logic methods
   def complete!
-    update!(status: 1)
+    update!(
+      status: 1,
+      completed_at: Time.current
+    )
     
     # Clear escalation if exists
     escalation&.update!(
@@ -56,7 +59,10 @@ class Task < ApplicationRecord
   end
   
   def uncomplete!
-    update!(status: 0)
+    update!(
+      status: 0,
+      completed_at: nil
+    )
   end
   
   def reassign!(user, new_due_at:, reason:)
@@ -263,6 +269,21 @@ class Task < ApplicationRecord
       missed_reason_submitted_by: user
     )
     true
+  end
+
+  # Submit explanation (alias for submit_missed_reason!)
+  def submit_explanation!(reason, user)
+    submit_missed_reason!(reason, user)
+  end
+
+  # Show task to coaching relationship
+  def show_to!(coaching_relationship)
+    visibility_restrictions.find_or_create_by!(coaching_relationship: coaching_relationship)
+  end
+
+  # Hide task from coaching relationship
+  def hide_from!(coaching_relationship)
+    visibility_restrictions.find_by(coaching_relationship: coaching_relationship)&.destroy
   end
   
   # Review missed reason (coach action)

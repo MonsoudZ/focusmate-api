@@ -50,6 +50,9 @@ gem "fcm"
 # HTTP client for API calls
 gem "httparty"
 
+# Email testing in development
+gem "mailcatcher", group: :development
+
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 

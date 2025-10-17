@@ -158,9 +158,9 @@ class TaskSerializer
   end
 
   def completed_at_value
-    # Handle nil, 0, and 1
-    if task.status == 1 || task.status == 'complete'
-      task.updated_at.iso8601
+    # Use the actual completed_at field if it exists, otherwise fall back to updated_at
+    if task.status == 1 || task.status == 'done'
+      task.completed_at&.iso8601 || task.updated_at.iso8601
     else
       nil
     end

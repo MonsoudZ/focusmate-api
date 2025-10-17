@@ -17,6 +17,8 @@ class User < ApplicationRecord
   has_many :owned_lists, class_name: 'List', foreign_key: 'user_id', dependent: :destroy
   has_many :memberships, dependent: :destroy
   has_many :lists, through: :memberships, source: :list
+  has_many :list_shares, dependent: :destroy
+  has_many :shared_lists, through: :list_shares, source: :list
   has_many :devices, dependent: :destroy
   
   # NEW: Coaching associations

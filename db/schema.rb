@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_17_030701) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_17_193932) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -120,6 +120,33 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_17_030701) do
     t.index ["jti"], name: "index_jwt_denylists_on_jti", unique: true
   end
 
+  create_table "list_shares", force: :cascade do |t|
+    t.bigint "list_id", null: false
+    t.bigint "user_id"
+    t.jsonb "permissions", default: {}
+    t.boolean "can_view", default: true
+    t.boolean "can_edit", default: false
+    t.boolean "can_add_items", default: false
+    t.boolean "can_delete_items", default: false
+    t.boolean "receive_notifications", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "email"
+    t.integer "role", default: 0
+    t.string "status", default: "pending"
+    t.string "invitation_token"
+    t.datetime "invited_at"
+    t.datetime "accepted_at"
+    t.index ["email"], name: "index_list_shares_on_email"
+    t.index ["invitation_token"], name: "index_list_shares_on_invitation_token", unique: true
+    t.index ["list_id", "user_id"], name: "index_list_shares_on_list_id_and_user_id", unique: true
+    t.index ["list_id"], name: "index_list_shares_on_list_id"
+    t.index ["permissions"], name: "index_list_shares_on_permissions", using: :gin
+    t.index ["role"], name: "index_list_shares_on_role"
+    t.index ["status"], name: "index_list_shares_on_status"
+    t.index ["user_id"], name: "index_list_shares_on_user_id"
+  end
+
   create_table "lists", force: :cascade do |t|
     t.string "name"
     t.text "description"
@@ -216,6 +243,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_17_030701) do
     t.bigint "missed_reason_reviewed_by_id"
     t.datetime "missed_reason_reviewed_at"
     t.bigint "creator_id"
+    t.datetime "completed_at"
     t.index ["creator_id"], name: "index_tasks_on_creator_id"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_and_status"
     t.index ["is_recurring"], name: "index_tasks_on_is_recurring"
@@ -253,6 +281,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_17_030701) do
     t.string "fcm_token"
     t.string "timezone", default: "UTC"
     t.string "device_token"
+    t.decimal "latitude"
+    t.decimal "longitude"
+    t.jsonb "preferences"
+    t.datetime "location_updated_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["fcm_token"], name: "index_users_on_fcm_token"
     t.index ["jti"], name: "index_users_on_jti"
@@ -268,6 +300,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_17_030701) do
   add_foreign_key "item_escalations", "tasks"
   add_foreign_key "item_visibility_restrictions", "coaching_relationships"
   add_foreign_key "item_visibility_restrictions", "tasks"
+  add_foreign_key "list_shares", "lists"
+  add_foreign_key "list_shares", "users"
   add_foreign_key "lists", "users"
   add_foreign_key "memberships", "coaching_relationships"
   add_foreign_key "memberships", "lists"

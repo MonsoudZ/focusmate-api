@@ -70,6 +70,45 @@ module Api
         head :no_content
       end
 
+      # GET /api/v1/test-profile
+      def test_profile
+        user = User.first
+        if user
+          render json: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            timezone: user.timezone
+          }
+        else
+          render json: { error: 'No users found' }, status: :not_found
+        end
+      end
+
+      # GET /api/v1/test-lists
+      def test_lists
+        user = User.first
+        if user
+          lists = user.owned_lists
+          render json: lists.map { |list| 
+            {
+              id: list.id,
+              name: list.name,
+              description: list.description,
+              created_at: list.created_at.iso8601
+            }
+          }
+        else
+          render json: { error: 'No users found' }, status: :not_found
+        end
+      end
+
+      # DELETE /api/v1/test-logout
+      def test_logout
+        head :no_content
+      end
+
       private
 
       def user_params

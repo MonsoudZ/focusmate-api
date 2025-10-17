@@ -3,6 +3,8 @@ class List < ApplicationRecord
   has_many :memberships, dependent: :destroy
   has_many :members, through: :memberships, source: :user
   has_many :tasks, dependent: :destroy
+  has_many :list_shares, dependent: :destroy
+  has_many :shared_users, through: :list_shares, source: :user
   
   # NEW: Coaching-specific memberships
   has_many :coaching_memberships, -> { where.not(coaching_relationship_id: nil) }, 
@@ -43,6 +45,128 @@ class List < ApplicationRecord
   
   def can_add_items?(user)
     role_for(user).in?(['owner', 'editor'])
+  end
+
+  def viewable_by?(user)
+    # Check if user is owner, member, or has a share
+    role_for(user).present? || list_shares.exists?(user: user)
+  end
+
+  def editable_by?(user)
+    # Owner can always edit
+    return true if owner == user
+    
+    # Check membership permissions
+    role = role_for(user)
+    return true if role.in?(['owner', 'editor'])
+    
+    # Check share permissions
+    share = list_shares.find_by(user: user)
+    return share&.can_edit? if share
+    
+    false
+  end
+
+  def can_add_items_by?(user)
+    # Owner can always add items
+    return true if owner == user
+    
+    # Check membership permissions
+    role = role_for(user)
+    return true if role.in?(['owner', 'editor'])
+    
+    # Check share permissions
+    share = list_shares.find_by(user: user)
+    return share&.can_add_items? if share
+    
+    false
+  end
+
+  def can_delete_items_by?(user)
+    # Owner can always delete items
+    return true if owner == user
+    
+    # Check membership permissions
+    role = role_for(user)
+    return true if role.in?(['owner', 'editor'])
+    
+    # Check share permissions
+    share = list_shares.find_by(user: user)
+    return share&.can_delete_items? if share
+    
+    false
+  end
+
+  # Sharing methods
+  def share_with!(user, permissions = {})
+    list_shares.create!(
+      user: user,
+      email: user.email,
+      role: permissions[:role] || 'viewer',
+      status: 'accepted',
+      can_view: permissions[:can_view] != false,
+      can_edit: permissions[:can_edit] || false,
+      can_add_items: permissions[:can_add_items] || false,
+      can_delete_items: permissions[:can_delete_items] || false,
+      receive_notifications: permissions[:receive_notifications] != false
+    )
+  end
+
+  def invite_by_email!(email, role = 'viewer', permissions = {})
+    list_shares.create!(
+      email: email,
+      role: role,
+      can_view: permissions[:can_view] != false,
+      can_edit: permissions[:can_edit] || false,
+      can_add_items: permissions[:can_add_items] || false,
+      can_delete_items: permissions[:can_delete_items] || false,
+      receive_notifications: permissions[:receive_notifications] != false
+    )
+  end
+
+  def unshare_with!(user)
+    list_shares.find_by(user: user)&.destroy
+  end
+
+  def shared_with?(user)
+    list_shares.exists?(user: user)
+  end
+
+  def share_permissions_for(user)
+    share = list_shares.find_by(user: user)
+    share&.permissions_hash || {}
+  end
+
+  def update_share_permissions!(user, permissions)
+    share = list_shares.find_by(user: user)
+    share&.update_permissions(permissions)
+  end
+
+  # Check if user has access to this list
+  def accessible_by?(user)
+    return true if user_id == user.id
+    list_shares.exists?(user_id: user.id, status: 'accepted')
+  end
+  
+  # Get user's role for this list
+  def role_for(user)
+    return 'owner' if user_id == user.id
+    list_shares.find_by(user_id: user.id, status: 'accepted')&.role || 'none'
+  end
+  
+  # Get list share for user
+  def share_for(user)
+    list_shares.find_by(user_id: user.id)
+  end
+
+  # Get pending invitations
+  def pending_invitations
+    list_shares.where(status: 'pending')
+  end
+
+  # Get accepted shares
+  def accepted_shares
+    list_shares.where(status: 'accepted')
   end
 
   # NEW: Coaching-related methods

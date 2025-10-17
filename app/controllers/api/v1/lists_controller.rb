@@ -7,9 +7,12 @@ module Api
 
       # GET /api/v1/lists
       def index
-        # Return lists owned by user OR shared with user
+        # Get lists user owns
         owned_lists = current_user.owned_lists
-        shared_lists = current_user.client? ? [] : current_user.accessible_lists
+        
+        # Get lists shared with user (accepted shares only)
+        shared_list_ids = ListShare.where(user_id: current_user.id, status: 'accepted').pluck(:list_id)
+        shared_lists = List.where(id: shared_list_ids)
         
         @lists = (owned_lists + shared_lists).uniq
         

@@ -62,6 +62,7 @@ Rails.application.routes.draw do
             # EXISTING
             post :complete
             post :reassign
+            patch :reassign              # Also support PATCH for iOS compatibility
 
             # NEW - Accountability features
             patch :uncomplete           # Undo completion
@@ -76,13 +77,29 @@ Rails.application.routes.draw do
         get 'items/:id', to: 'tasks#show'
         patch 'items/:id', to: 'tasks#update'
         delete 'items/:id', to: 'tasks#destroy'
+        post 'items/:id/complete', to: 'tasks#complete'
+        patch 'items/:id/reassign', to: 'tasks#reassign'
+        post 'items/:id/reassign', to: 'tasks#reassign'
+        post 'items/:id/explanations', to: 'tasks#submit_explanation'
 
         # NEW - List sharing with coaches
-        resources :shares, only: [:index, :create, :destroy], controller: 'list_shares' do
+        resources :shares, only: [:index, :show, :create, :update, :destroy], controller: 'list_shares' do
           member do
             patch :update_permissions  # Update what coach can do
+            post :accept               # Accept invitation
+            post :decline              # Decline invitation
           end
         end
+
+        # Global list share accept endpoint (for email links)
+        resources :list_shares, only: [:create, :destroy] do
+          collection do
+            post :accept  # POST /api/v1/list_shares/accept
+          end
+        end
+        
+        # iOS compatibility - singular share route
+        post 'share', to: 'list_shares#create'
       end
 
       # iOS app compatibility - global /items routes
@@ -91,10 +108,14 @@ Rails.application.routes.draw do
       get 'items/:id', to: 'tasks#show'
       patch 'items/:id', to: 'tasks#update'
       delete 'items/:id', to: 'tasks#destroy'
+      post 'items/:id/complete', to: 'tasks#complete'
+      patch 'items/:id/reassign', to: 'tasks#reassign'
+      post 'items/:id/reassign', to: 'tasks#reassign'
+      post 'items/:id/explanations', to: 'tasks#submit_explanation'
 
       # ===== NEW - TASK SPECIAL ENDPOINTS =====
       # Task actions (no-snooze flow)
-      resources :tasks, only: [] do
+      resources :tasks, only: [:show, :update, :destroy] do
         collection do
           get :blocking              # Get tasks blocking the app
           get :awaiting_explanation  # Tasks needing explanation
@@ -105,6 +126,7 @@ Rails.application.routes.draw do
           # EXISTING
           post :complete
           post :reassign
+          patch :reassign              # Also support PATCH for iOS compatibility
 
           # NEW - Subtask management
           post :add_subtask

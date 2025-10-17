@@ -31,17 +31,17 @@ module Api
       end
 
       # POST /api/v1/lists/:list_id/tasks
-      def create
-        unless @list.can_add_items?(current_user)
-          # Try to find a list the user can add items to
-          fallback_list = current_user.owned_lists.first
-          if fallback_list && fallback_list.can_add_items?(current_user)
-            @list = fallback_list
-            Rails.logger.info "Redirected task creation from list #{params[:list_id]} to list #{@list.id} for user #{current_user.id}"
-          else
-            return render json: { error: 'You do not have permission to add tasks to this list' }, status: :forbidden
+        def create
+          unless @list.can_add_items_by?(current_user)
+            # Try to find a list the user can add items to
+            fallback_list = current_user.owned_lists.first
+            if fallback_list && fallback_list.can_add_items_by?(current_user)
+              @list = fallback_list
+              Rails.logger.info "Redirected task creation from list #{params[:list_id]} to list #{@list.id} for user #{current_user.id}"
+            else
+              return render json: { error: 'You do not have permission to add tasks to this list' }, status: :forbidden
+            end
           end
-        end
 
         # Normalize incoming params from various clients (iOS uses name/dueDate)
         attrs = task_params.to_h
@@ -141,7 +141,12 @@ module Api
           return
         end
         
-        @task.complete!
+        # Handle both completion states based on the completed parameter
+        if params[:completed] == false || params[:completed] == 'false'
+          @task.uncomplete!
+        else
+          @task.complete!
+        end
         
         render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
       end
@@ -165,10 +170,21 @@ module Api
       end
 
       # POST /api/v1/tasks/:id/reassign
+      # PATCH /api/v1/tasks/:id/reassign
       def reassign
-        # Reassign to different list or user
+        unless can_access_task?(@task)
+          render json: { 
+            error: 'Unauthorized',
+            message: 'You do not have permission to reassign this task',
+            task_id: @task.id,
+            user_id: current_user.id,
+            list_owner_id: @task.list.user_id
+          }, status: :forbidden
+          return
+        end
+
+        # Handle reassignment to different list
         new_list_id = params[:list_id]
-        
         if new_list_id.present?
           new_list = List.find(new_list_id)
           
@@ -178,6 +194,24 @@ module Api
           
           @task.update!(list_id: new_list_id)
         end
+
+        # Handle due date update
+        if params[:due_at].present?
+          begin
+            new_due_at = Time.parse(params[:due_at])
+            @task.update!(due_at: new_due_at)
+          rescue ArgumentError
+            return render json: { error: 'Invalid due_at format' }, status: :unprocessable_entity
+          end
+        end
+
+        # Create task event for reassignment
+        @task.create_task_event(
+          user: current_user,
+          kind: :reassigned,
+          reason: params[:reason],
+          occurred_at: Time.current
+        )
         
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
