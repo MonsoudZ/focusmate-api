@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  title: MyString
+  note: MyText
+  due_at: 2025-10-14 00:26:01
+  status: 1
+  strict_mode: false
+  list: one
+
+two:
+  title: MyString
+  note: MyText
+  due_at: 2025-10-14 00:26:01
+  status: 1
+  strict_mode: false
+  list: two

@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  user: one
+  apns_token: MyString
+  platform: MyString
+  bundle_id: MyString
+
+two:
+  user: two
+  apns_token: MyString
+  platform: MyString
+  bundle_id: MyString

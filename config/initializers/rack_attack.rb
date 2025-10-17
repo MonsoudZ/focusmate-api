@@ -1,0 +1,48 @@
+# frozen_string_literal: true
+
+class Rack::Attack
+  # Configure cache store
+  Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
+    url: ENV.fetch('REDIS_URL', 'redis://localhost:6379/1')
+  )
+
+  # Allow requests from localhost in development
+  Rack::Attack.safelist('allow-localhost') do |req|
+    '127.0.0.1' == req.ip || '::1' == req.ip if Rails.env.development?
+  end
+
+  # Rate limiting for API endpoints
+  Rack::Attack.throttle('api/ip', limit: 100, period: 1.minute) do |req|
+    req.ip if req.path.start_with?('/api/')
+  end
+
+  # Rate limiting for authentication endpoints
+  Rack::Attack.throttle('auth/ip', limit: 5, period: 1.minute) do |req|
+    req.ip if req.path.start_with?('/users/sign_in') || req.path.start_with?('/users/sign_up')
+  end
+
+  # Rate limiting for password reset
+  Rack::Attack.throttle('password_reset/ip', limit: 3, period: 1.hour) do |req|
+    req.ip if req.path.start_with?('/users/password')
+  end
+
+  # Block suspicious requests
+  Rack::Attack.blocklist('block bad user agents') do |req|
+    req.user_agent =~ /(bot|crawler|spider|scraper)/i
+  end
+
+  # Custom response for blocked requests
+  Rack::Attack.throttled_responder = lambda do |env|
+    match_data = env['rack.attack.match_data']
+    now = match_data[:epoch_time]
+    
+    headers = {
+      'Content-Type' => 'application/json',
+      'X-RateLimit-Limit' => match_data[:limit].to_s,
+      'X-RateLimit-Remaining' => '0',
+      'X-RateLimit-Reset' => (now + (match_data[:period] - now % match_data[:period])).to_s
+    }
+    
+    [429, headers, [{ error: 'Rate limit exceeded' }.to_json]]
+  end
+end

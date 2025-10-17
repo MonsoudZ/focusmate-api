@@ -1,0 +1,3 @@
+overdue_scan_job:
+  cron: "*/15 * * * *"   # every 15 minutes
+  class: "OverdueScanJob"

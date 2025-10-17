@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+# Focusmate API Development Setup Script
+
+echo "🚀 Starting Focusmate API development environment..."
+
+# Check if Redis is running
+if ! redis-cli ping > /dev/null 2>&1; then
+    echo "⚠️  Redis is not running. Please start Redis first:"
+    echo "   redis-server"
+    echo ""
+    echo "Or install Redis if you haven't:"
+    echo "   brew install redis  # macOS"
+    echo "   sudo apt-get install redis-server  # Ubuntu"
+    exit 1
+fi
+
+echo "✅ Redis is running"
+
+# Start Sidekiq in background
+echo "🔄 Starting Sidekiq..."
+bundle exec sidekiq &
+SIDEKIQ_PID=$!
+
+# Start Rails server
+echo "🚀 Starting Rails server..."
+echo ""
+echo "API will be available at: http://localhost:3000"
+echo "Health check: http://localhost:3000/up"
+echo ""
+echo "API endpoints:"
+echo "  POST /api/v1/register"
+echo "  POST /api/v1/login"
+echo "  GET  /api/v1/profile"
+echo "  DELETE /api/v1/logout"
+echo "  GET  /api/v1/examples"
+echo "  POST /api/v1/examples"
+echo ""
+echo "Press Ctrl+C to stop all services"
+
+# Function to cleanup background processes
+cleanup() {
+    echo ""
+    echo "🛑 Stopping services..."
+    kill $SIDEKIQ_PID 2>/dev/null
+    echo "✅ All services stopped"
+    exit 0
+}
+
+# Set trap to cleanup on exit
+trap cleanup SIGINT SIGTERM
+
+# Start Rails server
+bundle exec rails server
