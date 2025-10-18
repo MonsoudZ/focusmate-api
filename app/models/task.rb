@@ -54,6 +54,7 @@ class Task < ApplicationRecord
   after_update :create_task_event, if: :saved_change_to_status?
   after_commit :broadcast_create, on: :create
   after_commit :broadcast_update, on: :update
+  before_destroy :broadcast_delete
   
   # Business logic methods
   def complete!
@@ -400,8 +401,9 @@ class Task < ApplicationRecord
     )
   end
 
-  def broadcast_create = Broadcasts.task_changed(self, event: "created")
-  def broadcast_update = Broadcasts.task_changed(self, event: "updated")
+  def broadcast_create = Broadcasts.task_created(self)
+  def broadcast_update = Broadcasts.task_updated(self)
+  def broadcast_delete = Broadcasts.task_deleted(self)
 
   # Recurring template methods
   def is_recurring?
