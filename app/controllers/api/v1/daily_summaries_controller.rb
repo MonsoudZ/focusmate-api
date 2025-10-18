@@ -8,7 +8,7 @@ module Api
         @summaries = @relationship.daily_summaries
                                   .order(summary_date: :desc)
                                   .limit(30) # Last 30 days
-        
+
         render json: @summaries.map { |s| DailySummarySerializer.new(s).as_json }
       end
 
@@ -22,9 +22,9 @@ module Api
 
       def set_relationship
         @relationship = CoachingRelationship.find(params[:coaching_relationship_id])
-        
+
         unless @relationship.coach == current_user || @relationship.client == current_user
-          render json: { error: 'Unauthorized' }, status: :forbidden
+          render json: { error: "Unauthorized" }, status: :forbidden
         end
       end
     end

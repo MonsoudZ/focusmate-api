@@ -16,7 +16,7 @@ class ListShareSerializer
       user: list_share.user ? {
         id: list_share.user.id,
         email: list_share.user.email,
-        name: list_share.user.name || list_share.user.email.split('@').first,
+        name: list_share.user.name || list_share.user.email.split("@").first,
         role: list_share.user.role
       } : nil,
       permissions: {

@@ -13,7 +13,7 @@ class CreateListShares < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :list_shares, [:list_id, :user_id], unique: true
+    add_index :list_shares, [ :list_id, :user_id ], unique: true
     add_index :list_shares, :permissions, using: :gin
   end
 end

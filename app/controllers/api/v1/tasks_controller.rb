@@ -2,11 +2,11 @@
 module Api
   module V1
     class TasksController < ApplicationController
-      before_action :set_list, only: [:index, :create]
-      before_action :set_task, only: [:show, :update, :destroy, :complete, :uncomplete, :reassign, :submit_explanation, :toggle_visibility, :add_subtask, :update_subtask, :delete_subtask, :change_visibility]
-      before_action :authorize_task_access, only: [:show]
-      before_action :authorize_task_edit, only: [:update, :destroy]
-      before_action :authorize_task_visibility_change, only: [:change_visibility]
+      before_action :set_list, only: [ :index, :create ]
+      before_action :set_task, only: [ :show, :update, :destroy, :complete, :uncomplete, :reassign, :submit_explanation, :toggle_visibility, :add_subtask, :update_subtask, :delete_subtask, :change_visibility ]
+      before_action :authorize_task_access, only: [ :show ]
+      before_action :authorize_task_edit, only: [ :update, :destroy ]
+      before_action :authorize_task_visibility_change, only: [ :change_visibility ]
 
       # GET /api/v1/lists/:list_id/tasks
       def index
@@ -14,39 +14,39 @@ module Api
         @tasks = policy_scope(@list.tasks)
                       .where(parent_task_id: nil) # Don't include subtasks at top level
                       .includes(:creator, :subtasks, :escalation)
-        
+
         # Apply since filter if provided
         if params[:since].present?
           since_time = Time.parse(params[:since])
           @tasks = @tasks.modified_since(since_time)
         end
-        
+
         # Separate active and deleted items
         active_tasks = @tasks.not_deleted
         deleted_tasks = @tasks.deleted
-        
+
         # Order active tasks
         active_tasks = active_tasks.order(Arel.sql('
-          CASE 
+          CASE
             WHEN status = 1 THEN 3
             WHEN strict_mode = true THEN 0
             ELSE 2
           END,
           due_at ASC NULLS LAST
         '))
-        
+
         # Build response with tombstones
         response_data = {
           tasks: active_tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json },
-          tombstones: deleted_tasks.map { |task| 
+          tombstones: deleted_tasks.map { |task|
             {
               id: task.id,
               deleted_at: task.deleted_at.iso8601,
-              type: 'task'
+              type: "task"
             }
           }
         }
-        
+
         render json: response_data
       end
 
@@ -55,7 +55,7 @@ module Api
         render json: TaskSerializer.new(@task, current_user: current_user, include_subtasks: true).as_json
       end
 
-      # POST /api/v1/lists/:list_id/tasks
+        # POST /api/v1/lists/:list_id/tasks
         def create
           unless @list.can_add_items_by?(current_user)
             # Try to find a list the user can add items to
@@ -64,18 +64,18 @@ module Api
               @list = fallback_list
               Rails.logger.info "Redirected task creation from list #{params[:list_id]} to list #{@list.id} for user #{current_user.id}"
             else
-              return render_forbidden('You do not have permission to add tasks to this list')
+              return render_forbidden("You do not have permission to add tasks to this list")
             end
           end
 
         # Normalize incoming params from various clients (iOS uses name/dueDate)
         attrs = task_params.to_h
-        
+
         # Handle iOS-specific parameters (don't pass them to the model)
         if params[:name].present?
           attrs[:title] = params[:name]
         end
-        
+
         if params[:dueDate].present? && attrs[:due_at].blank?
           # iOS sends epoch seconds
           begin
@@ -84,7 +84,7 @@ module Api
             # ignore bad format
           end
         end
-        
+
         if params[:due_date].present? && attrs[:due_at].blank?
           # Handle ISO8601 date format
           begin
@@ -93,11 +93,11 @@ module Api
             # ignore bad format
           end
         end
-        
+
         if params[:description].present?
           attrs[:note] = params[:description]
         end
-        
+
         # Set default values for required fields
         attrs[:strict_mode] = true if attrs[:strict_mode].nil?
 
@@ -109,7 +109,7 @@ module Api
 
         @task = @list.tasks.build(attrs)
         @task.creator = current_user
-        
+
         if @task.save
           # Create subtasks if provided
           if params[:subtasks].present?
@@ -126,12 +126,12 @@ module Api
 
           # Notify client if coach created it
           NotificationService.new_item_assigned(@task) if @task.created_by_coach?
-          
+
           # Set up geofencing if location-based
           # if @task.location_based?
           #   GeofencingService.setup_geofence(@task)
           # end
-          
+
           render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :created
         else
           render_validation_errors(@task.errors)
@@ -156,41 +156,41 @@ module Api
       # POST /api/v1/tasks/:id/complete
       def complete
         unless can_access_task?(@task)
-          render json: { 
-            error: 'Unauthorized',
-            message: 'You do not have permission to modify this task',
+          render json: {
+            error: "Unauthorized",
+            message: "You do not have permission to modify this task",
             task_id: @task.id,
             user_id: current_user.id,
             list_owner_id: @task.list.user_id
           }, status: :forbidden
           return
         end
-        
+
         # Handle both completion states based on the completed parameter
-        if params[:completed] == false || params[:completed] == 'false'
+        if params[:completed] == false || params[:completed] == "false"
           @task.uncomplete!
         else
           @task.complete!
         end
-        
+
         render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
       end
 
       # PATCH /api/v1/tasks/:id/uncomplete
       def uncomplete
         unless can_access_task?(@task)
-          render json: { 
-            error: 'Unauthorized',
-            message: 'You do not have permission to modify this task',
+          render json: {
+            error: "Unauthorized",
+            message: "You do not have permission to modify this task",
             task_id: @task.id,
             user_id: current_user.id,
             list_owner_id: @task.list.user_id
           }, status: :forbidden
           return
         end
-        
+
         @task.uncomplete!
-        
+
         render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
       end
 
@@ -198,9 +198,9 @@ module Api
       # PATCH /api/v1/tasks/:id/reassign
       def reassign
         unless can_access_task?(@task)
-          render json: { 
-            error: 'Unauthorized',
-            message: 'You do not have permission to reassign this task',
+          render json: {
+            error: "Unauthorized",
+            message: "You do not have permission to reassign this task",
             task_id: @task.id,
             user_id: current_user.id,
             list_owner_id: @task.list.user_id
@@ -212,11 +212,11 @@ module Api
         new_list_id = params[:list_id]
         if new_list_id.present?
           new_list = List.find(new_list_id)
-          
+
           unless new_list.can_add_items?(current_user)
-            return render_forbidden('Cannot reassign to that list')
+            return render_forbidden("Cannot reassign to that list")
           end
-          
+
           @task.update!(list_id: new_list_id)
         end
 
@@ -226,7 +226,7 @@ module Api
             new_due_at = Time.parse(params[:due_at])
             @task.update!(due_at: new_due_at)
           rescue ArgumentError
-            return render_bad_request('Invalid due_at format')
+            return render_bad_request("Invalid due_at format")
           end
         end
 
@@ -237,18 +237,18 @@ module Api
           reason: params[:reason],
           occurred_at: Time.current
         )
-        
+
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
 
       # POST /api/v1/tasks/:id/submit_explanation
       def submit_explanation
         unless @task.list.owner == current_user
-          return render_forbidden('Only list owner can submit explanations')
+          return render_forbidden("Only list owner can submit explanations")
         end
 
         unless @task.requires_explanation?
-          return render_unprocessable_entity('This task does not require an explanation')
+          return render_unprocessable_entity("This task does not require an explanation")
         end
 
         if @task.submit_explanation!(params[:reason], current_user)
@@ -261,7 +261,7 @@ module Api
       # PATCH /api/v1/tasks/:id/toggle_visibility
       def toggle_visibility
         unless @task.list.owner == current_user
-          return render_forbidden('Only list owner can control visibility')
+          return render_forbidden("Only list owner can control visibility")
         end
 
         coach_id = params[:coach_id]
@@ -271,7 +271,7 @@ module Api
         relationship = current_user.relationship_with_coach(coach)
 
         unless relationship
-          return render_not_found('Coaching relationship')
+          return render_not_found("Coaching relationship")
         end
 
         if visible
@@ -286,17 +286,17 @@ module Api
       # PATCH /api/v1/tasks/:id/change_visibility
       def change_visibility
         visibility = params[:visibility]
-        
+
         unless %w[visible hidden coaching_only].include?(visibility)
-          return render_bad_request('Invalid visibility setting')
+          return render_bad_request("Invalid visibility setting")
         end
 
         case visibility
-        when 'visible'
+        when "visible"
           @task.make_visible!
-        when 'hidden'
+        when "hidden"
           @task.make_hidden!
-        when 'coaching_only'
+        when "coaching_only"
           @task.make_coaching_only!
         end
 
@@ -306,7 +306,7 @@ module Api
       # POST /api/v1/tasks/:id/add_subtask
       def add_subtask
         unless @task.editable_by?(current_user)
-          return render_forbidden('Cannot add subtasks to this task')
+          return render_forbidden("Cannot add subtasks to this task")
         end
 
         subtask = @task.subtasks.build(
@@ -328,9 +328,9 @@ module Api
       # PATCH /api/v1/tasks/:id/subtasks/:subtask_id
       def update_subtask
         subtask = @task.subtasks.find(params[:subtask_id])
-        
+
         unless subtask.editable_by?(current_user)
-          return render_forbidden('Cannot edit this subtask')
+          return render_forbidden("Cannot edit this subtask")
         end
 
         if subtask.update(task_params)
@@ -343,9 +343,9 @@ module Api
       # DELETE /api/v1/tasks/:id/subtasks/:subtask_id
       def delete_subtask
         subtask = @task.subtasks.find(params[:subtask_id])
-        
+
         unless subtask.deletable_by?(current_user)
-          return render_forbidden('Cannot delete this subtask')
+          return render_forbidden("Cannot delete this subtask")
         end
 
         subtask.destroy
@@ -359,7 +359,7 @@ module Api
                             .where(item_escalations: { blocking_app: true })
                             .where(tasks: { completed_at: nil })
                             .includes(:creator, :subtasks)
-        
+
         render json: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json }
       end
 
@@ -369,7 +369,7 @@ module Api
                      .where(lists: { user_id: current_user.id })
                      .awaiting_explanation
                      .includes(:creator, :list)
-        
+
         render json: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json }
       end
 
@@ -380,7 +380,7 @@ module Api
                      .overdue
                      .includes(:creator, :list, :escalation)
                      .order(due_at: :asc)
-        
+
         render json: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json }
       end
 
@@ -414,13 +414,13 @@ module Api
 
       def authorize_task_access
         unless @task.visible_to?(current_user)
-          render_not_found('Task')
+          render_not_found("Task")
         end
       end
 
       def authorize_task_edit
         unless @task.editable_by?(current_user)
-          render_forbidden('You can only edit tasks you created')
+          render_forbidden("You can only edit tasks you created")
         end
       end
 
@@ -449,23 +449,23 @@ module Api
           )
         end
       end
-      
+
       def can_access_task?(task)
         # Check if user owns the list
         return true if task.list.user_id == current_user.id
-        
+
         # Check if user created the task
         return true if task.creator_id == current_user.id
-        
+
         # Check if user is a member/coach of the list
         return true if task.list.memberships.exists?(user_id: current_user.id)
-        
+
         false
       end
 
       def authorize_task_visibility_change
         unless @task.can_change_visibility?(current_user)
-          render_forbidden('You do not have permission to change task visibility')
+          render_forbidden("You do not have permission to change task visibility")
         end
       end
     end

@@ -31,7 +31,7 @@ module FocusmateApi
 
     # Add back cookies and session middleware so Devise failure app can operate without sessions error
     config.middleware.use ActionDispatch::Cookies
-    config.middleware.use ActionDispatch::Session::CookieStore, key: '_focusmate_api_session', secure: false, httponly: true, same_site: :lax
+    config.middleware.use ActionDispatch::Session::CookieStore, key: "_focusmate_api_session", secure: false, httponly: true, same_site: :lax
 
     # Configure Active Job to use Sidekiq
     config.active_job.queue_adapter = :sidekiq

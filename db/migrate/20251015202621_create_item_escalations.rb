@@ -10,10 +10,10 @@ class CreateItemEscalations < ActiveRecord::Migration[8.0]
       t.datetime :coaches_notified_at
       t.boolean :blocking_app, default: false
       t.datetime :blocking_started_at
-      
+
       t.timestamps
     end
-    
+
     add_index :item_escalations, :escalation_level
     add_index :item_escalations, :blocking_app
   end

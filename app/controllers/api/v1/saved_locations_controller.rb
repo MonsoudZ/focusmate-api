@@ -1,7 +1,7 @@
 module Api
   module V1
     class SavedLocationsController < ApplicationController
-      before_action :set_location, only: [:show, :update, :destroy]
+      before_action :set_location, only: [ :show, :update, :destroy ]
 
       # GET /api/v1/saved_locations
       def index
@@ -17,7 +17,7 @@ module Api
       # POST /api/v1/saved_locations
       def create
         @location = current_user.saved_locations.build(location_params)
-        
+
         if @location.save
           render json: SavedLocationSerializer.new(@location).as_json, status: :created
         else

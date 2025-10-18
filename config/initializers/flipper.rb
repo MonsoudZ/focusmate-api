@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'flipper'
-require 'flipper/adapters/active_record'
+require "flipper"
+require "flipper/adapters/active_record"
 
 # Configure Flipper to use ActiveRecord adapter
 Flipper.configure do |config|

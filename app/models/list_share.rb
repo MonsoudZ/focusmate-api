@@ -4,16 +4,16 @@ class ListShare < ApplicationRecord
 
   # Enums
   enum :role, { viewer: 0, editor: 1, admin: 2 }
-  enum :status, { pending: 'pending', accepted: 'accepted', declined: 'declined' }
+  enum :status, { pending: "pending", accepted: "accepted", declined: "declined" }
 
   # Validations
   validates :list_id, uniqueness: { scope: :user_id, message: "is already shared with this user" }, if: :user_id?
   validates :list_id, uniqueness: { scope: :email, message: "is already shared with this email" }, if: :email?
-  validates :can_view, inclusion: { in: [true, false] }
-  validates :can_edit, inclusion: { in: [true, false] }
-  validates :can_add_items, inclusion: { in: [true, false] }
-  validates :can_delete_items, inclusion: { in: [true, false] }
-  validates :receive_notifications, inclusion: { in: [true, false] }
+  validates :can_view, inclusion: { in: [ true, false ] }
+  validates :can_edit, inclusion: { in: [ true, false ] }
+  validates :can_add_items, inclusion: { in: [ true, false ] }
+  validates :can_delete_items, inclusion: { in: [ true, false ] }
+  validates :receive_notifications, inclusion: { in: [ true, false ] }
   validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
 
   # Callbacks
@@ -55,15 +55,15 @@ class ListShare < ApplicationRecord
   # Check if user has specific permission
   def has_permission?(permission)
     case permission.to_s
-    when 'view'
+    when "view"
       can_view?
-    when 'edit'
+    when "edit"
       can_edit?
-    when 'add_items'
+    when "add_items"
       can_add_items?
-    when 'delete_items'
+    when "delete_items"
       can_delete_items?
-    when 'notifications'
+    when "notifications"
       receive_notifications?
     else
       false
@@ -84,13 +84,13 @@ class ListShare < ApplicationRecord
   # Check if this share allows the user to perform an action
   def allows_action?(action)
     case action.to_s
-    when 'view'
+    when "view"
       can_view?
-    when 'edit'
+    when "edit"
       can_edit?
-    when 'create'
+    when "create"
       can_add_items?
-    when 'destroy'
+    when "destroy"
       can_delete_items?
     else
       false
@@ -101,27 +101,27 @@ class ListShare < ApplicationRecord
   def can_view_tasks?
     true
   end
-  
+
   def can_create_tasks?
     editor? || admin?
   end
-  
+
   def can_edit_tasks?
     editor? || admin?
   end
-  
+
   def can_complete_tasks?
     editor? || admin?
   end
-  
+
   def can_delete_tasks?
     admin?
   end
-  
+
   def can_share_list?
     admin?
   end
-  
+
   def receives_alerts?
     true  # All shared users get overdue alerts
   end
@@ -130,25 +130,25 @@ class ListShare < ApplicationRecord
   def accept!(user)
     update!(
       user: user,
-      status: 'accepted',
+      status: "accepted",
       accepted_at: Time.current
     )
   end
 
   def decline!
-    update!(status: 'declined')
+    update!(status: "declined")
   end
 
   def pending?
-    status == 'pending'
+    status == "pending"
   end
 
   def accepted?
-    status == 'accepted'
+    status == "accepted"
   end
 
   def declined?
-    status == 'declined'
+    status == "declined"
   end
 
   private

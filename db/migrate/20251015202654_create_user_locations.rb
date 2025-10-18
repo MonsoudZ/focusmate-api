@@ -6,10 +6,10 @@ class CreateUserLocations < ActiveRecord::Migration[8.0]
       t.decimal :longitude, precision: 10, scale: 6, null: false
       t.decimal :accuracy, precision: 10, scale: 2
       t.datetime :recorded_at, null: false
-      
+
       t.timestamps
     end
-    
+
     add_index :user_locations, :recorded_at
   end
 end

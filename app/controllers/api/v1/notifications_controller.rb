@@ -6,7 +6,7 @@ module Api
         @notifications = current_user.notification_logs
                                      .order(created_at: :desc)
                                      .limit(50)
-        
+
         render json: @notifications.map { |n| NotificationSerializer.new(n).as_json }
       end
 
@@ -14,7 +14,7 @@ module Api
       def mark_read
         notification = current_user.notification_logs.find(params[:id])
         notification.update!(metadata: notification.metadata.merge(read: true))
-        
+
         head :no_content
       end
 
@@ -23,7 +23,7 @@ module Api
         current_user.notification_logs.update_all(
           metadata: { read: true }
         )
-        
+
         head :no_content
       end
     end

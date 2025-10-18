@@ -1,36 +1,36 @@
 class NotificationLog < ApplicationRecord
   belongs_to :user
   belongs_to :task, optional: true
-  
+
   validates :notification_type, presence: true
-  validates :delivered, inclusion: { in: [true, false] }
-  
+  validates :delivered, inclusion: { in: [ true, false ] }
+
   # Scopes
   scope :delivered, -> { where(delivered: true) }
   scope :undelivered, -> { where(delivered: false) }
   scope :by_type, ->(type) { where(notification_type: type) }
   scope :recent, -> { order(created_at: :desc) }
-  
+
   # Check if notification was delivered
   def delivered?
     delivered
   end
-  
+
   # Mark as delivered
   def mark_delivered!
     update!(delivered: true, delivered_at: Time.current)
   end
-  
+
   # Get notification metadata
   def metadata
     super || {}
   end
-  
+
   # Set notification metadata
   def metadata=(value)
     super(value.to_json) if value.present?
   end
-  
+
   # Get parsed metadata
   def parsed_metadata
     return {} if metadata.blank?
@@ -39,13 +39,13 @@ class NotificationLog < ApplicationRecord
 
   # Check if notification is read
   def read?
-    parsed_metadata['read'] == true
+    parsed_metadata["read"] == true
   end
 
   # Mark as read
   def mark_read!
     current_metadata = parsed_metadata
-    current_metadata['read'] = true
+    current_metadata["read"] = true
     update!(metadata: current_metadata)
   end
 
@@ -95,12 +95,12 @@ class NotificationLog < ApplicationRecord
   # Get notification priority based on type
   def priority
     case notification_type
-    when 'task_overdue', 'task_escalated'
-      'high'
-    when 'task_due_soon', 'coaching_invitation'
-      'medium'
+    when "task_overdue", "task_escalated"
+      "high"
+    when "task_due_soon", "coaching_invitation"
+      "medium"
     else
-      'low'
+      "low"
     end
   end
 end

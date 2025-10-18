@@ -1,7 +1,7 @@
 module Api
   module V1
     class RecurringTemplatesController < ApplicationController
-      before_action :set_template, only: [:show, :update, :destroy, :generate_instance, :instances]
+      before_action :set_template, only: [ :show, :update, :destroy, :generate_instance, :instances ]
 
       # GET /api/v1/recurring_templates
       def index
@@ -9,7 +9,7 @@ module Api
                         .where(lists: { user_id: current_user.id })
                         .templates
                         .includes(:list, :recurring_instances)
-        
+
         render json: @templates.map { |t| RecurringTemplateSerializer.new(t).as_json }
       end
 
@@ -21,16 +21,16 @@ module Api
       # POST /api/v1/recurring_templates
       def create
         list = current_user.owned_lists.find(params[:list_id])
-        
+
         @template = list.tasks.build(template_params)
         @template.creator = current_user
         @template.is_recurring = true
         @template.recurring_template_id = nil # Ensure it's a template, not instance
-        
+
         if @template.save
           # Generate first instance immediately
           @template.generate_next_instance
-          
+
           render json: RecurringTemplateSerializer.new(@template).as_json, status: :created
         else
           render json: { errors: @template.errors.full_messages }, status: :unprocessable_entity
@@ -47,7 +47,7 @@ module Api
               description: @template.description
             )
           end
-          
+
           render json: RecurringTemplateSerializer.new(@template).as_json
         else
           render json: { errors: @template.errors.full_messages }, status: :unprocessable_entity
@@ -64,11 +64,11 @@ module Api
       # POST /api/v1/recurring_templates/:id/generate_instance
       def generate_instance
         instance = @template.generate_next_instance
-        
+
         if instance
           render json: TaskSerializer.new(instance, current_user: current_user).as_json, status: :created
         else
-          render json: { error: 'Could not generate instance' }, status: :unprocessable_entity
+          render json: { error: "Could not generate instance" }, status: :unprocessable_entity
         end
       end
 
@@ -77,7 +77,7 @@ module Api
         @instances = @template.recurring_instances
                              .includes(:escalation)
                              .order(due_at: :desc)
-        
+
         render json: @instances.map { |i| TaskSerializer.new(i, current_user: current_user).as_json }
       end
 
@@ -87,9 +87,9 @@ module Api
         @template = Task.joins(:list)
                        .where(lists: { owner_id: current_user.id })
                        .find(params[:id])
-        
+
         unless @template.is_recurring? && @template.recurring_template_id.nil?
-          render json: { error: 'Not a recurring template' }, status: :unprocessable_entity
+          render json: { error: "Not a recurring template" }, status: :unprocessable_entity
         end
       end
 

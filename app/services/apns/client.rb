@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "net/http"
 require "jwt"
 require "json"
@@ -73,10 +74,10 @@ module Apns
       apns_id_hdr = response["apns-id"]
 
       if status == 200
-        return { ok: true, apns_id: apns_id_hdr, status: status }
+        { ok: true, apns_id: apns_id_hdr, status: status }
       else
         err = parse_error(response.body)
-        return { ok: false, status: status, reason: err["reason"], timestamp: err["timestamp"], apns_id: apns_id_hdr }
+        { ok: false, status: status, reason: err["reason"], timestamp: err["timestamp"], apns_id: apns_id_hdr }
       end
     rescue => e
       # Connection errors, etc.

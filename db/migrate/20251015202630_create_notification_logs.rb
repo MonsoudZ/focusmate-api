@@ -8,10 +8,10 @@ class CreateNotificationLogs < ActiveRecord::Migration[8.0]
       t.datetime :delivered_at
       t.text :message
       t.jsonb :metadata
-      
+
       t.timestamps
     end
-    
+
     add_index :notification_logs, :notification_type
     add_index :notification_logs, :delivered
     add_index :notification_logs, :created_at

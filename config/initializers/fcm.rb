@@ -1,4 +1,4 @@
-FCM_CLIENT = FCM.new(ENV['FCM_SERVER_KEY'])
+FCM_CLIENT = FCM.new(ENV["FCM_SERVER_KEY"])
 
 # You'll get this from Firebase Console:
 # 1. Go to Firebase Console (https://console.firebase.google.com)

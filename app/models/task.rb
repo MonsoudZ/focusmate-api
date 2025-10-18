@@ -1,106 +1,106 @@
 class Task < ApplicationRecord
   belongs_to :list
-  belongs_to :creator, class_name: 'User', foreign_key: :creator_id
+  belongs_to :creator, class_name: "User", foreign_key: :creator_id
   has_many :task_events, dependent: :destroy
-  
+
   # NEW associations for coaching features
-  belongs_to :parent_task, class_name: 'Task', optional: true
-  belongs_to :recurring_template, class_name: 'Task', optional: true
-  has_many :subtasks, class_name: 'Task', foreign_key: :parent_task_id, dependent: :destroy
-  has_many :recurring_instances, class_name: 'Task', foreign_key: :recurring_template_id, dependent: :destroy
-  has_many :visibility_restrictions, class_name: 'ItemVisibilityRestriction', 
+  belongs_to :parent_task, class_name: "Task", optional: true
+  belongs_to :recurring_template, class_name: "Task", optional: true
+  has_many :subtasks, class_name: "Task", foreign_key: :parent_task_id, dependent: :destroy
+  has_many :recurring_instances, class_name: "Task", foreign_key: :recurring_template_id, dependent: :destroy
+  has_many :visibility_restrictions, class_name: "ItemVisibilityRestriction",
            foreign_key: :task_id, dependent: :destroy
-  has_one :escalation, class_name: 'ItemEscalation', foreign_key: :task_id, dependent: :destroy
+  has_one :escalation, class_name: "ItemEscalation", foreign_key: :task_id, dependent: :destroy
   has_many :notification_logs, foreign_key: :task_id, dependent: :destroy
-  belongs_to :missed_reason_reviewed_by, class_name: 'User', optional: true
-  
+  belongs_to :missed_reason_reviewed_by, class_name: "User", optional: true
+
   # Enums
   enum :status, { pending: 0, done: 1, deleted: 2 }
   enum :visibility, { visible: 0, hidden: 1, coaching_only: 2 }
-  
+
   # Validations
   validates :title, presence: true, length: { maximum: 255 }
   validates :note, length: { maximum: 1000 }
   validates :due_at, presence: true
-  validates :strict_mode, inclusion: { in: [true, false] }
-  
+  validates :strict_mode, inclusion: { in: [ true, false ] }
+
   # Scopes
   scope :active, -> { where.not(status: :deleted) }
   scope :pending, -> { where(status: :pending) }
   scope :completed, -> { where(status: :done) }
   scope :not_deleted, -> { where(deleted_at: nil) }
   scope :deleted, -> { where.not(deleted_at: nil) }
-  scope :modified_since, ->(timestamp) { where('updated_at > ? OR deleted_at > ?', timestamp, timestamp) }
+  scope :modified_since, ->(timestamp) { where("updated_at > ? OR deleted_at > ?", timestamp, timestamp) }
   scope :done, -> { where(status: :done) }
   scope :complete, -> { where(status: :done) }
-  scope :due_soon, -> { where('due_at <= ?', 1.day.from_now) }
-  scope :overdue, -> { where(status: :pending).where('due_at < ?', Time.current) }
-  scope :awaiting_explanation, -> { where(requires_explanation_if_missed: true, status: :pending).where('due_at < ?', Time.current) }
+  scope :due_soon, -> { where("due_at <= ?", 1.day.from_now) }
+  scope :overdue, -> { where(status: :pending).where("due_at < ?", Time.current) }
+  scope :awaiting_explanation, -> { where(requires_explanation_if_missed: true, status: :pending).where("due_at < ?", Time.current) }
   scope :templates, -> { where(is_recurring: true, recurring_template_id: nil) }
   scope :instances, -> { where.not(recurring_template_id: nil) }
   scope :incomplete, -> { where.not(status: :done) }
-  
+
   # Visibility scopes
   scope :visible_tasks, -> { where(visibility: :visible) }
   scope :hidden_tasks, -> { where(visibility: :hidden) }
   scope :coaching_only_tasks, -> { where(visibility: :coaching_only) }
-  scope :visible_to_user, ->(user) { 
+  scope :visible_to_user, ->(user) {
     if user.coach?
-      where(visibility: [:visible, :coaching_only])
+      where(visibility: [ :visible, :coaching_only ])
     else
       where(visibility: :visible)
     end
   }
-  
+
   # Callbacks
   after_create :create_task_event
   after_update :create_task_event, if: :saved_change_to_status?
   after_commit :broadcast_create, on: :create
   after_commit :broadcast_update, on: :update
   before_destroy :broadcast_delete
-  
+
   # Business logic methods
   def complete!
     update!(
       status: 1,
       completed_at: Time.current
     )
-    
+
     # Clear escalation if exists
     escalation&.update!(
-      escalation_level: 'normal',
+      escalation_level: "normal",
       notification_count: 0,
       blocking_app: false,
       blocking_started_at: nil
     ) if escalation
   end
-  
+
   def uncomplete!
     update!(
       status: 0,
       completed_at: nil
     )
   end
-  
+
   def reassign!(user, new_due_at:, reason:)
     return false if strict_mode && reason.blank?
     return false if new_due_at.blank?
-    
+
     old_due_at = due_at
     self.due_at = new_due_at
     save!
     create_task_event(
-      user: user, 
-      kind: :reassigned, 
+      user: user,
+      kind: :reassigned,
       reason: reason,
       occurred_at: Time.current
     )
     true
   end
-  
+
   def soft_delete!(user, reason: nil)
     return false if deleted?
-    
+
     self.status = :deleted
     self.deleted_at = Time.current
     save!
@@ -115,13 +115,13 @@ class Task < ApplicationRecord
   def restore!
     update!(deleted_at: nil, status: :pending)
   end
-  
+
   def can_be_reassigned_by?(user)
     return false unless list.can_edit?(user)
     return false if strict_mode && due_at.present? && due_at > Time.current
     true
   end
-  
+
   # Get reassignment history for coaches
   def reassignment_history
     task_events.reassigned.includes(:user).map do |event|
@@ -134,21 +134,21 @@ class Task < ApplicationRecord
       }
     end
   end
-  
+
   # Get completion rate for analytics
   def self.completion_rate_for_user(user, date_range = nil)
     scope = joins(:list).where(list: List.accessible_by(user))
     scope = scope.where(created_at: date_range) if date_range
-    
+
     total = scope.count
     completed = scope.where(status: :done).count
-    
+
     return 0 if total.zero?
     (completed.to_f / total * 100).round(2)
   end
 
   # NEW: Coaching-related methods
-  
+
   # Check if task is overdue
   def overdue?
     pending? && due_at.present? && due_at < Time.current
@@ -199,7 +199,7 @@ class Task < ApplicationRecord
   def should_block_app?
     return false unless overdue?
     return false if can_be_snoozed?
-    
+
     # Block app based on priority and time overdue
     case priority
     when 3 # Urgent
@@ -214,10 +214,10 @@ class Task < ApplicationRecord
   # Create escalation record if it doesn't exist
   def create_escalation!
     return escalation if escalation.present?
-    
+
     ItemEscalation.create!(
       task: self,
-      escalation_level: 'normal',
+      escalation_level: "normal",
       notification_count: 0,
       became_overdue_at: Time.current
     )
@@ -231,7 +231,7 @@ class Task < ApplicationRecord
 
   # Schedule completion handler when task is completed
   after_commit :schedule_completion_handler, on: :update, if: :saved_change_to_status?
-  
+
   # Check location trigger for location-based tasks
   after_commit :check_location_trigger, on: :create, if: :location_based?
 
@@ -273,40 +273,40 @@ class Task < ApplicationRecord
       )
     end
   end
-  
+
   # Check if task is location-based
   def location_based?
     location_based && location_latitude.present? && location_longitude.present?
   end
-  
+
   # Check if task is recurring
   def recurring?
     is_recurring && recurring_template_id.present?
   end
-  
+
   # Get location coordinates
   def coordinates
     return nil unless location_based?
-    [location_latitude, location_longitude]
+    [ location_latitude, location_longitude ]
   end
-  
+
   # Check if user is at task location
   def user_at_location?(user_latitude, user_longitude)
     return false unless location_based?
     return false if user_latitude.blank? || user_longitude.blank?
-    
+
     distance = calculate_distance(
       location_latitude, location_longitude,
       user_latitude, user_longitude
     )
     distance <= location_radius_meters
   end
-  
+
   # Submit missed reason
   def submit_missed_reason!(reason, user)
     return false unless requires_explanation_if_missed?
     return false if missed_reason.present?
-    
+
     update!(
       missed_reason: reason,
       missed_reason_submitted_at: Time.current,
@@ -329,12 +329,12 @@ class Task < ApplicationRecord
   def hide_from!(coaching_relationship)
     visibility_restrictions.find_by(coaching_relationship: coaching_relationship)&.destroy
   end
-  
+
   # Review missed reason (coach action)
   def review_missed_reason!(reviewer, approved: true)
     return false unless missed_reason.present?
     return false if missed_reason_reviewed_at.present?
-    
+
     update!(
       missed_reason_reviewed_by: reviewer,
       missed_reason_reviewed_at: Time.current,
@@ -342,22 +342,22 @@ class Task < ApplicationRecord
     )
     true
   end
-  
+
   # Check if task can be snoozed
   def can_be_snoozed?
     can_be_snoozed && pending?
   end
-  
+
   # Get escalation level
   def escalation_level
-    escalation&.escalation_level || 'normal'
+    escalation&.escalation_level || "normal"
   end
-  
+
   # Check if task is blocking the app
   def blocking_app?
     escalation&.blocking_app || false
   end
-  
+
   # Get visibility for coaching relationship
   def visible_to_coaching_relationship?(coaching_relationship)
     return true unless visibility_restrictions.exists?
@@ -367,14 +367,14 @@ class Task < ApplicationRecord
   # Visibility control methods
   def visible_to?(user)
     return false unless user
-    
+
     case visibility
-    when 'visible'
+    when "visible"
       true
-    when 'hidden'
+    when "hidden"
       # Only visible to task creator and list owner
       creator == user || list.owner == user
-    when 'coaching_only'
+    when "coaching_only"
       # Visible to coaches and task creator/owner
       user.coach? || creator == user || list.owner == user
     else
@@ -383,27 +383,27 @@ class Task < ApplicationRecord
   end
 
   private
-  
+
   # Calculate distance between two coordinates using Haversine formula
   def calculate_distance(lat1, lon1, lat2, lon2)
     return 0 if lat1 == lat2 && lon1 == lon2
-    
+
     # Convert to radians
     lat1_rad = lat1 * Math::PI / 180
     lon1_rad = lon1 * Math::PI / 180
     lat2_rad = lat2 * Math::PI / 180
     lon2_rad = lon2 * Math::PI / 180
-    
+
     # Haversine formula
     dlat = lat2_rad - lat1_rad
     dlon = lon2_rad - lon1_rad
     a = Math.sin(dlat/2)**2 + Math.cos(lat1_rad) * Math.cos(lat2_rad) * Math.sin(dlon/2)**2
     c = 2 * Math.asin(Math.sqrt(a))
-    
+
     # Earth's radius in meters
     6371000 * c
   end
-  
+
   def create_task_event(user: nil, kind: :created, reason: nil, occurred_at: nil)
     task_events.create!(
       user: user || list.owner,
@@ -476,13 +476,13 @@ class Task < ApplicationRecord
     return nil unless is_template?
 
     case recurrence_pattern
-    when 'daily'
+    when "daily"
       calculate_daily_recurrence
-    when 'weekly'
+    when "weekly"
       calculate_weekly_recurrence
-    when 'monthly'
+    when "monthly"
       calculate_monthly_recurrence
-    when 'yearly'
+    when "yearly"
       calculate_yearly_recurrence
     else
       nil
@@ -494,26 +494,26 @@ class Task < ApplicationRecord
   def calculate_daily_recurrence
     base_time = recurrence_time || Time.current
     next_date = Time.current.beginning_of_day + base_time.seconds_since_midnight
-    
+
     # If time has passed today, move to tomorrow
     next_date += 1.day if next_date < Time.current
-    
+
     next_date
   end
 
   def calculate_weekly_recurrence
     return nil unless recurrence_days.present?
-    
+
     base_time = recurrence_time || Time.current
     current_day = Time.current.wday
     target_days = recurrence_days.map(&:to_i).sort
-    
+
     # Find next occurrence
     target_days.each do |day|
       next_date = Time.current.beginning_of_week + day.days + base_time.seconds_since_midnight
       return next_date if next_date > Time.current
     end
-    
+
     # If no day this week, get first day of next week
     first_day = target_days.first
     Time.current.beginning_of_week + 1.week + first_day.days + base_time.seconds_since_midnight
@@ -522,20 +522,20 @@ class Task < ApplicationRecord
   def calculate_monthly_recurrence
     base_time = recurrence_time || Time.current
     next_date = Time.current.beginning_of_month + base_time.seconds_since_midnight
-    
+
     # If date has passed this month, move to next month
     next_date += 1.month if next_date < Time.current
-    
+
     next_date
   end
 
   def calculate_yearly_recurrence
     base_time = recurrence_time || Time.current
     next_date = Time.current.beginning_of_year + base_time.seconds_since_midnight
-    
+
     # If date has passed this year, move to next year
     next_date += 1.year if next_date < Time.current
-    
+
     next_date
   end
 end

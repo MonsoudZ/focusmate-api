@@ -88,4 +88,4 @@ group :development, :test do
 end
 
 # Environment variables
-gem 'dotenv-rails', groups: [:development, :test]
+gem "dotenv-rails", groups: [ :development, :test ]

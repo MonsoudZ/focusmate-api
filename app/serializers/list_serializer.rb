@@ -32,17 +32,17 @@ class ListSerializer
 
   def role_for_current_user
     if list.owner == current_user
-      'owner'
+      "owner"
     elsif current_user.coach? && list.shared_with?(current_user)
-      'coach'
+      "coach"
     else
-      'viewer'
+      "viewer"
     end
   end
 
   def shared_coaches
     return [] unless list.owner == current_user
-    
+
     list.coaches.map { |coach| UserSerializer.new(coach).as_json }
   end
 

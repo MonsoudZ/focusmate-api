@@ -7,7 +7,7 @@ module Api
       # POST /api/v1/staging/test_push
       def test_push
         user = current_user
-        
+
         # Enqueue test push notification job
         TestPushNotificationJob.perform_later(
           user.id,
@@ -19,7 +19,7 @@ module Api
             user_id: user.id
           }
         )
-        
+
         render json: {
           message: "Test push notification job enqueued",
           user_id: user.id,
@@ -33,7 +33,7 @@ module Api
       # POST /api/v1/staging/test_push_immediate
       def test_push_immediate
         user = current_user
-        
+
         # Send immediate test push (synchronous)
         begin
           # Send test notification to all devices
@@ -41,7 +41,7 @@ module Api
             user,
             "#{params[:title] || 'Immediate Test Push'}: #{params[:body] || 'This is an immediate test push notification'}"
           )
-          
+
           render json: {
             message: "Immediate test push notification sent",
             user_id: user.id,
@@ -61,7 +61,7 @@ module Api
       # GET /api/v1/staging/push_status
       def push_status
         user = current_user
-        
+
         render json: {
           user_id: user.id,
           email: user.email,
@@ -85,17 +85,17 @@ module Api
       # POST /api/v1/staging/cleanup_test_data
       def cleanup_test_data
         user = current_user
-        
+
         # Clean up test devices and notifications
         test_devices = user.devices.where("apns_token LIKE ?", "test_%")
         test_notifications = user.notification_logs.where("metadata->>'test' = 'true'")
-        
+
         devices_deleted = test_devices.count
         notifications_deleted = test_notifications.count
-        
+
         test_devices.destroy_all
         test_notifications.destroy_all
-        
+
         render json: {
           message: "Test data cleaned up",
           devices_deleted: devices_deleted,

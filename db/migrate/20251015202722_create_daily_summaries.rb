@@ -9,12 +9,12 @@ class CreateDailySummaries < ActiveRecord::Migration[8.0]
       t.jsonb :summary_data
       t.boolean :sent, default: false
       t.datetime :sent_at
-      
+
       t.timestamps
     end
-    
-    add_index :daily_summaries, [:coaching_relationship_id, :summary_date], 
-              unique: true, 
+
+    add_index :daily_summaries, [ :coaching_relationship_id, :summary_date ],
+              unique: true,
               name: 'index_daily_summaries_unique'
     add_index :daily_summaries, :summary_date
     add_index :daily_summaries, :sent

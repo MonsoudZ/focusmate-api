@@ -11,7 +11,7 @@ class NotificationSerializer
       type: notification.notification_type,
       title: notification.title,
       message: notification.message,
-      read: notification.metadata&.dig('read') || false,
+      read: notification.metadata&.dig("read") || false,
       priority: notification.priority,
       created_at: notification.created_at.iso8601,
       metadata: notification.metadata || {}

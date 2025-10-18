@@ -20,18 +20,18 @@ class TaskSerializer
       can_be_snoozed: !task.strict_mode,
       notification_interval_minutes: task.notification_interval_minutes || 10,
       requires_explanation_if_missed: task.requires_explanation_if_missed || false,
-      
+
       # Status flags
       overdue: overdue?,
       minutes_overdue: minutes_overdue,
       requires_explanation: requires_explanation?,
-      
+
       # Recurring
       is_recurring: task.is_recurring || false,
       recurrence_pattern: task.recurrence_pattern,
       recurrence_interval: task.recurrence_interval || 1,
       recurrence_days: task.recurrence_days,
-      
+
       # Location
       location_based: task.location_based || false,
       location_name: task.location_name,
@@ -40,34 +40,34 @@ class TaskSerializer
       location_radius_meters: task.location_radius_meters || 100,
       notify_on_arrival: task.notify_on_arrival.nil? ? true : task.notify_on_arrival,
       notify_on_departure: task.notify_on_departure || false,
-      
+
       # Accountability
       missed_reason: task.missed_reason,
       missed_reason_submitted_at: task.missed_reason_submitted_at&.iso8601,
       missed_reason_reviewed_at: task.missed_reason_reviewed_at&.iso8601,
-      
+
       # Creator
       creator: creator_data,
       created_by_coach: created_by_coach?,
-      
+
       # Permissions
       can_edit: can_edit?,
       can_delete: can_delete?,
       can_complete: can_complete?,
-      
+
       # Visibility
       visibility: task.visibility,
       can_change_visibility: can_change_visibility?,
-      
+
       # Escalation
       escalation: escalation_data,
-      
+
       # Subtasks
       has_subtasks: has_subtasks?,
       subtasks_count: subtasks_count,
       subtasks_completed_count: subtasks_completed_count,
       subtask_completion_percentage: subtask_percentage,
-      
+
       # Timestamps
       created_at: task.created_at.iso8601,
       updated_at: task.updated_at.iso8601
@@ -85,9 +85,9 @@ class TaskSerializer
 
   def overdue?
     # Task is overdue if it has a due date in the past and is NOT completed
-    task.due_at.present? && 
-    task.due_at < Time.current && 
-    (task.status.nil? || task.status == 0 || task.status == 'incomplete')
+    task.due_at.present? &&
+    task.due_at < Time.current &&
+    (task.status.nil? || task.status == 0 || task.status == "incomplete")
   end
 
   def minutes_overdue
@@ -102,7 +102,7 @@ class TaskSerializer
   def creator_data
     creator = task.creator || task.list.owner
     return {} unless creator
-    
+
     {
       id: creator.id,
       email: creator.email,
@@ -139,7 +139,7 @@ class TaskSerializer
 
   def escalation_data
     return nil unless task.escalation
-    
+
     {
       level: task.escalation.escalation_level,
       notification_count: task.escalation.notification_count,
@@ -169,7 +169,7 @@ class TaskSerializer
 
   def completed_at_value
     # Use the actual completed_at field if it exists, otherwise fall back to updated_at
-    if task.status == 1 || task.status == 'done'
+    if task.status == 1 || task.status == "done"
       task.completed_at&.iso8601 || task.updated_at.iso8601
     else
       nil

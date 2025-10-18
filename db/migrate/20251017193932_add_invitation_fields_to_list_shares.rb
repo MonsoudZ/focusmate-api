@@ -6,10 +6,10 @@ class AddInvitationFieldsToListShares < ActiveRecord::Migration[8.0]
     add_column :list_shares, :invitation_token, :string
     add_column :list_shares, :invited_at, :datetime
     add_column :list_shares, :accepted_at, :datetime
-    
+
     # Make user_id optional for pending invitations
     change_column_null :list_shares, :user_id, true
-    
+
     # Add indexes
     add_index :list_shares, :invitation_token, unique: true
     add_index :list_shares, :status

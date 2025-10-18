@@ -39,11 +39,11 @@ module Api
           clients_count: current_user.clients.count,
           total_overdue_tasks: current_user.clients.joins(:created_tasks)
                                                    .where(tasks: { status: :pending })
-                                                   .where('tasks.due_at < ?', Time.current).count,
+                                                   .where("tasks.due_at < ?", Time.current).count,
           pending_explanations: current_user.clients.joins(:created_tasks)
                                                    .where(tasks: { requires_explanation_if_missed: true })
                                                    .where(tasks: { status: :pending })
-                                                   .where('tasks.due_at < ?', Time.current).count,
+                                                   .where("tasks.due_at < ?", Time.current).count,
           active_relationships: current_user.coaching_relationships_as_coach.active.count,
           recent_client_activity: recent_client_activity_summary
         }
@@ -51,7 +51,7 @@ module Api
 
       def client_stats
         tasks = Task.joins(:list).where(lists: { user_id: current_user.id })
-        
+
         {
           total_tasks: tasks.count,
           completed_tasks: tasks.complete.count,
@@ -69,7 +69,7 @@ module Api
 
       def coach_stats
         clients = current_user.clients
-        
+
         {
           total_clients: clients.count,
           active_clients: current_user.coaching_relationships_as_coach.active.count,
@@ -86,10 +86,10 @@ module Api
       def calculate_completion_rate(user, since)
         tasks = Task.joins(:list)
                     .where(lists: { user_id: user.id })
-                    .where('tasks.created_at >= ?', since)
-        
+                    .where("tasks.created_at >= ?", since)
+
         return 0 if tasks.none?
-        
+
         (tasks.complete.count.to_f / tasks.count * 100).round(1)
       end
 
@@ -98,9 +98,9 @@ module Api
                     .where(lists: { user_id: user.id })
                     .where.not(completed_at: nil)
                     .where.not(due_at: nil)
-        
+
         return 0 if tasks.none?
-        
+
         total_diff = tasks.sum { |t| (t.completed_at - t.due_at).abs }
         (total_diff / tasks.count / 3600).round(1) # Convert to hours
       end
@@ -109,10 +109,10 @@ module Api
         # Get recent task events for the user
         recent_events = TaskEvent.joins(:task)
                                  .where(tasks: { list: current_user.owned_lists })
-                                 .where('task_events.created_at >= ?', 1.week.ago)
+                                 .where("task_events.created_at >= ?", 1.week.ago)
                                  .order(created_at: :desc)
                                  .limit(5)
-        
+
         recent_events.map do |event|
           {
             id: event.id,
@@ -129,10 +129,10 @@ module Api
         upcoming_tasks = Task.joins(:list)
                             .where(lists: { user_id: current_user.id })
                             .where(status: :pending)
-                            .where('tasks.due_at BETWEEN ? AND ?', Time.current, 1.week.from_now)
+                            .where("tasks.due_at BETWEEN ? AND ?", Time.current, 1.week.from_now)
                             .order(:due_at)
                             .limit(5)
-        
+
         upcoming_tasks.map do |task|
           {
             id: task.id,
@@ -147,11 +147,11 @@ module Api
       def recent_client_activity_summary
         # Get recent activity across all clients
         recent_events = TaskEvent.joins(:task)
-                                 .where(tasks: { list: current_user.clients.joins(:owned_lists).select('lists.id') })
-                                 .where('task_events.created_at >= ?', 1.week.ago)
+                                 .where(tasks: { list: current_user.clients.joins(:owned_lists).select("lists.id") })
+                                 .where("task_events.created_at >= ?", 1.week.ago)
                                  .order(created_at: :desc)
                                  .limit(10)
-        
+
         recent_events.map do |event|
           {
             id: event.id,
@@ -166,28 +166,28 @@ module Api
       def calculate_average_client_completion_rate
         clients = current_user.clients
         return 0 if clients.empty?
-        
+
         total_completion_rate = clients.sum do |client|
           tasks = Task.joins(:list).where(lists: { user_id: client.id })
           next 0 if tasks.empty?
-          
+
           (tasks.where(status: :done).count.to_f / tasks.count * 100).round(1)
         end
-        
+
         (total_completion_rate / clients.count).round(1)
       end
 
       def client_performance_summary
         current_user.clients.map do |client|
           tasks = Task.joins(:list).where(lists: { user_id: client.id })
-          
+
           {
             client_id: client.id,
             client_name: client.name,
             total_tasks: tasks.count,
             completed_tasks: tasks.where(status: :done).count,
             overdue_tasks: tasks.where(status: :pending)
-                                .where('tasks.due_at < ?', Time.current).count,
+                                .where("tasks.due_at < ?", Time.current).count,
             completion_rate: tasks.any? ? (tasks.where(status: :done).count.to_f / tasks.count * 100).round(1) : 0
           }
         end

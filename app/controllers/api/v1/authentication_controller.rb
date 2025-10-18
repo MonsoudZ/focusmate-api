@@ -3,16 +3,16 @@
 module Api
   module V1
     class AuthenticationController < ApplicationController
-      skip_before_action :authenticate_user!, only: [:login, :register]
+      skip_before_action :authenticate_user!, only: [ :login, :register ]
 
       # POST /api/v1/login
       # POST /api/v1/auth/sign_in
       def login
         user = User.find_by(email: params[:email])
-        
+
         if user&.valid_password?(params[:password])
           token = generate_jwt_token(user)
-          
+
           render json: {
             user: {
               id: user.id,
@@ -24,7 +24,7 @@ module Api
             token: token
           }, status: :ok
         else
-          render_unauthorized('Invalid email or password')
+          render_unauthorized("Invalid email or password")
         end
       end
 
@@ -32,10 +32,10 @@ module Api
       # POST /api/v1/auth/sign_up
       def register
         user = User.new(user_params)
-        
+
         if user.save
           token = generate_jwt_token(user)
-          
+
           render json: {
             user: {
               id: user.id,
@@ -82,7 +82,7 @@ module Api
             timezone: user.timezone
           }
         else
-          render_not_found('Users')
+          render_not_found("Users")
         end
       end
 
@@ -91,7 +91,7 @@ module Api
         user = User.first
         if user
           lists = user.owned_lists
-          render json: lists.map { |list| 
+          render json: lists.map { |list|
             {
               id: list.id,
               name: list.name,
@@ -100,7 +100,7 @@ module Api
             }
           }
         else
-          render_not_found('Users')
+          render_not_found("Users")
         end
       end
 

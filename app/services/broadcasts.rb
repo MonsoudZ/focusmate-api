@@ -49,7 +49,7 @@ module Broadcasts
         can_delete: false # Default to false when no user context
       }
     end
-    
+
     ListChannel.broadcast_to(
       task.list,
       {

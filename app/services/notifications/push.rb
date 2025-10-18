@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Notifications
   class Push
     def self.apns
@@ -35,8 +36,8 @@ module Notifications
         }
       }
       apns.send_notification(
-        device_token, 
-        payload, 
+        device_token,
+        payload,
         push_type: "alert",
         priority: 10
       )
@@ -49,7 +50,7 @@ module Notifications
           "content-available" => 1
         }
       }.merge(data)
-      
+
       apns.send_notification(
         device_token,
         payload,

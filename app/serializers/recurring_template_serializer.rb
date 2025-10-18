@@ -14,7 +14,7 @@ class RecurringTemplateSerializer
       recurrence_pattern: template.recurrence_pattern,
       recurrence_interval: template.recurrence_interval,
       recurrence_days: template.recurrence_days,
-      recurrence_time: template.recurrence_time&.strftime('%H:%M'),
+      recurrence_time: template.recurrence_time&.strftime("%H:%M"),
       recurrence_end_date: template.recurrence_end_date&.iso8601,
       priority: template.priority,
       list: {
