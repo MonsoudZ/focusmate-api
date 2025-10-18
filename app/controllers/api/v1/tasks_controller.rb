@@ -64,7 +64,7 @@ module Api
               @list = fallback_list
               Rails.logger.info "Redirected task creation from list #{params[:list_id]} to list #{@list.id} for user #{current_user.id}"
             else
-              return render json: { error: 'You do not have permission to add tasks to this list' }, status: :forbidden
+              return render_forbidden('You do not have permission to add tasks to this list')
             end
           end
 
@@ -134,7 +134,7 @@ module Api
           
           render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :created
         else
-          render json: { errors: @task.errors.full_messages }, status: :unprocessable_entity
+          render_validation_errors(@task.errors)
         end
       end
 
@@ -143,7 +143,7 @@ module Api
         if @task.update(task_params)
           render json: TaskSerializer.new(@task, current_user: current_user).as_json
         else
-          render json: { errors: @task.errors.full_messages }, status: :unprocessable_entity
+          render_validation_errors(@task.errors)
         end
       end
 
@@ -214,7 +214,7 @@ module Api
           new_list = List.find(new_list_id)
           
           unless new_list.can_add_items?(current_user)
-            return render json: { error: 'Cannot reassign to that list' }, status: :forbidden
+            return render_forbidden('Cannot reassign to that list')
           end
           
           @task.update!(list_id: new_list_id)
@@ -226,7 +226,7 @@ module Api
             new_due_at = Time.parse(params[:due_at])
             @task.update!(due_at: new_due_at)
           rescue ArgumentError
-            return render json: { error: 'Invalid due_at format' }, status: :unprocessable_entity
+            return render_bad_request('Invalid due_at format')
           end
         end
 
@@ -244,24 +244,24 @@ module Api
       # POST /api/v1/tasks/:id/submit_explanation
       def submit_explanation
         unless @task.list.owner == current_user
-          return render json: { error: 'Only list owner can submit explanations' }, status: :forbidden
+          return render_forbidden('Only list owner can submit explanations')
         end
 
         unless @task.requires_explanation?
-          return render json: { error: 'This task does not require an explanation' }, status: :unprocessable_entity
+          return render_unprocessable_entity('This task does not require an explanation')
         end
 
         if @task.submit_explanation!(params[:reason], current_user)
           render json: TaskSerializer.new(@task, current_user: current_user).as_json
         else
-          render json: { errors: @task.errors.full_messages }, status: :unprocessable_entity
+          render_validation_errors(@task.errors)
         end
       end
 
       # PATCH /api/v1/tasks/:id/toggle_visibility
       def toggle_visibility
         unless @task.list.owner == current_user
-          return render json: { error: 'Only list owner can control visibility' }, status: :forbidden
+          return render_forbidden('Only list owner can control visibility')
         end
 
         coach_id = params[:coach_id]
@@ -271,7 +271,7 @@ module Api
         relationship = current_user.relationship_with_coach(coach)
 
         unless relationship
-          return render json: { error: 'No coaching relationship found' }, status: :not_found
+          return render_not_found('Coaching relationship')
         end
 
         if visible
@@ -288,7 +288,7 @@ module Api
         visibility = params[:visibility]
         
         unless %w[visible hidden coaching_only].include?(visibility)
-          return render json: { error: 'Invalid visibility setting' }, status: :unprocessable_entity
+          return render_bad_request('Invalid visibility setting')
         end
 
         case visibility
@@ -306,7 +306,7 @@ module Api
       # POST /api/v1/tasks/:id/add_subtask
       def add_subtask
         unless @task.editable_by?(current_user)
-          return render json: { error: 'Cannot add subtasks to this task' }, status: :forbidden
+          return render_forbidden('Cannot add subtasks to this task')
         end
 
         subtask = @task.subtasks.build(
@@ -330,7 +330,7 @@ module Api
         subtask = @task.subtasks.find(params[:subtask_id])
         
         unless subtask.editable_by?(current_user)
-          return render json: { error: 'Cannot edit this subtask' }, status: :forbidden
+          return render_forbidden('Cannot edit this subtask')
         end
 
         if subtask.update(task_params)
@@ -345,7 +345,7 @@ module Api
         subtask = @task.subtasks.find(params[:subtask_id])
         
         unless subtask.deletable_by?(current_user)
-          return render json: { error: 'Cannot delete this subtask' }, status: :forbidden
+          return render_forbidden('Cannot delete this subtask')
         end
 
         subtask.destroy
@@ -414,13 +414,13 @@ module Api
 
       def authorize_task_access
         unless @task.visible_to?(current_user)
-          render json: { error: 'Task not found' }, status: :not_found
+          render_not_found('Task')
         end
       end
 
       def authorize_task_edit
         unless @task.editable_by?(current_user)
-          render json: { error: 'You can only edit tasks you created' }, status: :forbidden
+          render_forbidden('You can only edit tasks you created')
         end
       end
 
@@ -465,7 +465,7 @@ module Api
 
       def authorize_task_visibility_change
         unless @task.can_change_visibility?(current_user)
-          render json: { error: 'You do not have permission to change task visibility' }, status: :forbidden
+          render_forbidden('You do not have permission to change task visibility')
         end
       end
     end

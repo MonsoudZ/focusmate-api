@@ -1,5 +1,6 @@
 class ApplicationController < ActionController::API
   include Pundit::Authorization
+  include ErrorResponseHelper
   
   before_action :authenticate_user!
   
@@ -14,7 +15,7 @@ class ApplicationController < ActionController::API
     token = extract_token_from_header
     
     if token.blank?
-      render json: { error: 'Authorization token required' }, status: :unauthorized
+      render_unauthorized('Authorization token required')
       return
     end
 
@@ -23,9 +24,9 @@ class ApplicationController < ActionController::API
       user_id = payload.first['user_id']
       @current_user = User.find(user_id)
     rescue JWT::DecodeError => e
-      render json: { error: 'Invalid token' }, status: :unauthorized
+      render_unauthorized('Invalid token')
     rescue ActiveRecord::RecordNotFound
-      render json: { error: 'User not found' }, status: :unauthorized
+      render_unauthorized('User not found')
     end
   end
 

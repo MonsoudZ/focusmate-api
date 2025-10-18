@@ -24,7 +24,7 @@ module Api
             token: token
           }, status: :ok
         else
-          render json: { error: 'Invalid email or password' }, status: :unauthorized
+          render_unauthorized('Invalid email or password')
         end
       end
 
@@ -47,7 +47,7 @@ module Api
             token: token
           }, status: :created
         else
-          render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
+          render_validation_errors(user.errors)
         end
       end
 
@@ -82,7 +82,7 @@ module Api
             timezone: user.timezone
           }
         else
-          render json: { error: 'No users found' }, status: :not_found
+          render_not_found('Users')
         end
       end
 
@@ -100,7 +100,7 @@ module Api
             }
           }
         else
-          render json: { error: 'No users found' }, status: :not_found
+          render_not_found('Users')
         end
       end
 

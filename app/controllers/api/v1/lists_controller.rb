@@ -52,7 +52,7 @@ module Api
         if @list.save
           render json: ListSerializer.new(@list, current_user: current_user).as_json, status: :created
         else
-          render json: { errors: @list.errors.full_messages }, status: :unprocessable_entity
+          render_validation_errors(@list.errors)
         end
       end
 
@@ -61,7 +61,7 @@ module Api
         if @list.update(list_params)
           render json: ListSerializer.new(@list, current_user: current_user).as_json
         else
-          render json: { errors: @list.errors.full_messages }, status: :unprocessable_entity
+          render_validation_errors(@list.errors)
         end
       end
 
@@ -79,7 +79,7 @@ module Api
 
       def authorize_list
         unless @list.viewable_by?(current_user)
-          render json: { error: 'Unauthorized' }, status: :forbidden
+          render_forbidden('Unauthorized')
         end
       end
 
