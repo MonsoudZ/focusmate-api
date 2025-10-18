@@ -8,11 +8,10 @@ class DeviceSerializer
   def as_json
     {
       id: device.id,
-      device_type: device.device_type,
-      device_token: device.device_token,
+      apns_token: device.apns_token,
       platform: device.platform,
-      app_version: device.app_version,
-      last_seen_at: device.last_seen_at&.iso8601,
+      bundle_id: device.bundle_id,
+      display_name: device.display_name,
       created_at: device.created_at.iso8601,
       updated_at: device.updated_at.iso8601
     }

@@ -6,7 +6,7 @@ module Api
       # GET /api/v1/recurring_templates
       def index
         @templates = Task.joins(:list)
-                        .where(lists: { owner_id: current_user.id })
+                        .where(lists: { user_id: current_user.id })
                         .templates
                         .includes(:list, :recurring_instances)
         

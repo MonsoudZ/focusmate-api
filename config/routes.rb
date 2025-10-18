@@ -25,12 +25,15 @@ Rails.application.routes.draw do
     namespace :v1 do
       # ===== EXISTING (KEEP) =====
 
-      # Devices API
-      post "devices/register", to: "devices#register"
-      delete "devices/:id",    to: "devices#destroy"
+      # Devices API - Full CRUD
+      resources :devices, only: [:index, :show, :create, :update, :destroy] do
+        collection do
+          post :register  # Legacy endpoint for iOS compatibility
+          post :test_push # Test push notifications
+        end
+      end
       
-      # Device token management for iOS push notifications
-      post 'devices', to: 'devices#register'              # iOS calls this
+      # Device token management for iOS push notifications (legacy)
       put 'devices/token', to: 'users#update_device_token' # iOS calls this
       patch 'users/device_token', to: 'users#update_device_token'  # iOS also uses this
 
@@ -176,6 +179,12 @@ Rails.application.routes.draw do
       # ===== DASHBOARD / STATS =====
       get 'dashboard', to: 'dashboard#show'
       get 'dashboard/stats', to: 'dashboard#stats'
+
+      # ===== STAGING / TESTING =====
+      post 'staging/test_push', to: 'staging#test_push'
+      post 'staging/test_push_immediate', to: 'staging#test_push_immediate'
+      get 'staging/push_status', to: 'staging#push_status'
+      post 'staging/cleanup_test_data', to: 'staging#cleanup_test_data'
     end
   end
 

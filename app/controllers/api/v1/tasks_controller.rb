@@ -342,7 +342,7 @@ module Api
       # GET /api/v1/tasks/awaiting_explanation
       def awaiting_explanation
         @tasks = Task.joins(:list)
-                     .where(lists: { owner_id: current_user.id })
+                     .where(lists: { user_id: current_user.id })
                      .awaiting_explanation
                      .includes(:creator, :list)
         
@@ -352,7 +352,7 @@ module Api
       # GET /api/v1/tasks/overdue
       def overdue
         @tasks = Task.joins(:list)
-                     .where(lists: { owner_id: current_user.id })
+                     .where(lists: { user_id: current_user.id })
                      .overdue
                      .includes(:creator, :list, :escalation)
                      .order(due_at: :asc)

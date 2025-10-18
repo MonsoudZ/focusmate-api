@@ -446,7 +446,7 @@ class NotificationService
         data: {
           type: 'list_shared',
           list_id: list.id,
-          owner_id: list.owner.id
+          owner_id: list.user_id
         }
       )
       
@@ -499,15 +499,31 @@ class NotificationService
     # ==========================================
     
     def send_test_notification(user, message = "Test notification")
-      send_push_notification(
-        user: user,
-        title: "🧪 Test Notification",
-        body: message,
-        data: {
-          type: 'test',
-          timestamp: Time.current.iso8601
-        }
-      )
+      # Send to iOS devices
+      if user.devices.ios.any? && APNS_CLIENT.present?
+        send_apns_notification(
+          user: user,
+          title: "🧪 Test Notification",
+          body: message,
+          data: {
+            type: 'test',
+            timestamp: Time.current.iso8601
+          }
+        )
+      end
+      
+      # Send to Android devices
+      if user.devices.android.any? && defined?(FCM) && FCM.present?
+        send_fcm_notification(
+          user: user,
+          title: "🧪 Test Notification",
+          body: message,
+          data: {
+            type: 'test',
+            timestamp: Time.current.iso8601
+          }
+        )
+      end
       
       log_notification(
         task: nil,
@@ -694,7 +710,7 @@ class NotificationService
     def calculate_badge_count(user)
       # Return count of incomplete un-snoozable tasks
       Task.joins(:list)
-          .where(lists: { owner_id: user.id })
+          .where(lists: { user_id: user.id })
           .where(completed_at: nil)
           .where(can_be_snoozed: false)
           .count

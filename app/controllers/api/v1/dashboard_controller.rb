@@ -50,7 +50,7 @@ module Api
       end
 
       def client_stats
-        tasks = Task.joins(:list).where(lists: { owner_id: current_user.id })
+        tasks = Task.joins(:list).where(lists: { user_id: current_user.id })
         
         {
           total_tasks: tasks.count,
@@ -74,9 +74,9 @@ module Api
           total_clients: clients.count,
           active_clients: current_user.coaching_relationships_as_coach.active.count,
           total_tasks_across_clients: Task.joins(:list)
-                                          .where(lists: { owner_id: clients.pluck(:id) }).count,
+                                          .where(lists: { user_id: clients.pluck(:id) }).count,
           completed_tasks_across_clients: Task.joins(:list)
-                                              .where(lists: { owner_id: clients.pluck(:id) })
+                                              .where(lists: { user_id: clients.pluck(:id) })
                                               .where(status: :done).count,
           average_client_completion_rate: calculate_average_client_completion_rate,
           client_performance_summary: client_performance_summary
@@ -85,7 +85,7 @@ module Api
 
       def calculate_completion_rate(user, since)
         tasks = Task.joins(:list)
-                    .where(lists: { owner_id: user.id })
+                    .where(lists: { user_id: user.id })
                     .where('tasks.created_at >= ?', since)
         
         return 0 if tasks.none?
@@ -95,7 +95,7 @@ module Api
 
       def calculate_average_completion_time(user)
         tasks = Task.joins(:list)
-                    .where(lists: { owner_id: user.id })
+                    .where(lists: { user_id: user.id })
                     .where.not(completed_at: nil)
                     .where.not(due_at: nil)
         
@@ -127,7 +127,7 @@ module Api
       def upcoming_deadlines_summary
         # Get tasks due in the next 7 days
         upcoming_tasks = Task.joins(:list)
-                            .where(lists: { owner_id: current_user.id })
+                            .where(lists: { user_id: current_user.id })
                             .where(status: :pending)
                             .where('tasks.due_at BETWEEN ? AND ?', Time.current, 1.week.from_now)
                             .order(:due_at)
@@ -168,7 +168,7 @@ module Api
         return 0 if clients.empty?
         
         total_completion_rate = clients.sum do |client|
-          tasks = Task.joins(:list).where(lists: { owner_id: client.id })
+          tasks = Task.joins(:list).where(lists: { user_id: client.id })
           next 0 if tasks.empty?
           
           (tasks.where(status: :done).count.to_f / tasks.count * 100).round(1)
@@ -179,7 +179,7 @@ module Api
 
       def client_performance_summary
         current_user.clients.map do |client|
-          tasks = Task.joins(:list).where(lists: { owner_id: client.id })
+          tasks = Task.joins(:list).where(lists: { user_id: client.id })
           
           {
             client_id: client.id,

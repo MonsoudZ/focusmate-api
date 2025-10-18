@@ -18,7 +18,7 @@ class LocationCheckWorker
     
     # Find location-based tasks for this user
     location_tasks = Task.joins(:list)
-                         .where(lists: { owner_id: user.id })
+                         .where(lists: { user_id: user.id })
                          .where(location_based: true)
                          .where(completed_at: nil)
     
