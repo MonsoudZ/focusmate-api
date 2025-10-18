@@ -22,6 +22,9 @@ class List < ApplicationRecord
       .where(memberships: { user: user })
       .or(where(owner: user))
   }
+  scope :not_deleted, -> { where(deleted_at: nil) }
+  scope :deleted, -> { where.not(deleted_at: nil) }
+  scope :modified_since, ->(timestamp) { where('updated_at > ? OR deleted_at > ?', timestamp, timestamp) }
   
   # Check if user has specific role
   def role_for(user)
@@ -264,5 +267,28 @@ class List < ApplicationRecord
     return false unless user.coach?
     
     memberships.exists?(user: user, coaching_relationship_id: coaching_relationships)
+  end
+
+  # Soft delete methods
+  def deleted?
+    deleted_at.present?
+  end
+
+  def soft_delete!
+    update!(deleted_at: Time.current)
+  end
+
+  def restore!
+    update!(deleted_at: nil)
+  end
+
+  # Override destroy to use soft delete
+  def destroy
+    soft_delete!
+  end
+
+  # Override delete to use soft delete
+  def delete
+    soft_delete!
   end
 end

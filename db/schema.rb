@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_18_025745) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_18_040018) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -153,6 +153,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_025745) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "deleted_at"
+    t.index ["deleted_at"], name: "index_lists_on_deleted_at"
     t.index ["user_id"], name: "index_lists_on_user_id"
   end
 
@@ -245,7 +247,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_025745) do
     t.bigint "creator_id"
     t.datetime "completed_at"
     t.integer "visibility", default: 0, null: false
+    t.datetime "deleted_at"
     t.index ["creator_id"], name: "index_tasks_on_creator_id"
+    t.index ["deleted_at"], name: "index_tasks_on_deleted_at"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_and_status"
     t.index ["is_recurring"], name: "index_tasks_on_is_recurring"
     t.index ["list_id", "status"], name: "index_tasks_on_list_id_and_status"

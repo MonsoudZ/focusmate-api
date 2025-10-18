@@ -14,16 +14,40 @@ module Api
         @tasks = policy_scope(@list.tasks)
                       .where(parent_task_id: nil) # Don't include subtasks at top level
                       .includes(:creator, :subtasks, :escalation)
-                      .order(Arel.sql('
-                        CASE 
-                          WHEN status = 1 THEN 3
-                          WHEN strict_mode = true THEN 0
-                          ELSE 2
-                        END,
-                        due_at ASC NULLS LAST
-                      '))
         
-        render json: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json }
+        # Apply since filter if provided
+        if params[:since].present?
+          since_time = Time.parse(params[:since])
+          @tasks = @tasks.modified_since(since_time)
+        end
+        
+        # Separate active and deleted items
+        active_tasks = @tasks.not_deleted
+        deleted_tasks = @tasks.deleted
+        
+        # Order active tasks
+        active_tasks = active_tasks.order(Arel.sql('
+          CASE 
+            WHEN status = 1 THEN 3
+            WHEN strict_mode = true THEN 0
+            ELSE 2
+          END,
+          due_at ASC NULLS LAST
+        '))
+        
+        # Build response with tombstones
+        response_data = {
+          tasks: active_tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json },
+          tombstones: deleted_tasks.map { |task| 
+            {
+              id: task.id,
+              deleted_at: task.deleted_at.iso8601,
+              type: 'task'
+            }
+          }
+        }
+        
+        render json: response_data
       end
 
       # GET /api/v1/lists/:list_id/tasks/:id
@@ -125,7 +149,7 @@ module Api
 
       # DELETE /api/v1/lists/:list_id/tasks/:id
       def destroy
-        @task.destroy
+        @task.soft_delete!(current_user)
         head :no_content
       end
 

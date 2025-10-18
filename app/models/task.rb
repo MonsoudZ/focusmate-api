@@ -28,6 +28,9 @@ class Task < ApplicationRecord
   scope :active, -> { where.not(status: :deleted) }
   scope :pending, -> { where(status: :pending) }
   scope :completed, -> { where(status: :done) }
+  scope :not_deleted, -> { where(deleted_at: nil) }
+  scope :deleted, -> { where.not(deleted_at: nil) }
+  scope :modified_since, ->(timestamp) { where('updated_at > ? OR deleted_at > ?', timestamp, timestamp) }
   scope :done, -> { where(status: :done) }
   scope :complete, -> { where(status: :done) }
   scope :due_soon, -> { where('due_at <= ?', 1.day.from_now) }
@@ -99,9 +102,18 @@ class Task < ApplicationRecord
     return false if deleted?
     
     self.status = :deleted
+    self.deleted_at = Time.current
     save!
     create_task_event(user: user, kind: :deleted, reason: reason)
     true
+  end
+
+  def deleted?
+    deleted_at.present?
+  end
+
+  def restore!
+    update!(deleted_at: nil, status: :pending)
   end
   
   def can_be_reassigned_by?(user)

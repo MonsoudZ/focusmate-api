@@ -7,16 +7,37 @@ module Api
 
       # GET /api/v1/lists
       def index
-        # Get lists user owns
-        owned_lists = current_user.owned_lists
-        
-        # Get lists shared with user (accepted shares only)
+        # Get all list IDs the user has access to
+        owned_list_ids = current_user.owned_lists.pluck(:id)
         shared_list_ids = ListShare.where(user_id: current_user.id, status: 'accepted').pluck(:list_id)
-        shared_lists = List.where(id: shared_list_ids)
+        all_list_ids = (owned_list_ids + shared_list_ids).uniq
         
-        @lists = (owned_lists + shared_lists).uniq
+        # Get lists from IDs
+        @lists = List.where(id: all_list_ids)
         
-        render json: @lists.map { |list| ListSerializer.new(list, current_user: current_user).as_json }
+        # Apply since filter if provided
+        if params[:since].present?
+          since_time = Time.parse(params[:since])
+          @lists = @lists.modified_since(since_time)
+        end
+        
+        # Separate active and deleted items
+        active_lists = @lists.not_deleted
+        deleted_lists = @lists.deleted
+        
+        # Build response with tombstones
+        response_data = {
+          lists: active_lists.map { |list| ListSerializer.new(list, current_user: current_user).as_json },
+          tombstones: deleted_lists.map { |list| 
+            {
+              id: list.id,
+              deleted_at: list.deleted_at.iso8601,
+              type: 'list'
+            }
+          }
+        }
+        
+        render json: response_data
       end
 
       # GET /api/v1/lists/:id
@@ -46,7 +67,7 @@ module Api
 
       # DELETE /api/v1/lists/:id
       def destroy
-        @list.destroy
+        @list.soft_delete!
         head :no_content
       end
 
