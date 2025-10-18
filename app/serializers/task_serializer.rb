@@ -55,6 +55,10 @@ class TaskSerializer
       can_delete: can_delete?,
       can_complete: can_complete?,
       
+      # Visibility
+      visibility: task.visibility,
+      can_change_visibility: can_change_visibility?,
+      
       # Escalation
       escalation: escalation_data,
       
@@ -125,6 +129,12 @@ class TaskSerializer
 
   def can_complete?
     task.list.user_id == current_user.id
+  end
+
+  def can_change_visibility?
+    return false unless current_user
+    # Only creator, list owner, or coaches can change visibility
+    task.creator == current_user || task.list.owner == current_user || (current_user.coach? && task.list.coach?(current_user))
   end
 
   def escalation_data

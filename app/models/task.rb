@@ -16,6 +16,7 @@ class Task < ApplicationRecord
   
   # Enums
   enum :status, { pending: 0, done: 1, deleted: 2 }
+  enum :visibility, { visible: 0, hidden: 1, coaching_only: 2 }
   
   # Validations
   validates :title, presence: true, length: { maximum: 255 }
@@ -35,6 +36,18 @@ class Task < ApplicationRecord
   scope :templates, -> { where(is_recurring: true, recurring_template_id: nil) }
   scope :instances, -> { where.not(recurring_template_id: nil) }
   scope :incomplete, -> { where.not(status: :done) }
+  
+  # Visibility scopes
+  scope :visible_tasks, -> { where(visibility: :visible) }
+  scope :hidden_tasks, -> { where(visibility: :hidden) }
+  scope :coaching_only_tasks, -> { where(visibility: :coaching_only) }
+  scope :visible_to_user, ->(user) { 
+    if user.coach?
+      where(visibility: [:visible, :coaching_only])
+    else
+      where(visibility: :visible)
+    end
+  }
   
   # Callbacks
   after_create :create_task_event
@@ -209,6 +222,24 @@ class Task < ApplicationRecord
   # Check location trigger for location-based tasks
   after_commit :check_location_trigger, on: :create, if: :location_based?
 
+  def can_change_visibility?(user)
+    return false unless user
+    # Only creator, list owner, or coaches can change visibility
+    creator == user || list.owner == user || (user.coach? && list.coach?(user))
+  end
+
+  def make_visible!
+    update!(visibility: :visible)
+  end
+
+  def make_hidden!
+    update!(visibility: :hidden)
+  end
+
+  def make_coaching_only!
+    update!(visibility: :coaching_only)
+  end
+
   private
 
   def schedule_completion_handler
@@ -319,7 +350,25 @@ class Task < ApplicationRecord
     return true unless visibility_restrictions.exists?
     visibility_restrictions.exists?(coaching_relationship: coaching_relationship)
   end
-  
+
+  # Visibility control methods
+  def visible_to?(user)
+    return false unless user
+    
+    case visibility
+    when 'visible'
+      true
+    when 'hidden'
+      # Only visible to task creator and list owner
+      creator == user || list.owner == user
+    when 'coaching_only'
+      # Visible to coaches and task creator/owner
+      user.coach? || creator == user || list.owner == user
+    else
+      false
+    end
+  end
+
   private
   
   # Calculate distance between two coordinates using Haversine formula

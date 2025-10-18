@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_17_193932) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_18_025745) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -244,6 +244,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_17_193932) do
     t.datetime "missed_reason_reviewed_at"
     t.bigint "creator_id"
     t.datetime "completed_at"
+    t.integer "visibility", default: 0, null: false
     t.index ["creator_id"], name: "index_tasks_on_creator_id"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_and_status"
     t.index ["is_recurring"], name: "index_tasks_on_is_recurring"
@@ -253,6 +254,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_17_193932) do
     t.index ["missed_reason_reviewed_by_id"], name: "index_tasks_on_missed_reason_reviewed_by_id"
     t.index ["parent_task_id"], name: "index_tasks_on_parent_task_id"
     t.index ["recurring_template_id"], name: "index_tasks_on_recurring_template_id"
+    t.index ["visibility"], name: "index_tasks_on_visibility"
   end
 
   create_table "user_locations", force: :cascade do |t|

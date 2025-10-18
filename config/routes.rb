@@ -68,6 +68,7 @@ Rails.application.routes.draw do
             patch :uncomplete           # Undo completion
             post :submit_explanation    # Submit reason for missing task
             patch :toggle_visibility    # Hide/show from specific coach
+            patch :change_visibility    # Change task visibility (public/private/coaching_only)
           end
         end
 

@@ -3,14 +3,15 @@ module Api
   module V1
     class TasksController < ApplicationController
       before_action :set_list, only: [:index, :create]
-      before_action :set_task, only: [:show, :update, :destroy, :complete, :uncomplete, :reassign, :submit_explanation, :toggle_visibility, :add_subtask, :update_subtask, :delete_subtask]
+      before_action :set_task, only: [:show, :update, :destroy, :complete, :uncomplete, :reassign, :submit_explanation, :toggle_visibility, :add_subtask, :update_subtask, :delete_subtask, :change_visibility]
       before_action :authorize_task_access, only: [:show]
       before_action :authorize_task_edit, only: [:update, :destroy]
+      before_action :authorize_task_visibility_change, only: [:change_visibility]
 
       # GET /api/v1/lists/:list_id/tasks
       def index
-        # Return tasks visible to current user
-        @tasks = @list.tasks_visible_to(current_user)
+        # Use Pundit policy to filter tasks visible to current user
+        @tasks = policy_scope(@list.tasks)
                       .where(parent_task_id: nil) # Don't include subtasks at top level
                       .includes(:creator, :subtasks, :escalation)
                       .order(Arel.sql('
@@ -258,6 +259,26 @@ module Api
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
 
+      # PATCH /api/v1/tasks/:id/change_visibility
+      def change_visibility
+        visibility = params[:visibility]
+        
+        unless %w[visible hidden coaching_only].include?(visibility)
+          return render json: { error: 'Invalid visibility setting' }, status: :unprocessable_entity
+        end
+
+        case visibility
+        when 'visible'
+          @task.make_visible!
+        when 'hidden'
+          @task.make_hidden!
+        when 'coaching_only'
+          @task.make_coaching_only!
+        end
+
+        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+      end
+
       # POST /api/v1/tasks/:id/add_subtask
       def add_subtask
         unless @task.editable_by?(current_user)
@@ -388,7 +409,7 @@ module Api
             :is_recurring, :recurrence_pattern, :recurrence_interval, :recurrence_time, :recurrence_end_date,
             :location_based, :location_latitude, :location_longitude, :location_radius_meters,
             :location_name, :notify_on_arrival, :notify_on_departure,
-            :list_id, :creator_id,
+            :list_id, :creator_id, :visibility,
             { recurrence_days: [] }
           )
         else
@@ -399,7 +420,7 @@ module Api
             :is_recurring, :recurrence_pattern, :recurrence_interval, :recurrence_time, :recurrence_end_date,
             :location_based, :location_latitude, :location_longitude, :location_radius_meters,
             :location_name, :notify_on_arrival, :notify_on_departure,
-            :list_id, :creator_id, :name, :dueDate, :description, :due_date,
+            :list_id, :creator_id, :name, :dueDate, :description, :due_date, :visibility,
             { recurrence_days: [] }
           )
         end
@@ -416,6 +437,12 @@ module Api
         return true if task.list.memberships.exists?(user_id: current_user.id)
         
         false
+      end
+
+      def authorize_task_visibility_change
+        unless @task.can_change_visibility?(current_user)
+          render json: { error: 'You do not have permission to change task visibility' }, status: :forbidden
+        end
       end
     end
   end
