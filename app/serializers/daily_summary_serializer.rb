@@ -18,7 +18,7 @@ class DailySummarySerializer
       sent_at: summary.sent_at&.iso8601
     }.tap do |hash|
       if options[:detailed]
-        hash[:summary_data] = summary.summary_data
+        hash[:summary_data] = summary.summary_data.is_a?(String) ? JSON.parse(summary.summary_data) : summary.summary_data
       end
     end
   end

@@ -17,6 +17,11 @@ Rails.application.configure do
 
   # Configure public file server for tests with cache-control for performance.
   config.public_file_server.headers = { "cache-control" => "public, max-age=3600" }
+  
+  # Disable rate limiting in test environment
+  config.after_initialize do
+    Rack::Attack.enabled = false
+  end
 
   # Show full error reports.
   config.consider_all_requests_local = true

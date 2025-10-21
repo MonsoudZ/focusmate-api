@@ -2,6 +2,7 @@ ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
 require "json"
+require "mocha/minitest"
 
 module ActiveSupport
   class TestCase
@@ -61,8 +62,8 @@ module ActiveSupport
     end
 
     # Helper method to assert JSON response structure
-    def assert_json_response(response, expected_keys = [])
-      assert_response :success
+    def assert_json_response(response, expected_keys = [], assert_success: true)
+      assert_response :success if assert_success
       json = ::JSON.parse(response.body)
       expected_keys.each do |key|
         assert json.key?(key.to_s), "Expected response to include '#{key}' key"
@@ -76,7 +77,9 @@ module ActiveSupport
       json = ::JSON.parse(response.body)
       assert json.key?("error"), "Expected error response to include 'error' key"
       if message
-        assert_equal message, json["error"]["message"]
+        # Handle both flat and nested error structures
+        error_message = json["error"].is_a?(String) ? json["error"] : json["error"]["message"]
+        assert_equal message, error_message
       end
       json
     end

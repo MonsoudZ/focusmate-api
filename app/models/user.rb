@@ -11,6 +11,8 @@ class User < ApplicationRecord
   # Validations
   validates :timezone, presence: true
   validates :role, presence: true, inclusion: { in: %w[client coach] }
+  validates :latitude, numericality: { greater_than_or_equal_to: -90, less_than_or_equal_to: 90 }, allow_nil: true
+  validates :longitude, numericality: { greater_than_or_equal_to: -180, less_than_or_equal_to: 180 }, allow_nil: true
   validate :valid_timezone
 
   # JWT token revocation
@@ -239,11 +241,11 @@ class User < ApplicationRecord
 
   # Missing methods that tests expect
   def latitude
-    current_location&.latitude
+    read_attribute(:latitude)
   end
 
   def longitude
-    current_location&.longitude
+    read_attribute(:longitude)
   end
 
   # Update current location and track in history

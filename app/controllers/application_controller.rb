@@ -45,4 +45,9 @@ class ApplicationController < ActionController::API
   def current_user
     @current_user
   end
+
+  # Handle malformed JSON errors
+  rescue_from ActionDispatch::Http::Parameters::ParseError do |exception|
+    render json: { error: "Invalid JSON format" }, status: :bad_request
+  end
 end

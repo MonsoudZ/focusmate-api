@@ -18,7 +18,6 @@ class NotificationService
           type: "new_task",
           task_id: task.id,
           list_id: task.list_id,
-          priority: task.priority,
           due_at: task.due_at&.iso8601
         },
         badge: calculate_badge_count(client),

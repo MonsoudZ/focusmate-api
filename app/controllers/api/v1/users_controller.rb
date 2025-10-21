@@ -9,13 +9,21 @@ module Api
         # Handle both parameter formats
         token = params[:device_token] || params[:pushToken] || params[:push_token]
 
-        if token.blank?
+        # Allow nil tokens for logout, but reject empty/whitespace tokens
+        if token.blank? && !params.key?(:device_token) && !params.key?(:pushToken) && !params.key?(:push_token)
+          render json: { error: "Device token is required" }, status: :bad_request
+          return
+        end
+        
+        # Reject empty or whitespace-only tokens (but allow nil for logout)
+        if token && token.strip.blank?
           render json: { error: "Device token is required" }, status: :bad_request
           return
         end
 
         if current_user.update(device_token: token)
-          Rails.logger.info "[DeviceToken] Updated for user ##{current_user.id}: #{token[0..20]}..."
+          token_preview = token.present? ? "#{token[0..20]}..." : "nil (logout)"
+          Rails.logger.info "[DeviceToken] Updated for user ##{current_user.id}: #{token_preview}"
           render json: {
             message: "Device token updated successfully",
             user_id: current_user.id
@@ -37,17 +45,29 @@ module Api
           return
         end
 
+        Rails.logger.info "Updating location for user #{current_user.id}: lat=#{latitude}, lng=#{longitude}"
+        
         if current_user.update(
           latitude: latitude.to_f,
           longitude: longitude.to_f,
           location_updated_at: Time.current
         )
+          # Create UserLocation record for history tracking
+          current_user.user_locations.create!(
+            latitude: latitude.to_f,
+            longitude: longitude.to_f,
+            recorded_at: Time.current
+          )
+          
+          current_user.reload
+          Rails.logger.info "Location updated successfully: lat=#{current_user.latitude}, lng=#{current_user.longitude}"
           render json: {
             message: "Location updated successfully",
             latitude: current_user.latitude,
             longitude: current_user.longitude
           }, status: :ok
         else
+          Rails.logger.error "Failed to update location: #{current_user.errors.full_messages}"
           render json: {
             error: "Failed to update location",
             details: current_user.errors.full_messages
@@ -58,13 +78,15 @@ module Api
       def update_fcm_token
         token = params[:fcm_token] || params[:fcmToken]
 
-        if token.blank?
+        # Allow nil/empty tokens for logout
+        if token.blank? && !params.key?(:fcm_token) && !params.key?(:fcmToken)
           render json: { error: "FCM token is required" }, status: :bad_request
           return
         end
 
         if current_user.update(fcm_token: token)
-          Rails.logger.info "[FCMToken] Updated for user ##{current_user.id}: #{token[0..20]}..."
+          token_preview = token.present? ? "#{token[0..20]}..." : "nil (logout)"
+          Rails.logger.info "[FCMToken] Updated for user ##{current_user.id}: #{token_preview}"
           render json: {
             message: "FCM token updated successfully",
             user_id: current_user.id

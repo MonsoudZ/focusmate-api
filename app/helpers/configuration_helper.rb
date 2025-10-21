@@ -78,15 +78,18 @@ module ConfigurationHelper
 
   # Time periods
   def self.recent_activity_period
-    get('time_periods.recent_activity', 1.week)
+    value = get('time_periods.recent_activity', 1.week)
+    value.is_a?(String) ? eval(value) : value
   end
 
   def self.upcoming_deadlines_period
-    get('time_periods.upcoming_deadlines', 1.week)
+    value = get('time_periods.upcoming_deadlines', 1.week)
+    value.is_a?(String) ? eval(value) : value
   end
 
   def self.cache_expiry
-    get('time_periods.cache_expiry', 5.minutes)
+    value = get('time_periods.cache_expiry', 5.minutes)
+    value.is_a?(String) ? eval(value) : value
   end
 
   # Database configuration

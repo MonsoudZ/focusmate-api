@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_21_033843) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_21_172807) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -308,12 +308,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_21_033843) do
     t.string "fcm_token"
     t.string "timezone", default: "UTC"
     t.string "device_token"
-    t.decimal "latitude"
-    t.decimal "longitude"
+    t.float "latitude"
+    t.float "longitude"
     t.jsonb "preferences"
     t.datetime "location_updated_at"
-    t.decimal "current_latitude"
-    t.decimal "current_longitude"
+    t.float "current_latitude"
+    t.float "current_longitude"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["email"], name: "index_users_on_email_unique", unique: true
     t.index ["fcm_token"], name: "index_users_on_fcm_token"

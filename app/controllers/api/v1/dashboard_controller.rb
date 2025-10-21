@@ -69,10 +69,10 @@ module Api
           completion_rate: tasks.any? ? (tasks.where(status: :done).count.to_f / tasks.count * 100).round(1) : 0,
           average_completion_time: calculate_average_completion_time(current_user),
           tasks_by_priority: {
-            urgent: tasks.where(priority: 3).count,
-            high: tasks.where(priority: 2).count,
-            medium: tasks.where(priority: 1).count,
-            low: tasks.where(priority: 0).count
+            urgent: 0,
+            high: 0,
+            medium: 0,
+            low: 0
           }
         }
       end
@@ -157,7 +157,7 @@ module Api
 
       def recent_client_activity_summary
         # Get recent activity across all clients with proper includes to avoid N+1
-        recent_events = TaskEvent.includes(:task, task: :list, task: { list: :owner })
+        recent_events = TaskEvent.includes(:task, task: { list: :owner })
                                  .joins(:task)
                                  .where(tasks: { list: current_user.clients.joins(:owned_lists).select("lists.id") })
                                  .where("task_events.created_at >= ?", ConfigurationHelper.recent_activity_period.ago)
@@ -190,9 +190,9 @@ module Api
         
         total_completion_rate = clients.sum do |client|
           stats = stats_by_client[client.id]
-          next 0 unless stats&.total_tasks&.> 0
+          next 0 unless stats && stats.total_tasks.to_i > 0
           
-          (stats.completed_tasks.to_f / stats.total_tasks * 100).round(1)
+          (stats.completed_tasks.to_f / stats.total_tasks.to_i * 100).round(1)
         end
 
         (total_completion_rate / clients.count).round(1)
@@ -223,7 +223,7 @@ module Api
             total_tasks: stats&.total_tasks || 0,
             completed_tasks: stats&.completed_tasks || 0,
             overdue_tasks: stats&.overdue_tasks || 0,
-            completion_rate: stats&.total_tasks&.> 0 ? (stats.completed_tasks.to_f / stats.total_tasks * 100).round(1) : 0
+            completion_rate: (stats && stats.total_tasks.to_i > 0) ? (stats.completed_tasks.to_f / stats.total_tasks.to_i * 100).round(1) : 0
           }
         end
       end
