@@ -28,6 +28,10 @@ module FocusmateApi
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+    
+    # Enable ActionCable for real-time features
+    config.action_cable.mount_path = "/cable"
+    config.action_cable.allowed_request_origins = [/http:\/\/localhost.*/, /https:\/\/.*\.ngrok\.io/, /https:\/\/.*\.ngrok-free\.dev/]
 
     # Add back cookies and session middleware so Devise failure app can operate without sessions error
     config.middleware.use ActionDispatch::Cookies

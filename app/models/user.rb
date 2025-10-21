@@ -8,6 +8,11 @@ class User < ApplicationRecord
   # Generate JTI on create
   before_create :generate_jti
 
+  # Validations
+  validates :timezone, presence: true
+  validates :role, presence: true, inclusion: { in: %w[client coach] }
+  validate :valid_timezone
+
   # JWT token revocation
   def jwt_payload
     { "jti" => jti }
@@ -106,8 +111,9 @@ class User < ApplicationRecord
 
   # Get tasks requiring explanation
   def tasks_requiring_explanation
+    all_lists = owned_lists + lists
     Task.joins(:list)
-        .where(list: lists)
+        .where(list: all_lists)
         .where(requires_explanation_if_missed: true)
         .where(status: :pending)
         .where("due_at < ?", Time.current)
@@ -115,8 +121,9 @@ class User < ApplicationRecord
 
   # Get overdue tasks
   def overdue_tasks
+    all_lists = owned_lists + lists
     Task.joins(:list)
-        .where(list: lists)
+        .where(list: all_lists)
         .where(status: :pending)
         .where("due_at < ?", Time.current)
   end
@@ -230,7 +237,58 @@ class User < ApplicationRecord
     distance <= saved_location.radius_meters
   end
 
+  # Missing methods that tests expect
+  def latitude
+    current_location&.latitude
+  end
+
+  def longitude
+    current_location&.longitude
+  end
+
+  # Update current location and track in history
+  def update_current_location(latitude, longitude)
+    # Validate coordinates
+    raise ArgumentError, "Invalid latitude: #{latitude}" if latitude < -90 || latitude > 90
+    raise ArgumentError, "Invalid longitude: #{longitude}" if longitude < -180 || longitude > 180
+    
+    # Update current location attributes
+    self.current_latitude = latitude
+    self.current_longitude = longitude
+    save!
+    
+    # Track in location history
+    update_location!(latitude, longitude)
+  end
+
+  # Calculate distance to a saved location
+  def distance_to_saved_location(saved_location)
+    return nil unless current_location && saved_location
+    
+    current_location.distance_to(saved_location.latitude, saved_location.longitude)
+  end
+
+  # Check if user is at a saved location
+  def at_saved_location?(saved_location)
+    return false unless current_location && saved_location
+    
+    distance = distance_to_saved_location(saved_location)
+    distance && distance <= saved_location.radius_meters
+  end
+
   private
+
+  def valid_timezone
+    return if timezone.blank?
+    
+    begin
+      Time.zone = timezone
+      # If we can set the timezone, it's valid
+      Time.zone
+    rescue ArgumentError
+      errors.add(:timezone, 'is not a valid timezone')
+    end
+  end
 
   # Calculate distance between two points using Haversine formula
   def calculate_distance(lat1, lon1, lat2, lon2)

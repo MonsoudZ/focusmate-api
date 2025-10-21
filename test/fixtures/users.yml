@@ -3,9 +3,21 @@
 # This model initially had no columns defined. If you add columns to the
 # model remove the "{}" from the fixture names and add the columns immediately
 # below each fixture, per the syntax in the comments below
-#
-one: {}
-# column: value
-#
-two: {}
-# column: value
+
+client_user:
+  email: client@example.com
+  encrypted_password: <%= BCrypt::Password.create('password123') %>
+  role: client
+  jti: <%= SecureRandom.uuid %>
+
+coach_user:
+  email: coach@example.com
+  encrypted_password: <%= BCrypt::Password.create('password123') %>
+  role: coach
+  jti: <%= SecureRandom.uuid %>
+
+admin_user:
+  email: admin@example.com
+  encrypted_password: <%= BCrypt::Password.create('password123') %>
+  role: coach
+  jti: <%= SecureRandom.uuid %>

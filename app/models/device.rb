@@ -3,6 +3,11 @@ class Device < ApplicationRecord
 
   validates :apns_token, presence: true, uniqueness: true
   validates :platform, inclusion: { in: %w[ios android] }
+  validates :bundle_id, format: { 
+    with: /\Acom\.[a-zA-Z0-9][a-zA-Z0-9\-_]*(\.[a-zA-Z0-9][a-zA-Z0-9\-_]*)*\z/,
+    message: "must be a valid bundle identifier (e.g., com.company.app)",
+    allow_blank: true
+  }
 
   # Scopes
   scope :ios, -> { where(platform: "ios") }

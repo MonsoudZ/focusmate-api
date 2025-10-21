@@ -1,11 +1,16 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-one:
-  name: MyString
-  description: MyText
-  user: one
+client_list:
+  name: Client List
+  description: A list owned by the client
+  owner: client_user
 
-two:
-  name: MyString
-  description: MyText
-  user: two
+coach_list:
+  name: Coach List
+  description: A list owned by the coach
+  owner: coach_user
+
+admin_list:
+  name: Admin List
+  description: A list owned by the admin
+  owner: admin_user

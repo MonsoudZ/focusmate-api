@@ -56,7 +56,7 @@ class TaskSerializer
       can_complete: can_complete?,
 
       # Visibility
-      visibility: task.visibility,
+      visibility: task.visibility == "visible",
       can_change_visibility: can_change_visibility?,
 
       # Escalation
@@ -159,7 +159,7 @@ class TaskSerializer
   end
 
   def subtasks_completed_count
-    task.subtasks.complete.count
+    task.subtasks.where(status: :done).count
   end
 
   def subtask_percentage

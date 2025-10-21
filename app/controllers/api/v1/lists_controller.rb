@@ -5,6 +5,27 @@ module Api
       before_action :set_list, only: [ :show, :update, :destroy ]
       before_action :authorize_list, only: [ :show, :update, :destroy ]
 
+      # GET /api/v1/lists/validate/:id - Check if user can access a specific list
+      def validate_access
+        list_id = params[:id]
+        begin
+          list = List.find(list_id)
+          can_access = list.can_view?(current_user)
+          
+          render json: {
+            list_id: list_id,
+            accessible: can_access,
+            owner: can_access ? list.owner.email : nil
+          }
+        rescue ActiveRecord::RecordNotFound
+          render json: {
+            list_id: list_id,
+            accessible: false,
+            error: "List not found"
+          }
+        end
+      end
+
       # GET /api/v1/lists
       def index
         # Get all list IDs the user has access to

@@ -1,0 +1,69 @@
+# Application Configuration
+# This file contains all configurable values that were previously hardcoded
+
+default: &default
+  # Task configuration
+  task:
+    title_max_length: 255
+    note_max_length: 1000
+    cache_expiry_minutes: 5
+  
+  # Performance grades
+  performance:
+    grades:
+      a: 90..100
+      b: 80..89
+      c: 70..79
+      d: 60..69
+      f: 0..59
+  
+  # Rate limiting configuration
+  rate_limits:
+    api:
+      limit: 100
+      period: 1.minute
+    auth:
+      limit: 5
+      period: 1.minute
+    password_reset:
+      limit: 3
+      period: 1.hour
+  
+  # Time periods
+  time_periods:
+    recent_activity: 1.week
+    upcoming_deadlines: 1.week
+    cache_expiry: 5.minutes
+  
+  # Database configuration
+  database:
+    default_page_size: 20
+    max_page_size: 100
+  
+  # Notification configuration
+  notifications:
+    default_interval_minutes: 10
+    max_retries: 3
+  
+  # Location configuration
+  location:
+    default_radius_meters: 100
+    max_radius_meters: 10000
+
+development:
+  <<: *default
+  # Development-specific overrides
+  task:
+    cache_expiry_minutes: 1  # Shorter cache in development
+  rate_limits:
+    api:
+      limit: 1000  # More lenient in development
+
+production:
+  <<: *default
+  # Production-specific overrides
+  task:
+    cache_expiry_minutes: 10  # Longer cache in production
+  rate_limits:
+    api:
+      limit: 50  # Stricter in production

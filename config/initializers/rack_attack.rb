@@ -33,30 +33,14 @@ class Rack::Attack
 
   # Custom response for blocked requests
   Rack::Attack.throttled_responder = lambda do |env|
-    match_data = env["rack.attack.match_data"]
-    now = match_data[:epoch_time]
-    reset_time = now + (match_data[:period] - now % match_data[:period])
-
-    headers = {
-      "Content-Type" => "application/json",
-      "X-RateLimit-Limit" => match_data[:limit].to_s,
-      "X-RateLimit-Remaining" => "0",
-      "X-RateLimit-Reset" => reset_time.to_s
-    }
-
+    headers = { "Content-Type" => "application/json" }
     error_response = {
       error: {
         message: "Rate limit exceeded",
         status: 429,
-        timestamp: Time.current.iso8601,
-        details: {
-          limit: match_data[:limit],
-          period: match_data[:period],
-          reset_at: Time.at(reset_time).iso8601
-        }
+        timestamp: Time.current.iso8601
       }
     }
-
     [ 429, headers, [ error_response.to_json ] ]
   end
 end

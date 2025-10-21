@@ -58,7 +58,9 @@ module Api
           email: current_user.email,
           name: current_user.name,
           role: current_user.role,
-          timezone: current_user.timezone
+          timezone: current_user.timezone,
+          created_at: current_user.created_at.iso8601,
+          accessible_lists_count: current_user.owned_lists.count + current_user.lists.count
         }
       end
 
@@ -119,6 +121,7 @@ module Api
         JWT.encode(
           {
             user_id: user.id,
+            jti: user.jti || SecureRandom.uuid,
             exp: 30.days.from_now.to_i
           },
           Rails.application.credentials.secret_key_base

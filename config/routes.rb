@@ -48,16 +48,21 @@ Rails.application.routes.draw do
       post "auth/sign_up", to: "authentication#register"
       delete "auth/sign_out", to: "authentication#logout"
 
-      # Test routes (no auth required)
-      get "test-profile", to: "authentication#test_profile"
-      get "test-lists", to: "authentication#test_lists"
-      delete "test-logout", to: "authentication#test_logout"
+      # Test routes (development only)
+      if Rails.env.development?
+        get "test-profile", to: "authentication#test_profile"
+        get "test-lists", to: "authentication#test_lists"
+        delete "test-logout", to: "authentication#test_logout"
+      end
 
       # Example resource routes
       resources :examples
 
       # ===== ENHANCED LIST ROUTES =====
       resources :lists do
+        collection do
+          get :validate_access, path: 'validate/:id'  # Check if user can access a specific list
+        end
         # EXISTING
         resources :memberships, except: [ :new, :edit ]
         resources :tasks, except: [ :new, :edit ] do
@@ -117,10 +122,22 @@ Rails.application.routes.draw do
       post "items/:id/reassign", to: "tasks#reassign"
       post "items/:id/explanations", to: "tasks#submit_explanation"
 
+      # iOS app compatibility - global /tasks routes
+      get "tasks", to: "tasks#index"
+      post "tasks", to: "tasks#create"
+      get "tasks/:id", to: "tasks#show"
+      patch "tasks/:id", to: "tasks#update"
+      delete "tasks/:id", to: "tasks#destroy"
+      post "tasks/:id/complete", to: "tasks#complete"
+      patch "tasks/:id/reassign", to: "tasks#reassign"
+      post "tasks/:id/reassign", to: "tasks#reassign"
+      post "tasks/:id/explanations", to: "tasks#submit_explanation"
+
       # ===== NEW - TASK SPECIAL ENDPOINTS =====
       # Task actions (no-snooze flow)
       resources :tasks, only: [ :show, :update, :destroy ] do
         collection do
+          get :all_tasks            # Get all tasks across all lists
           get :blocking              # Get tasks blocking the app
           get :awaiting_explanation  # Tasks needing explanation
           get :overdue              # All overdue tasks

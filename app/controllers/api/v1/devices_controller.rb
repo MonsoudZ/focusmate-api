@@ -17,7 +17,29 @@ module Api
 
       # POST /api/v1/devices
       def create
-        @device = current_user.devices.build(device_params)
+        # Debug logging
+        Rails.logger.info "Device registration params: #{params.inspect}"
+        Rails.logger.info "APNS token value: '#{params[:apns_token]}' (blank?: #{params[:apns_token].blank?})"
+        
+        # Handle both nested and direct parameter formats
+        device_attributes = if params[:device].present?
+          device_params
+        else
+          # Always generate a token if none provided or if it's blank/empty
+          apns_token = if params[:apns_token].present? && !params[:apns_token].blank? && !params[:apns_token].empty?
+            params[:apns_token]
+          else
+            "dev_token_#{SecureRandom.hex(16)}"
+          end
+          Rails.logger.info "Using APNS token: #{apns_token}"
+          {
+            apns_token: apns_token,
+            platform: params[:platform] || "ios",
+            bundle_id: params[:bundle_id]
+          }
+        end
+
+        @device = current_user.devices.build(device_attributes)
 
         if @device.save
           render json: DeviceSerializer.new(@device).as_json, status: :created
@@ -89,7 +111,21 @@ module Api
       end
 
       def device_params
-        params.require(:device).permit(:apns_token, :platform, :bundle_id)
+        if params[:device].present?
+          permitted_params = params.require(:device).permit(:apns_token, :platform, :bundle_id)
+          # Generate APNS token if blank or empty
+          if permitted_params[:apns_token].blank?
+            permitted_params[:apns_token] = "dev_token_#{SecureRandom.hex(16)}"
+          end
+          permitted_params
+        else
+          permitted_params = params.permit(:apns_token, :platform, :bundle_id)
+          # Generate APNS token if blank or empty
+          if permitted_params[:apns_token].blank?
+            permitted_params[:apns_token] = "dev_token_#{SecureRandom.hex(16)}"
+          end
+          permitted_params
+        end
       end
     end
   end

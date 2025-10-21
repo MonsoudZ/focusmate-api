@@ -22,31 +22,41 @@ module Api
       private
 
       def client_dashboard
-        {
-          blocking_tasks_count: current_user.owned_lists.joins(tasks: :escalation)
-                                            .where(item_escalations: { blocking_app: true }).count,
-          overdue_tasks_count: current_user.overdue_tasks.count,
-          awaiting_explanation_count: current_user.tasks_requiring_explanation.count,
-          coaches_count: current_user.coaches.count,
-          completion_rate_this_week: calculate_completion_rate(current_user, 1.week.ago),
-          recent_activity: recent_activity_summary,
-          upcoming_deadlines: upcoming_deadlines_summary
-        }
+        # Cache dashboard data for 5 minutes
+        cache_key = "client_dashboard_#{current_user.id}_#{current_user.updated_at.to_i}"
+        
+        Rails.cache.fetch(cache_key, expires_in: ConfigurationHelper.cache_expiry) do
+          {
+            blocking_tasks_count: current_user.owned_lists.joins(tasks: :escalation)
+                                              .where(item_escalations: { blocking_app: true }).count,
+            overdue_tasks_count: current_user.overdue_tasks.count,
+            awaiting_explanation_count: current_user.tasks_requiring_explanation.count,
+            coaches_count: current_user.coaches.count,
+            completion_rate_this_week: calculate_completion_rate(current_user, ConfigurationHelper.recent_activity_period.ago),
+            recent_activity: recent_activity_summary,
+            upcoming_deadlines: upcoming_deadlines_summary
+          }
+        end
       end
 
       def coach_dashboard
-        {
-          clients_count: current_user.clients.count,
-          total_overdue_tasks: current_user.clients.joins(:created_tasks)
-                                                   .where(tasks: { status: :pending })
-                                                   .where("tasks.due_at < ?", Time.current).count,
-          pending_explanations: current_user.clients.joins(:created_tasks)
-                                                   .where(tasks: { requires_explanation_if_missed: true })
-                                                   .where(tasks: { status: :pending })
-                                                   .where("tasks.due_at < ?", Time.current).count,
-          active_relationships: current_user.coaching_relationships_as_coach.active.count,
-          recent_client_activity: recent_client_activity_summary
-        }
+        # Cache dashboard data for 5 minutes
+        cache_key = "coach_dashboard_#{current_user.id}_#{current_user.updated_at.to_i}"
+        
+        Rails.cache.fetch(cache_key, expires_in: ConfigurationHelper.cache_expiry) do
+          {
+            clients_count: current_user.clients.count,
+            total_overdue_tasks: current_user.clients.joins(:created_tasks)
+                                                     .where(tasks: { status: :pending })
+                                                     .where("tasks.due_at < ?", Time.current).count,
+            pending_explanations: current_user.clients.joins(:created_tasks)
+                                                     .where(tasks: { requires_explanation_if_missed: true })
+                                                     .where(tasks: { status: :pending })
+                                                     .where("tasks.due_at < ?", Time.current).count,
+            active_relationships: current_user.coaching_relationships_as_coach.active.count,
+            recent_client_activity: recent_client_activity_summary
+          }
+        end
       end
 
       def client_stats
@@ -54,9 +64,9 @@ module Api
 
         {
           total_tasks: tasks.count,
-          completed_tasks: tasks.complete.count,
+          completed_tasks: tasks.where(status: :done).count,
           overdue_tasks: tasks.overdue.count,
-          completion_rate: tasks.any? ? (tasks.complete.count.to_f / tasks.count * 100).round(1) : 0,
+          completion_rate: tasks.any? ? (tasks.where(status: :done).count.to_f / tasks.count * 100).round(1) : 0,
           average_completion_time: calculate_average_completion_time(current_user),
           tasks_by_priority: {
             urgent: tasks.where(priority: 3).count,
@@ -90,7 +100,7 @@ module Api
 
         return 0 if tasks.none?
 
-        (tasks.complete.count.to_f / tasks.count * 100).round(1)
+        (tasks.where(status: :done).count.to_f / tasks.count * 100).round(1)
       end
 
       def calculate_average_completion_time(user)
@@ -106,10 +116,11 @@ module Api
       end
 
       def recent_activity_summary
-        # Get recent task events for the user
-        recent_events = TaskEvent.joins(:task)
+        # Get recent task events for the user with proper includes to avoid N+1
+        recent_events = TaskEvent.includes(:task)
+                                 .joins(:task)
                                  .where(tasks: { list: current_user.owned_lists })
-                                 .where("task_events.created_at >= ?", 1.week.ago)
+                                 .where("task_events.created_at >= ?", ConfigurationHelper.recent_activity_period.ago)
                                  .order(created_at: :desc)
                                  .limit(5)
 
@@ -129,7 +140,7 @@ module Api
         upcoming_tasks = Task.joins(:list)
                             .where(lists: { user_id: current_user.id })
                             .where(status: :pending)
-                            .where("tasks.due_at BETWEEN ? AND ?", Time.current, 1.week.from_now)
+                            .where("tasks.due_at BETWEEN ? AND ?", Time.current, ConfigurationHelper.upcoming_deadlines_period.from_now)
                             .order(:due_at)
                             .limit(5)
 
@@ -145,10 +156,11 @@ module Api
       end
 
       def recent_client_activity_summary
-        # Get recent activity across all clients
-        recent_events = TaskEvent.joins(:task)
+        # Get recent activity across all clients with proper includes to avoid N+1
+        recent_events = TaskEvent.includes(:task, task: :list, task: { list: :owner })
+                                 .joins(:task)
                                  .where(tasks: { list: current_user.clients.joins(:owned_lists).select("lists.id") })
-                                 .where("task_events.created_at >= ?", 1.week.ago)
+                                 .where("task_events.created_at >= ?", ConfigurationHelper.recent_activity_period.ago)
                                  .order(created_at: :desc)
                                  .limit(10)
 
@@ -167,28 +179,51 @@ module Api
         clients = current_user.clients
         return 0 if clients.empty?
 
-        total_completion_rate = clients.sum do |client|
-          tasks = Task.joins(:list).where(lists: { user_id: client.id })
-          next 0 if tasks.empty?
+        # Optimize with single query instead of N+1
+        client_ids = clients.pluck(:id)
+        task_stats = Task.joins(:list)
+                         .where(lists: { user_id: client_ids })
+                         .group('lists.user_id')
+                         .select('lists.user_id, COUNT(*) as total_tasks, SUM(CASE WHEN tasks.status = 1 THEN 1 ELSE 0 END) as completed_tasks')
 
-          (tasks.where(status: :done).count.to_f / tasks.count * 100).round(1)
+        stats_by_client = task_stats.index_by(&:user_id)
+        
+        total_completion_rate = clients.sum do |client|
+          stats = stats_by_client[client.id]
+          next 0 unless stats&.total_tasks&.> 0
+          
+          (stats.completed_tasks.to_f / stats.total_tasks * 100).round(1)
         end
 
         (total_completion_rate / clients.count).round(1)
       end
 
       def client_performance_summary
-        current_user.clients.map do |client|
-          tasks = Task.joins(:list).where(lists: { user_id: client.id })
+        # Optimize with single query instead of N+1
+        clients = current_user.clients
+        client_ids = clients.pluck(:id)
+        
+        # Single query to get all task statistics
+        task_stats = Task.joins(:list)
+                         .where(lists: { user_id: client_ids })
+                         .group('lists.user_id')
+                         .select('lists.user_id, 
+                                  COUNT(*) as total_tasks,
+                                  SUM(CASE WHEN tasks.status = 1 THEN 1 ELSE 0 END) as completed_tasks,
+                                  SUM(CASE WHEN tasks.status = 0 AND tasks.due_at < NOW() THEN 1 ELSE 0 END) as overdue_tasks')
 
+        stats_by_client = task_stats.index_by(&:user_id)
+        
+        clients.map do |client|
+          stats = stats_by_client[client.id]
+          
           {
             client_id: client.id,
             client_name: client.name,
-            total_tasks: tasks.count,
-            completed_tasks: tasks.where(status: :done).count,
-            overdue_tasks: tasks.where(status: :pending)
-                                .where("tasks.due_at < ?", Time.current).count,
-            completion_rate: tasks.any? ? (tasks.where(status: :done).count.to_f / tasks.count * 100).round(1) : 0
+            total_tasks: stats&.total_tasks || 0,
+            completed_tasks: stats&.completed_tasks || 0,
+            overdue_tasks: stats&.overdue_tasks || 0,
+            completion_rate: stats&.total_tasks&.> 0 ? (stats.completed_tasks.to_f / stats.total_tasks * 100).round(1) : 0
           }
         end
       end

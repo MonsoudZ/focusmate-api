@@ -1,6 +1,7 @@
 class ApplicationController < ActionController::API
   include Pundit::Authorization
   include ErrorResponseHelper
+  include ErrorLoggingHelper
 
   before_action :authenticate_user!
 
@@ -22,6 +23,13 @@ class ApplicationController < ActionController::API
     begin
       payload = JWT.decode(token, Rails.application.credentials.secret_key_base, true, algorithm: "HS256")
       user_id = payload.first["user_id"]
+      
+      # Check token expiration
+      if payload.first["exp"] && payload.first["exp"] < Time.current.to_i
+        render_unauthorized("Token expired")
+        return
+      end
+      
       @current_user = User.find(user_id)
     rescue JWT::DecodeError => e
       render_unauthorized("Invalid token")

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_18_040018) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_21_033843) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -26,10 +26,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_040018) do
     t.time "daily_summary_time"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["client_id", "status"], name: "index_coaching_relationships_on_client_status"
     t.index ["client_id"], name: "index_coaching_relationships_on_client_id"
     t.index ["coach_id", "client_id"], name: "index_coaching_relationships_on_coach_id_and_client_id", unique: true
+    t.index ["coach_id", "status"], name: "index_coaching_relationships_on_coach_status"
     t.index ["coach_id"], name: "index_coaching_relationships_on_coach_id"
     t.index ["status"], name: "index_coaching_relationships_on_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'inactive'::character varying, 'declined'::character varying]::text[])", name: "check_coaching_relationships_status"
   end
 
   create_table "daily_summaries", force: :cascade do |t|
@@ -98,8 +101,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_040018) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["blocking_app"], name: "index_item_escalations_on_blocking_app"
+    t.index ["escalation_level", "blocking_app"], name: "index_item_escalations_on_level_blocking"
     t.index ["escalation_level"], name: "index_item_escalations_on_escalation_level"
+    t.index ["task_id", "escalation_level"], name: "index_item_escalations_on_task_level"
     t.index ["task_id"], name: "index_item_escalations_on_task_id"
+    t.check_constraint "escalation_level::text = ANY (ARRAY['normal'::character varying, 'warning'::character varying, 'critical'::character varying, 'blocking'::character varying]::text[])", name: "check_item_escalations_escalation_level"
   end
 
   create_table "item_visibility_restrictions", force: :cascade do |t|
@@ -148,13 +154,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_040018) do
   end
 
   create_table "lists", force: :cascade do |t|
-    t.string "name"
+    t.string "name", null: false
     t.text "description"
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.datetime "deleted_at"
     t.index ["deleted_at"], name: "index_lists_on_deleted_at"
+    t.index ["user_id", "created_at"], name: "index_lists_on_user_created_at"
+    t.index ["user_id", "deleted_at"], name: "index_lists_on_user_deleted_at"
     t.index ["user_id"], name: "index_lists_on_user_id"
   end
 
@@ -168,7 +176,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_040018) do
     t.boolean "receive_overdue_alerts", default: true
     t.bigint "coaching_relationship_id"
     t.index ["coaching_relationship_id"], name: "index_memberships_on_coaching_relationship_id"
+    t.index ["list_id", "user_id"], name: "index_memberships_on_list_user"
     t.index ["list_id"], name: "index_memberships_on_list_id"
+    t.index ["user_id", "list_id"], name: "index_memberships_on_user_list"
     t.index ["user_id"], name: "index_memberships_on_user_id"
   end
 
@@ -185,7 +195,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_040018) do
     t.index ["created_at"], name: "index_notification_logs_on_created_at"
     t.index ["delivered"], name: "index_notification_logs_on_delivered"
     t.index ["notification_type"], name: "index_notification_logs_on_notification_type"
+    t.index ["task_id", "created_at"], name: "index_notification_logs_on_task_created_at"
     t.index ["task_id"], name: "index_notification_logs_on_task_id"
+    t.index ["user_id", "created_at"], name: "index_notification_logs_on_user_created_at"
     t.index ["user_id"], name: "index_notification_logs_on_user_id"
   end
 
@@ -209,14 +221,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_040018) do
     t.datetime "occurred_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["created_at", "task_id"], name: "index_task_events_on_created_at_task_id"
+    t.index ["task_id", "created_at"], name: "index_task_events_on_task_created_at"
     t.index ["task_id"], name: "index_task_events_on_task_id"
     t.index ["user_id"], name: "index_task_events_on_user_id"
   end
 
   create_table "tasks", force: :cascade do |t|
-    t.string "title"
+    t.string "title", null: false
     t.text "note"
-    t.datetime "due_at"
+    t.datetime "due_at", null: false
     t.integer "status"
     t.boolean "strict_mode"
     t.bigint "list_id", null: false
@@ -248,17 +262,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_040018) do
     t.datetime "completed_at"
     t.integer "visibility", default: 0, null: false
     t.datetime "deleted_at"
+    t.index ["creator_id", "status"], name: "index_tasks_on_creator_status"
     t.index ["creator_id"], name: "index_tasks_on_creator_id"
     t.index ["deleted_at"], name: "index_tasks_on_deleted_at"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_and_status"
+    t.index ["due_at", "status"], name: "index_tasks_on_due_at_status"
     t.index ["is_recurring"], name: "index_tasks_on_is_recurring"
+    t.index ["list_id", "status", "due_at"], name: "index_tasks_on_list_status_due_at"
     t.index ["list_id", "status"], name: "index_tasks_on_list_id_and_status"
     t.index ["list_id"], name: "index_tasks_on_list_id"
     t.index ["location_based"], name: "index_tasks_on_location_based"
     t.index ["missed_reason_reviewed_by_id"], name: "index_tasks_on_missed_reason_reviewed_by_id"
     t.index ["parent_task_id"], name: "index_tasks_on_parent_task_id"
     t.index ["recurring_template_id"], name: "index_tasks_on_recurring_template_id"
+    t.index ["status", "due_at"], name: "index_tasks_on_status_and_due_at"
     t.index ["visibility"], name: "index_tasks_on_visibility"
+    t.check_constraint "status = ANY (ARRAY[0, 1, 2, 3])", name: "check_tasks_status"
+    t.check_constraint "visibility = ANY (ARRAY[0, 1, 2])", name: "check_tasks_visibility"
   end
 
   create_table "user_locations", force: :cascade do |t|
@@ -270,6 +290,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_040018) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["recorded_at"], name: "index_user_locations_on_recorded_at"
+    t.index ["user_id", "recorded_at"], name: "index_user_locations_on_user_recorded_at"
     t.index ["user_id"], name: "index_user_locations_on_user_id"
   end
 
@@ -291,11 +312,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_040018) do
     t.decimal "longitude"
     t.jsonb "preferences"
     t.datetime "location_updated_at"
+    t.decimal "current_latitude"
+    t.decimal "current_longitude"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["email"], name: "index_users_on_email_unique", unique: true
     t.index ["fcm_token"], name: "index_users_on_fcm_token"
     t.index ["jti"], name: "index_users_on_jti"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role"], name: "index_users_on_role"
+    t.check_constraint "role::text = ANY (ARRAY['client'::character varying, 'coach'::character varying]::text[])", name: "check_users_role"
   end
 
   add_foreign_key "coaching_relationships", "users", column: "client_id"

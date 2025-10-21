@@ -50,6 +50,68 @@ module Api
         render json: response_data
       end
 
+      # GET /api/v1/tasks - Get all tasks across all lists for current user
+      def all_tasks
+        # Get all lists accessible by the current user
+        accessible_lists = policy_scope(List)
+        
+        # Get all tasks from accessible lists with comprehensive eager loading
+        @tasks = Task.joins(:list)
+                    .where(lists: { id: accessible_lists.select(:id) })
+                    .where(parent_task_id: nil) # Don't include subtasks at top level
+                    .includes(:creator, :subtasks, :escalation, :list, subtasks: :creator)
+                    .limit(100) # Prevent excessive data loading
+
+        # Apply filters
+        if params[:list_id].present?
+          @tasks = @tasks.where(list_id: params[:list_id])
+        end
+
+        if params[:status].present?
+          case params[:status]
+          when 'pending'
+            @tasks = @tasks.where(status: :pending)
+          when 'completed', 'done'
+            @tasks = @tasks.where(status: :done)
+          when 'overdue'
+            @tasks = @tasks.overdue
+          end
+        end
+
+        if params[:since].present?
+          since_time = Time.parse(params[:since])
+          @tasks = @tasks.modified_since(since_time)
+        end
+
+        # Separate active and deleted items
+        active_tasks = @tasks.not_deleted
+        deleted_tasks = @tasks.deleted
+
+        # Order active tasks
+        active_tasks = active_tasks.order(Arel.sql('
+          CASE
+            WHEN tasks.status = 1 THEN 3
+            WHEN tasks.strict_mode = true THEN 0
+            ELSE 2
+          END,
+          tasks.due_at ASC NULLS LAST
+        '))
+
+        # Build response with tombstones
+        response_data = {
+          tasks: active_tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json },
+          tombstones: deleted_tasks.map { |task|
+            {
+              id: task.id,
+              deleted_at: task.deleted_at.iso8601,
+              type: "task"
+            }
+          }
+        }
+
+        render json: response_data
+      end
+
       # GET /api/v1/lists/:list_id/tasks/:id
       def show
         render json: TaskSerializer.new(@task, current_user: current_user, include_subtasks: true).as_json
@@ -57,6 +119,10 @@ module Api
 
         # POST /api/v1/lists/:list_id/tasks
         def create
+          # Debug logging for iOS app issues
+          Rails.logger.info "Task creation request - Raw params: #{params.inspect}"
+          Rails.logger.info "Task creation request - Parsed task_params: #{task_params.inspect}"
+          
           unless @list.can_add_items_by?(current_user)
             # Try to find a list the user can add items to
             fallback_list = current_user.owned_lists.first
@@ -68,75 +134,17 @@ module Api
             end
           end
 
-        # Normalize incoming params from various clients (iOS uses name/dueDate)
-        attrs = task_params.to_h
-
-        # Handle iOS-specific parameters (don't pass them to the model)
-        if params[:name].present?
-          attrs[:title] = params[:name]
-        end
-
-        if params[:dueDate].present? && attrs[:due_at].blank?
-          # iOS sends epoch seconds
           begin
-            attrs[:due_at] = Time.at(params[:dueDate].to_i)
-          rescue
-            # ignore bad format
+            @task = TaskCreationService.new(@list, current_user, task_params).call
+            render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :created
+          rescue ActiveRecord::RecordInvalid => e
+            Rails.logger.error "Task creation validation failed: #{e.record.errors.full_messages}"
+            render_validation_errors(e.record.errors)
+          rescue => e
+            Rails.logger.error "Task creation failed: #{e.message}"
+            render_server_error("Failed to create task")
           end
         end
-
-        if params[:due_date].present? && attrs[:due_at].blank?
-          # Handle ISO8601 date format
-          begin
-            attrs[:due_at] = Time.parse(params[:due_date])
-          rescue
-            # ignore bad format
-          end
-        end
-
-        if params[:description].present?
-          attrs[:note] = params[:description]
-        end
-
-        # Set default values for required fields
-        attrs[:strict_mode] = true if attrs[:strict_mode].nil?
-
-        # Remove any iOS-specific parameters that shouldn't go to the model
-        attrs.delete(:name)
-        attrs.delete(:dueDate)
-        attrs.delete(:description)
-        attrs.delete(:due_date)  # Remove the raw due_date parameter
-
-        @task = @list.tasks.build(attrs)
-        @task.creator = current_user
-
-        if @task.save
-          # Create subtasks if provided
-          if params[:subtasks].present?
-            params[:subtasks].each do |subtask_title|
-              @task.subtasks.create!(
-                list: @list,
-                creator: current_user,
-                title: subtask_title,
-                due_at: @task.due_at,
-                priority: @task.priority
-              )
-            end
-          end
-
-          # Notify client if coach created it
-          NotificationService.new_item_assigned(@task) if @task.created_by_coach?
-
-          # Set up geofencing if location-based
-          # if @task.location_based?
-          #   GeofencingService.setup_geofence(@task)
-          # end
-
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :created
-        else
-          render_validation_errors(@task.errors)
-        end
-      end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id
       def update
@@ -400,15 +408,28 @@ module Api
             raise ActiveRecord::RecordNotFound, "No list found. Please create a list first or specify a list_id."
           end
         else
-          @list = List.find(list_id)
+          begin
+            @list = List.find(list_id)
+            # Check if user has access to this list
+            unless @list.can_view?(current_user)
+              raise ActiveRecord::RecordNotFound, "List not found or access denied"
+            end
+          rescue ActiveRecord::RecordNotFound => e
+            Rails.logger.warn "List access denied: User #{current_user.id} tried to access list #{list_id}"
+            raise e
+          end
         end
       end
 
       def set_task
-        if params[:list_id]
-          @task = Task.find(params[:id])
-        else
-          @task = Task.find(params[:id])
+        begin
+          if params[:list_id]
+            @task = Task.find(params[:id])
+          else
+            @task = Task.find(params[:id])
+          end
+        rescue ActiveRecord::RecordNotFound
+          render_not_found("Task")
         end
       end
 
