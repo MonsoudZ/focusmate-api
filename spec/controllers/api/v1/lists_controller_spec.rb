@@ -9,6 +9,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
   describe 'GET /api/v1/lists' do
     it 'should get all lists owned by user' do
+      # Ensure the base list is created first
+      list # This forces the let(:list) to be evaluated
+      
       # Create additional lists for the user
       list2 = create(:list, owner: user, name: "Second List")
       list3 = create(:list, owner: user, name: "Third List")
@@ -29,6 +32,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
     end
 
     it 'should get lists shared with user' do
+      # Ensure the base list is created first
+      list # This forces the let(:list) to be evaluated
+      
       other_user = create(:user, email: "other@example.com")
       shared_list = create(:list, owner: other_user, name: "Shared List")
       
@@ -293,6 +299,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
     end
 
     it 'should validate required fields' do
+      # Ensure the base list is created first
+      list # This forces the let(:list) to be evaluated
+      
       share_params = {
         can_view: true
       }
@@ -307,6 +316,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
   describe 'PATCH /api/v1/lists/:id/unshare' do
     it 'should unshare list with user' do
+      # Ensure the base list is created first
+      list # This forces the let(:list) to be evaluated
+      
       other_user = create(:user, email: "shared@example.com")
       create(:list_share, list: list, user: other_user, status: "accepted", invited_by: "owner")
       
@@ -349,6 +361,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
   describe 'GET /api/v1/lists/:id/members' do
     it 'should get list members' do
+      # Ensure the base list is created first
+      list # This forces the let(:list) to be evaluated
+      
       other_user = create(:user, email: "member@example.com")
       create(:list_share, list: list, user: other_user, status: "accepted", invited_by: "owner")
       

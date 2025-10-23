@@ -25,7 +25,7 @@ module Api
         role = params[:role] || "viewer"
 
         if email.blank?
-          render json: { error: { message: "Email is required" } }, status: :bad_request
+          render json: { errors: { email: ["is required"] } }, status: :unprocessable_entity
           return
         end
 

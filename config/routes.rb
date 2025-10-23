@@ -63,6 +63,10 @@ Rails.application.routes.draw do
         collection do
           get :validate_access, path: 'validate/:id'  # Check if user can access a specific list
         end
+        member do
+          patch :unshare
+          get :members
+        end
         # EXISTING
         resources :memberships, except: [ :new, :edit ]
         resources :tasks, except: [ :new, :edit ] do

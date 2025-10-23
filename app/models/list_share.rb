@@ -5,6 +5,9 @@ class ListShare < ApplicationRecord
   # Enums
   enum :role, { viewer: 0, editor: 1, admin: 2 }
   enum :status, { pending: "pending", accepted: "accepted", declined: "declined" }
+  
+  # Virtual attribute for factories
+  attr_accessor :invited_by
 
   # Validations
   # validates :list_id, uniqueness: { scope: :user_id, message: "is already shared with this user" }, if: -> { user_id? && !user_id_was.nil? }
