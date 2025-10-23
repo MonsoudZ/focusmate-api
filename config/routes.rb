@@ -122,13 +122,6 @@ Rails.application.routes.draw do
       # iOS app compatibility - global /tasks routes
       get "tasks", to: "tasks#index"
       post "tasks", to: "tasks#create"
-      get "tasks/:id", to: "tasks#show"
-      patch "tasks/:id", to: "tasks#update"
-      delete "tasks/:id", to: "tasks#destroy"
-      post "tasks/:id/complete", to: "tasks#complete"
-      patch "tasks/:id/reassign", to: "tasks#reassign"
-      post "tasks/:id/reassign", to: "tasks#reassign"
-      post "tasks/:id/explanations", to: "tasks#submit_explanation"
 
       # ===== NEW - TASK SPECIAL ENDPOINTS =====
       # Task actions (no-snooze flow)
@@ -141,15 +134,25 @@ Rails.application.routes.draw do
         end
 
         member do
-          # EXISTING
-          post :complete
-          post :reassign
-          patch :reassign              # Also support PATCH for iOS compatibility
+          # Task completion
+          patch :complete
+          post  :complete
+          patch :uncomplete
 
-          # NEW - Subtask management
-          post :add_subtask
-          patch "subtasks/:subtask_id", action: :update_subtask
-          delete "subtasks/:subtask_id", action: :delete_subtask
+          # Task reassignment
+          patch :reassign
+          post  :reassign
+
+          # Task explanations
+          post :submit_explanation
+
+          # Task visibility
+          patch :toggle_visibility
+
+          # Subtask management
+          post   :add_subtask
+          patch  :update_subtask
+          delete :delete_subtask
         end
       end
 
@@ -173,7 +176,7 @@ Rails.application.routes.draw do
       patch "users/preferences", to: "users#update_preferences"
 
       # ===== NEW - RECURRING TASKS =====
-      resources :recurring_templates, only: [ :index, :create, :update, :destroy ] do
+      resources :recurring_templates, only: [ :index, :show, :create, :update, :destroy ] do
         member do
           post :generate_instance    # Manually generate next instance
           get :instances             # See all instances

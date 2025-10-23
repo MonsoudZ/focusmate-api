@@ -49,6 +49,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         recurring_template_id: nil,
         recurrence_pattern: "weekly",
         recurrence_interval: 1,
+        recurrence_days: [1, 3, 5], # Monday, Wednesday, Friday
         recurrence_time: "17:00",
         due_at: 1.week.from_now,
         status: :pending,
@@ -329,7 +330,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         note: "Instance of daily standup",
         is_recurring: false,
         recurring_template_id: template.id,
-        due_at: 1.day.from_now,
+        due_at: 1.day.ago,
         status: :pending,
         strict_mode: false
       )

@@ -357,7 +357,7 @@ RSpec.describe Task, type: :model do
   end
 
   describe 'recurring tasks' do
-    let(:template) { create(:task, list: list, creator: user, is_recurring: true, is_template: true, recurrence_pattern: "daily") }
+    let(:template) { create(:task, list: list, creator: user, is_recurring: true, is_template: true, recurrence_pattern: "daily", recurrence_time: "09:00") }
 
     it 'generates next instance' do
       instance = template.generate_next_instance

@@ -106,10 +106,8 @@ class TaskCreationService
     @task = @list.tasks.build(@attrs)
     @task.creator = @user
     
-    # Fallback only if still required by validations (e.g., strict_mode => due_at presence)
-    if @task.due_at.blank? && @task.strict_mode
-      @task.due_at = 1.hour.from_now
-    end
+    # Only set default due_at if explicitly requested or if strict_mode is true and due_at is still blank after validation
+    # This allows validation to fail for missing due_at when required
     
     @task.save!
   end

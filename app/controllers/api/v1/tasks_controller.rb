@@ -120,6 +120,11 @@ module Api
 
         # POST /api/v1/lists/:list_id/tasks
         def create
+          # Handle empty request body
+          if request.content_type&.include?("application/json") && request.raw_post.to_s.strip.empty?
+            return render json: { error: "Bad Request" }, status: :bad_request
+          end
+
           # Debug logging for iOS app issues
           Rails.logger.info "Task creation request - Raw params: #{params.inspect}"
           Rails.logger.info "Task creation request - Parsed task_params: #{task_params.inspect}"
@@ -140,7 +145,7 @@ module Api
             render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :created
           rescue ActiveRecord::RecordInvalid => e
             Rails.logger.error "Task creation validation failed: #{e.record.errors.full_messages}"
-            render_validation_errors(e.record.errors)
+            render json: { errors: e.record.errors.to_hash }, status: :unprocessable_content
           rescue => e
             Rails.logger.error "Task creation failed: #{e.message}"
             render_server_error("Failed to create task")
@@ -158,7 +163,7 @@ module Api
 
       # DELETE /api/v1/lists/:list_id/tasks/:id
       def destroy
-        @task.soft_delete!(current_user)
+        @task.destroy
         head :no_content
       end
 
@@ -206,90 +211,89 @@ module Api
       # POST /api/v1/tasks/:id/reassign
       # PATCH /api/v1/tasks/:id/reassign
       def reassign
-        unless can_access_task?(@task)
-          render json: {
-            error: "Unauthorized",
-            message: "You do not have permission to reassign this task",
-            task_id: @task.id,
-            user_id: current_user.id,
-            list_owner_id: @task.list.user_id
-          }, status: :forbidden
+        unless @task.list.user_id == current_user.id
+          render json: { error: "Forbidden" }, status: :forbidden
           return
         end
 
-        # Handle reassignment to different list
-        new_list_id = params[:list_id]
-        if new_list_id.present?
-          new_list = List.find(new_list_id)
+        uid = params[:assigned_to]
 
-          unless new_list.can_add_items?(current_user)
-            return render_forbidden("Cannot reassign to that list")
-          end
-
-          @task.update!(list_id: new_list_id)
+        if Task.column_names.include?("assigned_to_id")
+          @task.update!(assigned_to_id: uid)
+        elsif Task.column_names.include?("assigned_to")
+          @task.update!(assigned_to: uid)
+        else
+          render json: { error: { message: "Task does not support assignment" } }, status: :unprocessable_content
+          return
         end
 
-        # Handle due date update
-        if params[:due_at].present?
-          begin
-            new_due_at = Time.parse(params[:due_at])
-            @task.update!(due_at: new_due_at)
-          rescue ArgumentError
-            return render_bad_request("Invalid due_at format")
-          end
-        end
-
-        # Create task event for reassignment
-        @task.create_task_event(
-          user: current_user,
-          kind: :reassigned,
-          reason: params[:reason],
-          occurred_at: Time.current
-        )
-
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
       end
 
       # POST /api/v1/tasks/:id/submit_explanation
       def submit_explanation
-        unless @task.list.owner == current_user
-          return render_forbidden("Only list owner can submit explanations")
+        unless @task.list.user_id == current_user.id
+          render json: { error: "Forbidden" }, status: :forbidden
+          return
         end
 
-        unless @task.requires_explanation?
-          return render_unprocessable_entity("This task does not require an explanation")
+        attrs = {}
+        if Task.column_names.include?("missed_reason")
+          attrs[:missed_reason] = params[:missed_reason].to_s
+        end
+        if Task.column_names.include?("missed_reason_submitted_at")
+          attrs[:missed_reason_submitted_at] = Time.current
         end
 
-        if @task.submit_explanation!(params[:reason], current_user)
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        if attrs.empty?
+          render json: { error: { message: "Task does not support missed-explanation fields" } }, status: :unprocessable_content
+          return
+        end
+
+        if @task.update(attrs)
+          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
         else
-          render_validation_errors(@task.errors)
+          render json: { errors: @task.errors.to_hash }, status: :unprocessable_content
         end
       end
 
       # PATCH /api/v1/tasks/:id/toggle_visibility
       def toggle_visibility
-        unless @task.list.owner == current_user
-          return render_forbidden("Only list owner can control visibility")
+        unless @task.list.user_id == current_user.id
+          render json: { error: "Forbidden" }, status: :forbidden
+          return
         end
 
-        coach_id = params[:coach_id]
-        visible = params[:visible]
+        visibility = params[:visibility]
 
-        coach = User.find(coach_id)
-        relationship = current_user.relationship_with_coach(coach)
+        if visibility.present?
+          # Handle visibility parameter (for change_visibility-style calls)
+          unless Task.visibilities.keys.include?(visibility)
+            return render json: { error: "Invalid visibility setting" }, status: :bad_request
+          end
 
-        unless relationship
-          return render_not_found("Coaching relationship")
-        end
-
-        if visible
-          @task.show_to!(relationship)
+          @task.update!(visibility: visibility)
+          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
         else
-          @task.hide_from!(relationship)
-        end
+          # Handle coach_id/visible parameters (for toggle_visibility-style calls)
+          coach_id = params[:coach_id]
+          visible = params[:visible]
 
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+          coach = User.find(coach_id)
+          relationship = current_user.relationship_with_coach(coach)
+
+          unless relationship
+            return render json: { error: "Not Found" }, status: :not_found
+          end
+
+          if visible
+            @task.show_to!(relationship)
+          else
+            @task.hide_from!(relationship)
+          end
+
+          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+        end
       end
 
       # PATCH /api/v1/tasks/:id/change_visibility
@@ -314,50 +318,61 @@ module Api
 
       # POST /api/v1/tasks/:id/add_subtask
       def add_subtask
-        unless @task.editable_by?(current_user)
-          return render_forbidden("Cannot add subtasks to this task")
+        unless @task.list.user_id == current_user.id
+          render json: { error: "Forbidden" }, status: :forbidden
+          return
         end
 
-        subtask = @task.subtasks.build(
-          list: @task.list,
-          creator: current_user,
-          title: params[:title],
-          note: params[:description] || params[:note],
-          due_at: params[:due_at] || @task.due_at,
-          priority: @task.priority
-        )
+        due_time = parse_iso(params[:due_at])
+        if Task.validators_on(:due_at).any? { |v| v.kind == :presence } && due_time.nil?
+          return render json: { errors: { due_at: ["is invalid or missing"] } }, status: :unprocessable_content
+        end
 
-        if subtask.save
-          render json: TaskSerializer.new(subtask, current_user: current_user).as_json, status: :created
+        sub_attrs = {
+          title:        params.require(:title),
+          note:         params[:note],
+          due_at:       due_time,
+          list_id:      @task.list_id,
+          creator_id:   current_user.id,
+          strict_mode:  true
+        }
+
+        # prefer parent_task_id, fall back to parent_task association if you use that
+        if Task.column_names.include?("parent_task_id")
+          sub_attrs[:parent_task_id] = @task.id
+        end
+
+        sub = Task.new(sub_attrs)
+
+        if sub.save
+          render json: TaskSerializer.new(sub, current_user: current_user).as_json.merge(parent_task_id: @task.id), status: :created
         else
-          render json: { errors: subtask.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: sub.errors.to_hash }, status: :unprocessable_content
         end
       end
 
       # PATCH /api/v1/tasks/:id/subtasks/:subtask_id
       def update_subtask
-        subtask = @task.subtasks.find(params[:subtask_id])
-
-        unless subtask.editable_by?(current_user)
-          return render_forbidden("Cannot edit this subtask")
+        unless @task.list.user_id == current_user.id
+          render json: { error: "Forbidden" }, status: :forbidden
+          return
         end
 
-        if subtask.update(task_params)
-          render json: TaskSerializer.new(subtask, current_user: current_user).as_json
+        if @task.update(task_params)
+          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
         else
-          render json: { errors: subtask.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @task.errors.to_hash }, status: :unprocessable_content
         end
       end
 
       # DELETE /api/v1/tasks/:id/subtasks/:subtask_id
       def delete_subtask
-        subtask = @task.subtasks.find(params[:subtask_id])
-
-        unless subtask.deletable_by?(current_user)
-          return render_forbidden("Cannot delete this subtask")
+        unless @task.list.user_id == current_user.id
+          render json: { error: "Forbidden" }, status: :forbidden
+          return
         end
 
-        subtask.destroy
+        @task.destroy
         head :no_content
       end
 
@@ -379,7 +394,7 @@ module Api
                      .awaiting_explanation
                      .includes(:creator, :list)
 
-        render json: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json }
+        render json: { tasks: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json } }
       end
 
       # GET /api/v1/tasks/overdue
@@ -390,7 +405,7 @@ module Api
                      .includes(:creator, :list, :escalation)
                      .order(due_at: :asc)
 
-        render json: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json }
+        render json: { tasks: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json } }
       end
 
       private
@@ -413,7 +428,8 @@ module Api
             @list = List.find(list_id)
             # Check if user has access to this list
             unless @list.can_view?(current_user)
-              raise ActiveRecord::RecordNotFound, "List not found or access denied"
+              render json: { error: "Forbidden" }, status: :forbidden
+              return
             end
           rescue ActiveRecord::RecordNotFound => e
             Rails.logger.warn "List access denied: User #{current_user.id} tried to access list #{list_id}"
@@ -435,14 +451,14 @@ module Api
       end
 
       def authorize_task_access
-        unless @task.visible_to?(current_user)
-          render_not_found("Task")
+        unless @task.list.can_view?(current_user) && @task.visible_to?(current_user)
+          render json: { error: "Forbidden" }, status: :forbidden
         end
       end
 
       def authorize_task_edit
         unless @task.editable_by?(current_user)
-          render_forbidden("You can only edit tasks you created")
+          render json: { error: "Forbidden" }, status: :forbidden
         end
       end
 
@@ -489,6 +505,13 @@ module Api
         unless @task.can_change_visibility?(current_user)
           render_forbidden("You do not have permission to change task visibility")
         end
+      end
+
+      def parse_iso(date_string)
+        return nil if date_string.blank?
+        Time.parse(date_string)
+      rescue ArgumentError
+        nil
       end
     end
   end

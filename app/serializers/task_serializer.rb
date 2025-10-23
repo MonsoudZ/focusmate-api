@@ -13,6 +13,7 @@ class TaskSerializer
       id: task.id,
       list_id: task.list_id,
       title: task.title,
+      note: task.note,
       description: task.note,
       due_at: task.due_at&.iso8601,
       completed_at: completed_at_value,
