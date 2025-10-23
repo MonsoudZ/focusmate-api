@@ -25,6 +25,8 @@ RSpec.describe UserLocation, type: :model do
     end
 
     it 'requires recorded_at' do
+      # Skip the callback to test validation directly
+      user_location.define_singleton_method(:ensure_recorded_at_and_source) { }
       user_location.recorded_at = nil
       expect(user_location).not_to be_valid
       expect(user_location.errors[:recorded_at]).to include("can't be blank")
@@ -313,8 +315,8 @@ RSpec.describe UserLocation, type: :model do
       philly_lat, philly_lng = 39.9526, -75.1652
       
       distance = nyc_location.distance_to_coordinates(philly_lat, philly_lng)
-      expect(distance).to be > 80000 # Should be over 80km
-      expect(distance).to be < 120000 # Should be under 120km
+      expect(distance).to be > 80_000 # Should be over 80km
+      expect(distance).to be < 140_000 # Should be under 140km (real value ≈ 129.6km)
     end
 
     it 'handles coordinates at same location' do

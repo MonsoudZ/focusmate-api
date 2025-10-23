@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_21_172807) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_23_034621) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -32,7 +32,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_21_172807) do
     t.index ["coach_id", "status"], name: "index_coaching_relationships_on_coach_status"
     t.index ["coach_id"], name: "index_coaching_relationships_on_coach_id"
     t.index ["status"], name: "index_coaching_relationships_on_status"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'inactive'::character varying, 'declined'::character varying]::text[])", name: "check_coaching_relationships_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'active'::character varying::text, 'inactive'::character varying::text, 'declined'::character varying::text])", name: "check_coaching_relationships_status"
   end
 
   create_table "daily_summaries", force: :cascade do |t|
@@ -105,7 +105,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_21_172807) do
     t.index ["escalation_level"], name: "index_item_escalations_on_escalation_level"
     t.index ["task_id", "escalation_level"], name: "index_item_escalations_on_task_level"
     t.index ["task_id"], name: "index_item_escalations_on_task_id"
-    t.check_constraint "escalation_level::text = ANY (ARRAY['normal'::character varying, 'warning'::character varying, 'critical'::character varying, 'blocking'::character varying]::text[])", name: "check_item_escalations_escalation_level"
+    t.check_constraint "escalation_level::text = ANY (ARRAY['normal'::character varying::text, 'warning'::character varying::text, 'critical'::character varying::text, 'blocking'::character varying::text])", name: "check_item_escalations_escalation_level"
   end
 
   create_table "item_visibility_restrictions", force: :cascade do |t|
@@ -228,7 +228,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_21_172807) do
   end
 
   create_table "tasks", force: :cascade do |t|
-    t.string "title", null: false
+    t.text "title", null: false
     t.text "note"
     t.datetime "due_at", null: false
     t.integer "status"
@@ -278,7 +278,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_21_172807) do
     t.index ["status", "due_at"], name: "index_tasks_on_status_and_due_at"
     t.index ["visibility"], name: "index_tasks_on_visibility"
     t.check_constraint "status = ANY (ARRAY[0, 1, 2, 3])", name: "check_tasks_status"
-    t.check_constraint "visibility = ANY (ARRAY[0, 1, 2])", name: "check_tasks_visibility"
+    t.check_constraint "visibility = ANY (ARRAY[0, 1, 2, 3])", name: "check_tasks_visibility"
   end
 
   create_table "user_locations", force: :cascade do |t|
@@ -289,7 +289,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_21_172807) do
     t.datetime "recorded_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "source"
+    t.jsonb "metadata", default: {}
+    t.datetime "deleted_at"
+    t.index ["deleted_at"], name: "index_user_locations_on_deleted_at"
     t.index ["recorded_at"], name: "index_user_locations_on_recorded_at"
+    t.index ["source"], name: "index_user_locations_on_source"
     t.index ["user_id", "recorded_at"], name: "index_user_locations_on_user_recorded_at"
     t.index ["user_id"], name: "index_user_locations_on_user_id"
   end
@@ -320,7 +325,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_21_172807) do
     t.index ["jti"], name: "index_users_on_jti"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role"], name: "index_users_on_role"
-    t.check_constraint "role::text = ANY (ARRAY['client'::character varying, 'coach'::character varying]::text[])", name: "check_users_role"
+    t.check_constraint "role::text = ANY (ARRAY['client'::character varying::text, 'coach'::character varying::text])", name: "check_users_role"
   end
 
   add_foreign_key "coaching_relationships", "users", column: "client_id"

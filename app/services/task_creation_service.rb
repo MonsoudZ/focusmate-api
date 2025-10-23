@@ -40,27 +40,57 @@ class TaskCreationService
   end
 
   def handle_date_parameters
-    if @params[:dueDate].present? && @attrs[:due_at].blank?
-      # iOS sends epoch seconds
-      begin
-        @attrs[:due_at] = Time.at(@params[:dueDate].to_i)
-      rescue
-        # ignore bad format
-      end
-    end
+    @attrs[:due_at] = extract_due_at(@params)
+  end
 
-    if @params[:due_date].present? && @attrs[:due_at].blank?
-      # Handle ISO8601 date format
+  def extract_due_at(h)
+    return parse_epoch(h[:dueDate]) if h.key?(:dueDate) # epoch seconds
+    return parse_time(h[:due_date]) if h.key?(:due_date) # ISO8601
+    return parse_time(h[:due_at])   if h.key?(:due_at)   # ISO8601
+    nil
+  rescue ArgumentError
+    nil
+  end
+
+  def parse_epoch(v)
+    return nil if v.blank?
+    Time.at(v.to_i)
+  rescue ArgumentError
+    nil
+  end
+
+  def parse_time(v)
+    return nil if v.blank?
+    case v
+    when Time   then v.in_time_zone
+    when String
       begin
-        @attrs[:due_at] = Time.parse(@params[:due_date])
-      rescue
-        # ignore bad format
+        Time.iso8601(v).in_time_zone # preserves instant if "Z"/offset included
+      rescue ArgumentError
+        Time.zone.parse(v.to_s)
       end
     end
+  rescue StandardError
+    nil
   end
 
   def set_default_values
     @attrs[:strict_mode] = true if @attrs[:strict_mode].nil?
+    
+    # Handle boolean attributes
+    @attrs[:can_be_snoozed] = boolean(@attrs[:can_be_snoozed]) unless @attrs[:can_be_snoozed].nil?
+    @attrs[:requires_explanation_if_missed] = boolean(@attrs[:requires_explanation_if_missed]) unless @attrs[:requires_explanation_if_missed].nil?
+    @attrs[:location_based] = boolean(@attrs[:location_based]) unless @attrs[:location_based].nil?
+    @attrs[:is_recurring] = boolean(@attrs[:is_recurring]) unless @attrs[:is_recurring].nil?
+  end
+
+  def boolean(value)
+    case value
+    when true, false then value
+    when "true", "1", 1 then true
+    when "false", "0", 0, nil then false
+    else false
+    end
   end
 
   def clean_parameters
@@ -75,6 +105,12 @@ class TaskCreationService
   def create_task
     @task = @list.tasks.build(@attrs)
     @task.creator = @user
+    
+    # Fallback only if still required by validations (e.g., strict_mode => due_at presence)
+    if @task.due_at.blank? && @task.strict_mode
+      @task.due_at = 1.hour.from_now
+    end
+    
     @task.save!
   end
 

@@ -15,8 +15,8 @@ class Task < ApplicationRecord
   belongs_to :missed_reason_reviewed_by, class_name: "User", optional: true
 
   # Enums
-  enum :status, { pending: 0, in_progress: 1, done: 2, deleted: 3 }
-  enum :visibility, { visible_to_all: 0, hidden_from_coaches: 1, private_task: 2 }
+  enum :status, { pending: 0, in_progress: 1, done: 2, deleted: 3 }, default: :pending
+  enum :visibility, { visible_to_all: 0, hidden_from_coaches: 1, private_task: 2, coaching_only: 3 }
 
   # Callbacks
   after_update :track_status_changes
@@ -24,7 +24,7 @@ class Task < ApplicationRecord
   after_update :check_parent_completion, if: :saved_change_to_status?
 
   # Validations
-  validates :title, presence: true, length: { maximum: 255 }
+  validates :title, presence: true, length: { maximum: 1000 }
   validates :note, length: { maximum: 1000 }
   validates :due_at, presence: true
   validates :strict_mode, inclusion: { in: [ true, false ] }
@@ -275,7 +275,7 @@ class Task < ApplicationRecord
 
   # Check if task is location-based
   def location_based?
-    location_based && location_latitude.present? && location_longitude.present?
+    !!self[:location_based] && location_latitude.present? && location_longitude.present?
   end
 
   # Get location coordinates
@@ -326,7 +326,7 @@ class Task < ApplicationRecord
 
   # Recurring template methods
   def is_recurring?
-    is_recurring == true
+    !!self[:is_recurring]
   end
 
   # Generate next instance of recurring template
@@ -525,6 +525,39 @@ class Task < ApplicationRecord
     Task.where(recurring_template_id: id)
   end
 
+  # Force public predicate helpers in case something made them private:
+  def can_be_snoozed?
+    !!self[:can_be_snoozed] && pending?
+  end
+
+  def requires_explanation_if_missed?
+    !!self[:requires_explanation_if_missed]
+  end
+
+  def location_based?
+    !!self[:location_based] && location_latitude.present? && location_longitude.present?
+  end
+
+  def is_recurring?
+    !!self[:is_recurring]
+  end
+
+  # Get escalation level
+  def escalation_level
+    escalation&.escalation_level || "normal"
+  end
+
+  # Check if task is blocking the app
+  def blocking_app?
+    escalation&.blocking_app || false
+  end
+
+  # Get visibility for coaching relationship
+  def visible_to_coaching_relationship?(coaching_relationship)
+    return true unless visibility_restrictions.exists?
+    visibility_restrictions.exists?(coaching_relationship: coaching_relationship)
+  end
+
   private
 
   def schedule_completion_handler
@@ -566,27 +599,6 @@ class Task < ApplicationRecord
     visibility_restrictions.find_by(coaching_relationship: coaching_relationship)&.destroy
   end
 
-
-  # Check if task can be snoozed
-  def can_be_snoozed?
-    can_be_snoozed && pending?
-  end
-
-  # Get escalation level
-  def escalation_level
-    escalation&.escalation_level || "normal"
-  end
-
-  # Check if task is blocking the app
-  def blocking_app?
-    escalation&.blocking_app || false
-  end
-
-  # Get visibility for coaching relationship
-  def visible_to_coaching_relationship?(coaching_relationship)
-    return true unless visibility_restrictions.exists?
-    visibility_restrictions.exists?(coaching_relationship: coaching_relationship)
-  end
 
   private
 
