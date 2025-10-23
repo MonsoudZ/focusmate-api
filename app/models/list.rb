@@ -112,7 +112,7 @@ class List < ApplicationRecord
       can_edit: permissions[:can_edit] || false,
       can_add_items: permissions[:can_add_items] || false,
       can_delete_items: permissions[:can_delete_items] || false,
-      receive_notifications: permissions[:receive_notifications] != false
+      receive_notifications: permissions.key?(:receive_notifications) ? permissions[:receive_notifications] : true
     )
   end
 
@@ -124,7 +124,7 @@ class List < ApplicationRecord
       can_edit: permissions[:can_edit] || false,
       can_add_items: permissions[:can_add_items] || false,
       can_delete_items: permissions[:can_delete_items] || false,
-      receive_notifications: permissions[:receive_notifications] != false
+      receive_notifications: permissions.key?(:receive_notifications) ? permissions[:receive_notifications] : true
     )
   end
 

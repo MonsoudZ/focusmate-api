@@ -13,4 +13,17 @@ class ListShareMailer < ApplicationMailer
     @list = @list_share.list
     mail to: @list_share.email, subject: "You've been added to a list"
   end
+
+  def invitation_email
+    @list_share = params[:list_share]
+    @list = @list_share.list
+    @accept_url = "#{ENV.fetch('APP_WEB_BASE', 'http://localhost:3000')}/accept?token=#{@list_share.invitation_token}"
+    mail to: @list_share.email, subject: "You've been invited to a list"
+  end
+
+  def revocation_notification
+    @list_share = params[:list_share]
+    @list = @list_share.list
+    mail to: @list_share.email, subject: "Your access to a list has been revoked"
+  end
 end

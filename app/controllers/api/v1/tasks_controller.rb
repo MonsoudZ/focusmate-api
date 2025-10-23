@@ -10,6 +10,7 @@ module Api
 
       # GET /api/v1/lists/:list_id/tasks
       def index
+        
         # Use Pundit policy to filter tasks visible to current user
         @tasks = policy_scope(@list.tasks)
                       .where(parent_task_id: nil) # Don't include subtasks at top level

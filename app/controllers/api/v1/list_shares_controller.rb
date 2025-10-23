@@ -1,10 +1,11 @@
 module Api
   module V1
     class ListSharesController < ApplicationController
-      before_action :authenticate_user!, except: [ :accept ]
-      before_action :set_list, only: [ :index, :create, :accept, :decline ]
+      before_action :authenticate_user!
+      before_action :set_list, only: [ :index, :create, :show, :update, :destroy, :update_permissions, :accept, :decline ]
       before_action :set_list_share, only: [ :show, :update, :destroy, :update_permissions, :accept, :decline ]
-      before_action :authorize_list_owner, only: [ :create, :update, :destroy, :update_permissions ]
+      before_action :authorize_list_owner, only: [ :index, :create, :update, :update_permissions ]
+      before_action :authorize_share_owner_or_list_owner, only: [ :destroy ]
       before_action :authorize_share_access, only: [ :show ]
 
       # GET /api/v1/lists/:list_id/shares
@@ -24,7 +25,7 @@ module Api
         role = params[:role] || "viewer"
 
         if email.blank?
-          render json: { error: "Email is required" }, status: :bad_request
+          render json: { error: { message: "Email is required" } }, status: :bad_request
           return
         end
 
@@ -39,20 +40,27 @@ module Api
         # Find user by email (or create pending share)
         invited_user = User.find_by(email: email)
 
-        if invited_user
-          # User exists, create accepted share
-          @list_share = @list.share_with!(invited_user, share_params.merge(role: role))
-        else
-          # User doesn't exist, create pending invitation
-          @list_share = @list.invite_by_email!(email, role, share_params)
-        end
+        begin
+          if invited_user
+            # User exists, create accepted share
+            @list_share = @list.share_with!(invited_user, share_params.merge(role: role))
+          else
+            # User doesn't exist, create pending invitation
+            @list_share = @list.invite_by_email!(email, role, share_params)
+          end
 
-        if @list_share.persisted?
-          render json: ListShareSerializer.new(@list_share).as_json, status: :created
-        else
+          if @list_share.persisted?
+            render json: ListShareSerializer.new(@list_share).as_json, status: :created
+          else
+            render json: {
+              error: "Failed to create share",
+              details: @list_share.errors.full_messages
+            }, status: :unprocessable_entity
+          end
+        rescue => e
+          Rails.logger.error "Create share failed: #{e.message}"
           render json: {
-            error: "Failed to create share",
-            details: @list_share.errors.full_messages
+            error: { message: "Validation failed" }
           }, status: :unprocessable_entity
         end
       end
@@ -84,45 +92,24 @@ module Api
       # POST /api/v1/lists/:list_id/shares/:id/accept
       def accept
         unless @list_share.pending?
-          render json: { error: "Invitation is not pending" }, status: :unprocessable_entity
+          render json: { error: { message: "Invitation is not pending" } }, status: :unprocessable_entity
           return
         end
 
         @list_share.accept!(current_user)
+        @list_share.reload
         render json: ListShareSerializer.new(@list_share).as_json
       end
 
       # POST /api/v1/lists/:list_id/shares/:id/decline
       def decline
         unless @list_share.pending?
-          render json: { error: "Invitation is not pending" }, status: :unprocessable_entity
+          render json: { error: { message: "Invitation is not pending" } }, status: :unprocessable_entity
           return
         end
 
         @list_share.decline!
         render json: { message: "Invitation declined" }
-      end
-
-      # POST /api/v1/list_shares/accept (for email links)
-      def accept
-        token = params.require(:token)
-        share = ListShare.find_by!(invitation_token: token, status: "pending")
-
-        if current_user.blank?
-          # If user is not authenticated, find by email
-          user = User.find_by!(email: share.email)
-        else
-          user = current_user
-        end
-
-        share.update!(
-          user: user,
-          status: "accepted",
-          accepted_at: Time.current,
-          invitation_token: nil
-        )
-
-        head :no_content
       end
 
       private
@@ -137,13 +124,22 @@ module Api
 
       def authorize_list_owner
         unless @list.owner == current_user
-          render json: { error: "Only list owner can manage shares" }, status: :forbidden
+          render json: { error: { message: "Only list owner can manage shares" } }, status: :forbidden
+          return
         end
       end
 
       def authorize_share_access
         unless @list.viewable_by?(current_user) || @list_share.user == current_user
-          render json: { error: "Unauthorized" }, status: :forbidden
+          render json: { error: { message: "Unauthorized" } }, status: :forbidden
+          return
+        end
+      end
+
+      def authorize_share_owner_or_list_owner
+        unless @list.owner == current_user || @list_share.user == current_user
+          render json: { error: { message: "Only list owner or share owner can delete this share" } }, status: :forbidden
+          return
         end
       end
 
@@ -152,7 +148,21 @@ module Api
       end
 
       def permission_params
-        params.require(:permissions).permit(:can_view, :can_edit, :can_add_items, :can_delete_items, :receive_notifications)
+        permitted = params.require(:permissions).permit(:can_view, :can_edit, :can_add_items, :can_delete_items, :receive_notifications)
+        # Convert string boolean values to actual booleans and handle nil/empty values
+        permitted.each do |key, value|
+          if value.nil? || (value.is_a?(String) && value.empty?)
+            permitted[key] = false
+          elsif value.is_a?(String)
+            case value.downcase
+            when 'true', 'yes', 'on', '1'
+              permitted[key] = true
+            when 'false', 'no', 'off', '0'
+              permitted[key] = false
+            end
+          end
+        end
+        permitted
       end
     end
   end

@@ -33,7 +33,7 @@ class ApplicationController < ActionController::API
       @current_user = User.find(user_id)
     rescue JWT::DecodeError => e
       render_unauthorized("Invalid token")
-    rescue ActiveRecord::RecordNotFound
+    rescue ActiveRecord::RecordNotFound => e
       render_unauthorized("User not found")
     end
   end

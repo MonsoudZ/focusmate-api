@@ -299,16 +299,26 @@ class Task < ApplicationRecord
   # Visibility control methods
   def visible_to?(user)
     return false unless user
+    
+    # Check if list is deleted - users cannot see tasks in deleted lists
+    if list.deleted?
+      return false
+    end
+    
+    # Check if task is deleted - only owner can see deleted tasks
+    if deleted?
+      return creator == user || list.owner == user
+    end
 
     case visibility
-    when "visible"
+    when "visible_to_all"
       true
-    when "hidden"
+    when "hidden_from_coaches"
       # Only visible to task creator and list owner
       creator == user || list.owner == user
-    when "coaching_only"
-      # Visible to coaches and task creator/owner
-      user.coach? || creator == user || list.owner == user
+    when "private_task"
+      # Only visible to task creator and list owner
+      creator == user || list.owner == user
     else
       false
     end

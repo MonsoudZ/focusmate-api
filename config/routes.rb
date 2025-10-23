@@ -100,16 +100,13 @@ Rails.application.routes.draw do
           end
         end
 
-        # Global list share accept endpoint (for email links)
-        resources :list_shares, only: [ :create, :destroy ] do
-          collection do
-            post :accept  # POST /api/v1/list_shares/accept
-          end
-        end
 
         # iOS compatibility - singular share route
         post "share", to: "list_shares#create"
       end
+
+      # Global list share accept endpoint (for email links)
+      post "list_shares/accept", to: "list_shares_global#accept"
 
       # iOS app compatibility - global /items routes
       get "items", to: "tasks#index"

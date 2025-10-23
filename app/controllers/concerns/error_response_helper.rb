@@ -19,7 +19,7 @@ module ErrorResponseHelper
   end
 
   # Validation error response
-  def render_validation_errors(errors, status = :unprocessable_entity)
+  def render_validation_errors(errors, status = :unprocessable_content)
     error_response = {
       error: {
         message: "Validation failed",
@@ -91,6 +91,6 @@ module ErrorResponseHelper
 
   # Unprocessable entity error response
   def render_unprocessable_entity(message = "Unprocessable entity")
-    render_error(message, :unprocessable_entity)
+    render_error(message, :unprocessable_content)
   end
 end

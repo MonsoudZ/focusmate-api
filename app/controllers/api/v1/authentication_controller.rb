@@ -8,7 +8,7 @@ module Api
       # POST /api/v1/login
       # POST /api/v1/auth/sign_in
       def login
-        user = User.find_by(email: params[:email])
+        user = User.find_by(email: params[:email]&.strip&.downcase)
 
         if user&.valid_password?(params[:password])
           token = generate_jwt_token(user)
