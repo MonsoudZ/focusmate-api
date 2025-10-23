@@ -225,7 +225,7 @@ module Api
       end
 
       def forbidden
-        render json: { error: { message: "Forbidden" } }, status: :forbidden
+        render json: { error: { message: "Unauthorized" } }, status: :forbidden
       end
 
       def bad_request

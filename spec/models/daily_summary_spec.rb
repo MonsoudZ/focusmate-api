@@ -131,8 +131,8 @@ RSpec.describe DailySummary, type: :model do
     end
 
     it 'has with_tasks scope' do
-      summary_with_tasks = create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 5)
-      summary_without_tasks = create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 0)
+      summary_with_tasks = create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 5, summary_date: Date.current)
+      summary_without_tasks = create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 0, tasks_missed: 0, tasks_overdue: 0, summary_date: Date.current - 1.day)
       
       expect(DailySummary.with_tasks).to include(summary_with_tasks)
       expect(DailySummary.with_tasks).not_to include(summary_without_tasks)
@@ -217,14 +217,17 @@ RSpec.describe DailySummary, type: :model do
     it 'returns priority level' do
       daily_summary.tasks_completed = 8
       daily_summary.tasks_missed = 1
+      daily_summary.tasks_overdue = 1
       expect(daily_summary.priority).to eq("high")
       
       daily_summary.tasks_completed = 3
       daily_summary.tasks_missed = 3
+      daily_summary.tasks_overdue = 0
       expect(daily_summary.priority).to eq("medium")
       
       daily_summary.tasks_completed = 1
       daily_summary.tasks_missed = 5
+      daily_summary.tasks_overdue = 0
       expect(daily_summary.priority).to eq("low")
     end
 
@@ -290,8 +293,8 @@ RSpec.describe DailySummary, type: :model do
 
   describe 'statistics' do
     it 'calculates coaching relationship statistics' do
-      create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 5, tasks_missed: 2)
-      create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 3, tasks_missed: 1)
+      create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 5, tasks_missed: 2, summary_date: Date.current)
+      create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 3, tasks_missed: 1, summary_date: Date.current - 1.day)
       
       stats = DailySummary.statistics_for_coaching_relationship(coaching_relationship)
       expect(stats[:total_summaries]).to eq(2)

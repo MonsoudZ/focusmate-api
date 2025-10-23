@@ -199,7 +199,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
       
       post "/api/v1/devices", params: device_params, headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"].to eq("Validation failed")
     end
@@ -227,7 +227,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
       
       post "/api/v1/devices", params: device_params, headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"].to eq("Validation failed")
     end
@@ -462,7 +462,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
       
       post "/api/v1/devices/test_push", params: { device_id: invalid_device.id }, headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"].to eq("Failed to send test push")
     end
@@ -563,7 +563,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
       
       post "/api/v1/devices", params: device_params, headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"].to eq("Validation failed")
     end
@@ -635,7 +635,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
       
       post "/api/v1/devices", params: device_params, headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"].to eq("Validation failed")
     end
@@ -679,7 +679,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
       
       post "/api/v1/devices", params: device_params, headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"].to eq("Validation failed")
     end

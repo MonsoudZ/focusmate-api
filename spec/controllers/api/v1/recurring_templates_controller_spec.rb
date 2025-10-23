@@ -210,7 +210,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
       
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
     end
@@ -228,7 +228,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
       
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
     end
@@ -770,7 +770,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
       
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
     end
@@ -875,7 +875,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         
         post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
         
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to eq("Validation failed")
       end
@@ -897,7 +897,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         
         post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
         
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to eq("Validation failed")
       end
@@ -919,7 +919,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         
         post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
         
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to eq("Validation failed")
       end

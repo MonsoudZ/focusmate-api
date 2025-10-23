@@ -409,7 +409,7 @@ RSpec.describe Api::V1::ListSharesController, type: :request do
       post "/api/v1/lists/#{list.id}/shares/#{pending_share.id}/accept", 
            headers: other_user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Invitation is not pending")
     end
@@ -418,7 +418,7 @@ RSpec.describe Api::V1::ListSharesController, type: :request do
       post "/api/v1/lists/#{list.id}/shares/#{list_share.id}/accept", 
            headers: shared_user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Invitation is not pending")
     end
@@ -520,7 +520,7 @@ RSpec.describe Api::V1::ListSharesController, type: :request do
       post "/api/v1/lists/#{list.id}/shares/#{list_share.id}/decline", 
            headers: shared_user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Invitation is not pending")
     end
@@ -809,7 +809,7 @@ RSpec.describe Api::V1::ListSharesController, type: :request do
       
       post "/api/v1/lists/#{list.id}/shares", params: share_params, headers: owner_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
     end
@@ -822,7 +822,7 @@ RSpec.describe Api::V1::ListSharesController, type: :request do
       
       post "/api/v1/lists/#{list.id}/shares", params: share_params, headers: owner_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
     end

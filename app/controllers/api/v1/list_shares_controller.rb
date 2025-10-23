@@ -2,11 +2,11 @@ module Api
   module V1
     class ListSharesController < ApplicationController
       before_action :authenticate_user!
-      before_action :set_list, only: [ :index, :create, :show, :update, :destroy, :update_permissions, :accept, :decline ]
-      before_action :set_list_share, only: [ :show, :update, :destroy, :update_permissions, :accept, :decline ]
-      before_action :authorize_list_owner, only: [ :index, :create, :update, :update_permissions ]
-      before_action :authorize_share_owner_or_list_owner, only: [ :destroy ]
-      before_action :authorize_share_access, only: [ :show ]
+      before_action :set_list, only: %i[index create show update destroy update_permissions accept decline]
+      before_action :set_list_share, only: %i[show update destroy update_permissions accept decline]
+      before_action :authorize_list_owner, only: %i[index create update update_permissions]
+      before_action :authorize_share_owner_or_list_owner, only: %i[destroy]
+      before_action :authorize_share_access, only: %i[show]
 
       # GET /api/v1/lists/:list_id/shares
       def index
@@ -21,47 +21,40 @@ module Api
 
       # POST /api/v1/lists/:list_id/shares
       def create
-        email = params[:email]&.downcase&.strip
-        role = params[:role] || "viewer"
-
-        if email.blank?
-          render json: { errors: { email: ["is required"] } }, status: :unprocessable_entity
-          return
+        # ---- Spec: empty body / missing email -> 400 Bad Request with { error: { message: "Email is required" } }
+        if params.blank? || params[:email].to_s.strip.blank?
+          return render json: { error: { message: "Email is required" } }, status: :bad_request
         end
 
-        # Check if already shared
-        existing_share = @list.list_shares.find_by(email: email)
-        if existing_share
-          # Instead of error, return the existing share with 200 OK
-          render json: ListShareSerializer.new(existing_share).as_json, status: :ok
-          return
+        email = params[:email].to_s.downcase.strip
+        role  = params[:role].presence || "viewer"
+
+        # If already shared, return the existing share (spec expects OK rather than error)
+        if (existing_share = @list.list_shares.find_by(email: email))
+          return render json: ListShareSerializer.new(existing_share).as_json, status: :ok
         end
 
-        # Find user by email (or create pending share)
         invited_user = User.find_by(email: email)
 
         begin
-          if invited_user
-            # User exists, create accepted share
-            @list_share = @list.share_with!(invited_user, share_params.merge(role: role))
-          else
-            # User doesn't exist, create pending invitation
-            @list_share = @list.invite_by_email!(email, role, share_params)
-          end
+          @list_share =
+            if invited_user
+              # existing user -> create accepted/pending based on your model logic
+              @list.share_with!(invited_user, share_params.merge(role: role))
+            else
+              # non-existent user -> pending invite
+              @list.invite_by_email!(email, role, share_params)
+            end
 
           if @list_share.persisted?
             render json: ListShareSerializer.new(@list_share).as_json, status: :created
           else
-            render json: {
-              error: "Failed to create share",
-              details: @list_share.errors.full_messages
-            }, status: :unprocessable_entity
+            render json: { error: { message: "Validation failed", details: @list_share.errors.as_json } },
+                   status: :unprocessable_content
           end
         rescue => e
-          Rails.logger.error "Create share failed: #{e.message}"
-          render json: {
-            error: { message: "Validation failed" }
-          }, status: :unprocessable_entity
+          Rails.logger.error "Create share failed: #{e.class}: #{e.message}"
+          render json: { error: { message: "Validation failed" } }, status: :unprocessable_content
         end
       end
 
@@ -70,7 +63,8 @@ module Api
         if @list_share.update(share_params)
           render json: ListShareSerializer.new(@list_share).as_json
         else
-          render json: { errors: @list_share.errors.full_messages }, status: :unprocessable_entity
+          render json: { error: { message: "Validation failed", details: @list_share.errors.as_json } },
+                 status: :unprocessable_content
         end
       end
 
@@ -79,7 +73,8 @@ module Api
         if @list_share.update_permissions(permission_params)
           render json: ListShareSerializer.new(@list_share).as_json
         else
-          render json: { errors: @list_share.errors.full_messages }, status: :unprocessable_entity
+          render json: { error: { message: "Validation failed", details: @list_share.errors.as_json } },
+                 status: :unprocessable_content
         end
       end
 
@@ -91,21 +86,29 @@ module Api
 
       # POST /api/v1/lists/:list_id/shares/:id/accept
       def accept
-        unless @list_share.pending?
-          render json: { error: { message: "Invitation is not pending" } }, status: :unprocessable_entity
-          return
+        # If a token is provided but doesn't match, spec expects this exact error:
+        if params.key?(:invitation_token)
+          given = params[:invitation_token].to_s
+          expected = @list_share.invitation_token.to_s
+          if given.blank? || given != expected
+            return render json: { error: { message: "Invitation is not pending" } }, status: :unprocessable_content
+          end
+        end
+
+        # If the share has no token or is not pending, return error
+        if @list_share.invitation_token.blank? || !@list_share.pending?
+          return render json: { error: { message: "Invitation is not pending" } }, status: :unprocessable_content
         end
 
         @list_share.accept!(current_user)
         @list_share.reload
-        render json: ListShareSerializer.new(@list_share).as_json
+        render json: ListShareSerializer.new(@list_share).as_json, status: :ok
       end
 
       # POST /api/v1/lists/:list_id/shares/:id/decline
       def decline
         unless @list_share.pending?
-          render json: { error: { message: "Invitation is not pending" } }, status: :unprocessable_entity
-          return
+          return render json: { error: { message: "Invitation is not pending" } }, status: :unprocessable_content
         end
 
         @list_share.decline!
@@ -125,22 +128,19 @@ module Api
       def authorize_list_owner
         unless @list.owner == current_user
           render json: { error: { message: "Only list owner can manage shares" } }, status: :forbidden
-          return
         end
       end
 
       def authorize_share_access
-        unless @list.viewable_by?(current_user) || @list_share.user == current_user
-          render json: { error: { message: "Unauthorized" } }, status: :forbidden
-          return
-        end
+        return if @list.viewable_by?(current_user) || @list_share.user == current_user
+        render json: { error: { message: "Unauthorized" } }, status: :forbidden
       end
 
       def authorize_share_owner_or_list_owner
-        unless @list.owner == current_user || @list_share.user == current_user
-          render json: { error: { message: "Only list owner or share owner can delete this share" } }, status: :forbidden
-          return
-        end
+        return if @list.owner == current_user || @list_share.user == current_user
+
+        # Default: assume they're trying to delete a share they don't own
+        render json: { error: { message: "Only list owner or share owner can delete this share" } }, status: :forbidden
       end
 
       def share_params
@@ -149,20 +149,14 @@ module Api
 
       def permission_params
         permitted = params.require(:permissions).permit(:can_view, :can_edit, :can_add_items, :can_delete_items, :receive_notifications)
-        # Convert string boolean values to actual booleans and handle nil/empty values
-        permitted.each do |key, value|
-          if value.nil? || (value.is_a?(String) && value.empty?)
-            permitted[key] = false
-          elsif value.is_a?(String)
-            case value.downcase
-            when 'true', 'yes', 'on', '1'
-              permitted[key] = true
-            when 'false', 'no', 'off', '0'
-              permitted[key] = false
-            end
+        permitted.to_h.transform_values do |v|
+          case v
+          when true, false then v
+          when nil, ""     then false
+          else
+            v.to_s.strip.downcase.in?(%w[true yes on 1])
           end
         end
-        permitted
       end
     end
   end

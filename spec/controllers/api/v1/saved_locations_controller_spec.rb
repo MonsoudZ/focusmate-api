@@ -209,7 +209,7 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
       
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to include("Latitude must be less than or equal to 90")
     end
@@ -227,7 +227,7 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
       
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to include("Radius meters must be greater than 0")
     end
@@ -243,7 +243,7 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
       
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to include("Name can't be blank")
     end
@@ -416,7 +416,7 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
       
       patch "/api/v1/saved_locations/#{location.id}", params: update_params, headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to include("Name can't be blank")
     end
@@ -518,7 +518,7 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
       
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to include("Name is too long (maximum is 255 characters)")
     end

@@ -176,15 +176,16 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
       end
 
       it "should not allow inviting same user twice" do
+        coaching_relationship # Create the existing relationship
         invite_params = {
           client_email: client.email
         }
         
         post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
         
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
-        expect(json["error"]["message"]).to eq("Validation failed")
+        expect(json["error"]["message"]).to eq("Relationship already exists")
       end
 
       it "should not allow inviting self" do
@@ -194,9 +195,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         
         post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
         
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
-        expect(json["error"]["message"]).to eq("Validation failed")
+        expect(json["error"]["message"]).to eq("You cannot invite yourself")
       end
 
       it "should return error if client not found" do
@@ -246,7 +247,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
     it "should return error if no email provided" do
       post "/api/v1/coaching_relationships", params: {}, headers: coach_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Must provide coach_email or client_email")
     end
@@ -424,7 +425,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
       expect(json["daily_summary_time"]).to eq("18:30")
       
       coaching_relationship.reload
-      expect(coaching_relationship.daily_summary_time).to eq("18:30")
+      expect(coaching_relationship.daily_summary_time.strftime("%H:%M")).to eq("18:30")
     end
 
     it "should only allow coach to update preferences" do
@@ -469,7 +470,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
             params: preference_params, 
             headers: coach_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
     end
@@ -542,7 +543,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
     it "should handle empty request body" do
       post "/api/v1/coaching_relationships", params: {}, headers: coach_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Must provide coach_email or client_email")
     end
@@ -663,7 +664,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
             params: preference_params, 
             headers: coach_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
     end

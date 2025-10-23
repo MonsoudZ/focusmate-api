@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Device, type: :model do
   let(:user) { create(:user) }
-  let(:device) { build(:device, user: user, apns_token: "test_token_123", platform: "ios", bundle_id: "com.focusmate.app") }
+  let(:device) { build(:device, user: user, apns_token: SecureRandom.hex(32), platform: "ios", bundle_id: "com.focusmate.app") }
 
   describe 'validations' do
     it 'belongs to user' do
@@ -253,7 +253,7 @@ RSpec.describe Device, type: :model do
     end
 
     it 'requires fcm_token for android platform' do
-      android_device = build(:device, user: user, platform: "android", fcm_token: nil)
+      android_device = Device.new(user: user, platform: "android", fcm_token: nil, bundle_id: "com.focusmate.app")
       expect(android_device).not_to be_valid
       expect(android_device.errors[:fcm_token]).to include("can't be blank")
     end

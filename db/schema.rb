@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_23_142406) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_23_200004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -46,7 +46,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_23_142406) do
     t.datetime "sent_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["coaching_relationship_id", "summary_date"], name: "index_daily_summaries_unique", unique: true
+    t.datetime "deleted_at"
+    t.index ["coaching_relationship_id", "summary_date"], name: "idx_daily_summaries_unique_per_rel_and_date", unique: true
     t.index ["coaching_relationship_id"], name: "index_daily_summaries_on_coaching_relationship_id"
     t.index ["sent"], name: "index_daily_summaries_on_sent"
     t.index ["summary_date"], name: "index_daily_summaries_on_summary_date"
@@ -54,12 +55,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_23_142406) do
 
   create_table "devices", force: :cascade do |t|
     t.bigint "user_id", null: false
-    t.string "apns_token", null: false
+    t.string "apns_token"
     t.string "platform", default: "ios", null: false
     t.string "bundle_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "deleted_at"
+    t.string "fcm_token"
+    t.string "device_name"
+    t.string "os_version"
+    t.string "app_version"
+    t.boolean "active", default: true
+    t.datetime "last_seen_at"
+    t.index ["active"], name: "index_devices_on_active"
     t.index ["apns_token"], name: "index_devices_on_apns_token", unique: true
+    t.index ["deleted_at"], name: "index_devices_on_deleted_at"
+    t.index ["fcm_token"], name: "index_devices_on_fcm_token"
     t.index ["user_id"], name: "index_devices_on_user_id"
   end
 
@@ -113,7 +124,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_23_142406) do
     t.bigint "coaching_relationship_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "deleted_at"
+    t.boolean "active", default: true, null: false
+    t.jsonb "metadata", default: {}, null: false
     t.index ["coaching_relationship_id"], name: "index_item_visibility_restrictions_on_coaching_relationship_id"
+    t.index ["deleted_at"], name: "index_item_visibility_restrictions_on_deleted_at"
+    t.index ["task_id", "coaching_relationship_id"], name: "index_item_vis_restrictions_on_task_and_coaching_rel", unique: true
     t.index ["task_id", "coaching_relationship_id"], name: "index_visibility_on_task_and_relationship", unique: true
     t.index ["task_id"], name: "index_item_visibility_restrictions_on_task_id"
   end
@@ -160,10 +176,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_23_142406) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.datetime "deleted_at"
+    t.string "visibility", default: "private", null: false
     t.index ["deleted_at"], name: "index_lists_on_deleted_at"
     t.index ["user_id", "created_at"], name: "index_lists_on_user_created_at"
     t.index ["user_id", "deleted_at"], name: "index_lists_on_user_deleted_at"
     t.index ["user_id"], name: "index_lists_on_user_id"
+    t.index ["visibility"], name: "index_lists_on_visibility"
   end
 
   create_table "memberships", force: :cascade do |t|

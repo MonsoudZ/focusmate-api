@@ -188,7 +188,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
       
       post "/api/v1/lists/#{list.id}/tasks", params: task_params, headers: auth_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to have_key("title")
       expect(json["errors"]).to have_key("due_at")
@@ -522,7 +522,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
       
       post "/api/v1/lists/#{list.id}/tasks", params: task_params, headers: auth_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     it 'should handle special characters in task title' do

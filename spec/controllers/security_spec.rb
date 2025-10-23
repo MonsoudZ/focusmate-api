@@ -168,7 +168,7 @@ RSpec.describe "Security", type: :request do
         expect(task.title).to eq("'; DROP TABLE users; --")
       else
         # Validation failed, which is also acceptable
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"].to eq("Validation failed")
       end
@@ -395,7 +395,7 @@ RSpec.describe "Security", type: :request do
         # Task model doesn't have file attribute, so we just verify task was created
         expect(task).not_to be_nil
       else
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"].to eq("Validation failed")
       end

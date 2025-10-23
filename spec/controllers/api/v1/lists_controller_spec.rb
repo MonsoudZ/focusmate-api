@@ -143,7 +143,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
       
       post "/api/v1/lists", params: list_params, headers: auth_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to have_key("name")
     end
@@ -308,7 +308,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
       
       post "/api/v1/lists/#{list.id}/share", params: share_params, headers: auth_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to have_key("email")
     end
@@ -446,7 +446,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
       
       post "/api/v1/lists", params: list_params, headers: auth_headers
       
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     it 'should handle special characters in list name' do
