@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe Api::V1::SavedLocationsController, type: :request do
   let(:user) { create(:user, email: "user_#{SecureRandom.hex(4)}@example.com") }
   let(:other_user) { create(:user, email: "other_#{SecureRandom.hex(4)}@example.com") }
-  
+
   let!(:location) do
     SavedLocation.create!(
       user: user,
@@ -14,7 +14,7 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
       address: "123 Main St, New York, NY"
     )
   end
-  
+
   let!(:other_location) do
     SavedLocation.create!(
       user: other_user,
@@ -25,17 +25,17 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
       address: "456 Oak Ave, Los Angeles, CA"
     )
   end
-  
+
   let(:user_headers) { auth_headers(user) }
   let(:other_user_headers) { auth_headers(other_user) }
 
   describe "GET /api/v1/saved_locations" do
     it "should get all saved locations for user" do
       get "/api/v1/saved_locations", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(location.id)
@@ -48,10 +48,10 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
 
     it "should not get locations from other users" do
       get "/api/v1/saved_locations", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(location.id)
@@ -60,34 +60,34 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
 
     it "should not get saved locations without authentication" do
       get "/api/v1/saved_locations"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
 
     it "should handle empty locations list" do
       new_user = create(:user, email: "new_user_#{SecureRandom.hex(4)}@example.com")
       new_user_headers = auth_headers(new_user)
-      
+
       get "/api/v1/saved_locations", headers: new_user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(0)
     end
 
     it "should include location details" do
       get "/api/v1/saved_locations", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
-      
+
       location_data = json.first
       expect(location_data).to have_key("id")
       expect(location_data).to have_key("name")
@@ -103,17 +103,17 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
   describe "GET /api/v1/saved_locations/:id" do
     it "should show location details" do
       get "/api/v1/saved_locations/#{location.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("name")
       expect(json).to have_key("latitude")
       expect(json).to have_key("longitude")
       expect(json).to have_key("radius_meters")
       expect(json).to have_key("address")
-      
+
       expect(json["id"]).to eq(location.id)
       expect(json["name"]).to eq("Home")
       expect(json["latitude"]).to eq(40.7128)
@@ -124,18 +124,18 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
 
     it "should not show location from other user" do
       get "/api/v1/saved_locations/#{other_location.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Saved location not found")
+      expect(json["error"]["message"]).to eq("Saved location not found")
     end
 
     it "should not show location without authentication" do
       get "/api/v1/saved_locations/#{location.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
   end
 
@@ -150,19 +150,19 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           address: "456 Broadway, New York, NY"
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("name")
       expect(json).to have_key("latitude")
       expect(json).to have_key("longitude")
       expect(json).to have_key("radius_meters")
       expect(json).to have_key("address")
-      
+
       expect(json["name"]).to eq("Office")
       expect(json["latitude"]).to eq(40.7589)
       expect(json["longitude"]).to eq(-73.9851)
@@ -180,17 +180,17 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 500
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("name")
       expect(json).to have_key("address")
       expect(json).to have_key("radius_meters")
-      
+
       expect(json["name"]).to eq("Central Park")
       expect(json["address"]).to eq("Central Park, New York, NY")
       expect(json["radius_meters"]).to eq(500)
@@ -206,9 +206,9 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to include("Latitude must be less than or equal to 90")
@@ -224,9 +224,9 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: -50
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to include("Radius meters must be greater than 0")
@@ -240,9 +240,9 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to include("Name can't be blank")
@@ -257,12 +257,12 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
 
     it "should handle location with only coordinates" do
@@ -274,18 +274,18 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("name")
       expect(json).to have_key("latitude")
       expect(json).to have_key("longitude")
       expect(json).to have_key("radius_meters")
-      
+
       expect(json["name"]).to eq("Coordinates Only")
       expect(json["latitude"]).to eq(40.7128)
       expect(json["longitude"]).to eq(-74.0060)
@@ -302,17 +302,17 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 200
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("name")
       expect(json).to have_key("address")
       expect(json).to have_key("radius_meters")
-      
+
       expect(json["name"]).to eq("Address Only")
       expect(json["address"]).to eq("Times Square, New York, NY")
       expect(json["radius_meters"]).to eq(200)
@@ -330,19 +330,19 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           address: "Updated Address, New York, NY"
         }
       }
-      
+
       patch "/api/v1/saved_locations/#{location.id}", params: update_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("name")
       expect(json).to have_key("latitude")
       expect(json).to have_key("longitude")
       expect(json).to have_key("radius_meters")
       expect(json).to have_key("address")
-      
+
       expect(json["name"]).to eq("Updated Home")
       expect(json["latitude"]).to eq(40.7589)
       expect(json["longitude"]).to eq(-73.9851)
@@ -359,12 +359,12 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 200
         }
       }
-      
+
       patch "/api/v1/saved_locations/#{other_location.id}", params: update_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Resource not found not found")
+      expect(json["error"]["message"]).to eq("Resource not found not found")
     end
 
     it "should not update location without authentication" do
@@ -376,12 +376,12 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 200
         }
       }
-      
+
       patch "/api/v1/saved_locations/#{location.id}", params: update_params
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
 
     it "should handle partial updates" do
@@ -390,15 +390,15 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           name: "Partially Updated"
         }
       }
-      
+
       patch "/api/v1/saved_locations/#{location.id}", params: update_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("name")
-      
+
       expect(json["name"]).to eq("Partially Updated")
       # Other fields should remain unchanged
       expect(json["latitude"]).to eq(40.7128)
@@ -413,9 +413,9 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: -50  # Invalid radius
         }
       }
-      
+
       patch "/api/v1/saved_locations/#{location.id}", params: update_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to include("Name can't be blank")
@@ -425,9 +425,9 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
   describe "DELETE /api/v1/saved_locations/:id" do
     it "should delete saved location" do
       delete "/api/v1/saved_locations/#{location.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       expect { SavedLocation.find(location.id) }.to raise_error(ActiveRecord::RecordNotFound)
     end
 
@@ -448,11 +448,11 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
         location_radius_meters: location.radius_meters,
         location_name: location.name
       )
-      
+
       delete "/api/v1/saved_locations/#{location.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       # Task should still exist
       task.reload
       expect(task.title).to eq("Task at Home")
@@ -464,11 +464,11 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
 
     it "should not delete location from other user" do
       delete "/api/v1/saved_locations/#{other_location.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Resource not found not found")
-      
+      expect(json["error"]["message"]).to eq("Resource not found not found")
+
       # Location should still exist
       other_location.reload
       expect(other_location.name).to eq("Other User's Home")
@@ -476,11 +476,11 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
 
     it "should not delete location without authentication" do
       delete "/api/v1/saved_locations/#{location.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
-      
+      expect(json["error"]["message"]).to eq("Authorization token required")
+
       # Location should still exist
       location.reload
       expect(location.name).to eq("Home")
@@ -489,16 +489,16 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
 
   describe "Edge cases" do
     it "should handle malformed JSON" do
-      patch "/api/v1/saved_locations/#{location.id}", 
+      patch "/api/v1/saved_locations/#{location.id}",
             params: "invalid json",
             headers: user_headers.merge("Content-Type" => "application/json")
-      
+
       expect(response).to have_http_status(:bad_request)
     end
 
     it "should handle empty request body" do
       patch "/api/v1/saved_locations/#{location.id}", params: {}, headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["id"]).to eq(location.id)
@@ -506,7 +506,7 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
 
     it "should handle very long location names" do
       long_name = "A" * 1000
-      
+
       location_params = {
         saved_location: {
           name: long_name,
@@ -515,9 +515,9 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to include("Name is too long (maximum is 255 characters)")
@@ -532,15 +532,15 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("name")
-      
+
       expect(json["name"]).to eq("Location with Special Chars: !@#$%^&*()")
     end
 
@@ -553,15 +553,15 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("name")
-      
+
       expect(json["name"]).to eq("Unicode Location: 🏠🏢🏪")
     end
 
@@ -574,15 +574,15 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 10000  # 10km radius (max allowed)
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("radius_meters")
-      
+
       expect(json["radius_meters"]).to eq(10000)
     end
 
@@ -595,15 +595,15 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 1  # 1 meter radius
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("radius_meters")
-      
+
       expect(json["radius_meters"]).to eq(1)
     end
 
@@ -617,16 +617,16 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("latitude")
       expect(json).to have_key("longitude")
-      
+
       expect(json["latitude"]).to eq(90.0)
       expect(json["longitude"]).to eq(0.0)
     end
@@ -641,16 +641,16 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("latitude")
       expect(json).to have_key("longitude")
-      
+
       expect(json["latitude"]).to eq(0.0)
       expect(json["longitude"]).to eq(180.0)
     end
@@ -667,11 +667,11 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
               radius_meters: 100
             }
           }
-          
+
           post "/api/v1/saved_locations", params: location_params, headers: user_headers
         end
       end
-      
+
       threads.each(&:join)
       # All should succeed with different coordinates
       expect(true).to be_truthy
@@ -687,11 +687,11 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
               radius_meters: 100 + i
             }
           }
-          
+
           patch "/api/v1/saved_locations/#{location.id}", params: update_params, headers: user_headers
         end
       end
-      
+
       threads.each(&:join)
       # All should succeed
       expect(true).to be_truthy
@@ -699,7 +699,7 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
 
     it "should handle location with very long address" do
       long_address = "A" * 2000
-      
+
       location_params = {
         saved_location: {
           name: "Long Address Location",
@@ -709,15 +709,15 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("address")
-      
+
       expect(json["address"]).to eq(long_address)
     end
 
@@ -731,17 +731,17 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           address: ""
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("name")
       expect(json).to have_key("latitude")
       expect(json).to have_key("longitude")
-      
+
       expect(json["name"]).to eq("No Address Location")
       expect(json["latitude"]).to eq(40.7128)
       expect(json["longitude"]).to eq(-74.0060)
@@ -757,17 +757,17 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           address: nil
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("name")
       expect(json).to have_key("latitude")
       expect(json).to have_key("longitude")
-      
+
       expect(json["name"]).to eq("Nil Address Location")
       expect(json["latitude"]).to eq(40.7128)
       expect(json["longitude"]).to eq(-74.0060)
@@ -782,16 +782,16 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("latitude")
       expect(json).to have_key("longitude")
-      
+
       expect(json["latitude"]).to eq(0.0)
       expect(json["longitude"]).to eq(0.0)
     end
@@ -805,16 +805,16 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
           radius_meters: 100
         }
       }
-      
+
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("latitude")
       expect(json).to have_key("longitude")
-      
+
       # Should handle precision correctly
       expect(json["latitude"]).to be_within(0.000001).of(40.712800123456789)
       expect(json["longitude"]).to be_within(0.000001).of(-74.006000987654321)

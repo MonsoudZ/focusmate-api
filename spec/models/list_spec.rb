@@ -52,7 +52,7 @@ RSpec.describe List, type: :model do
     it 'has many tasks' do
       task1 = create(:task, list: list, creator: user)
       task2 = create(:task, list: list, creator: user)
-      
+
       expect(list.tasks).to include(task1, task2)
       expect(list.tasks.count).to eq(2)
     end
@@ -60,28 +60,28 @@ RSpec.describe List, type: :model do
     it 'has many memberships' do
       other_user = create(:user, email: "member@example.com")
       membership = create(:membership, list: list, user: other_user, role: "editor")
-      
+
       expect(list.memberships).to include(membership)
     end
 
     it 'has many members through memberships' do
       other_user = create(:user, email: "member@example.com")
       create(:membership, list: list, user: other_user, role: "editor")
-      
+
       expect(list.members).to include(other_user)
     end
 
     it 'has many list_shares' do
       other_user = create(:user, email: "shared@example.com")
       list_share = create(:list_share, list: list, user: other_user)
-      
+
       expect(list.list_shares).to include(list_share)
     end
 
     it 'has many shared_users through list_shares' do
       other_user = create(:user, email: "shared@example.com")
       create(:list_share, list: list, user: other_user)
-      
+
       expect(list.shared_users).to include(other_user)
     end
   end
@@ -90,7 +90,7 @@ RSpec.describe List, type: :model do
     it 'checks if user can edit' do
       other_user = create(:user, email: "editor@example.com")
       create(:membership, list: list, user: other_user, role: "editor")
-      
+
       expect(list.can_edit?(user)).to be true # Owner
       expect(list.can_edit?(other_user)).to be true # Editor
     end
@@ -98,7 +98,7 @@ RSpec.describe List, type: :model do
     it 'checks if user can view' do
       other_user = create(:user, email: "viewer@example.com")
       create(:membership, list: list, user: other_user, role: "viewer")
-      
+
       expect(list.can_view?(user)).to be true # Owner
       expect(list.can_view?(other_user)).to be true # Viewer
     end
@@ -106,7 +106,7 @@ RSpec.describe List, type: :model do
     it 'checks if user can add items' do
       other_user = create(:user, email: "editor@example.com")
       create(:membership, list: list, user: other_user, role: "editor")
-      
+
       expect(list.can_add_items_by?(user)).to be true # Owner
       expect(list.can_add_items_by?(other_user)).to be true # Editor
     end
@@ -114,7 +114,7 @@ RSpec.describe List, type: :model do
     it 'checks if user can delete items' do
       other_user = create(:user, email: "editor@example.com")
       create(:membership, list: list, user: other_user, role: "editor")
-      
+
       expect(list.can_delete_items_by?(user)).to be true # Owner
       expect(list.can_delete_items_by?(other_user)).to be true # Editor
     end
@@ -122,7 +122,7 @@ RSpec.describe List, type: :model do
     it 'checks if list is editable by user' do
       other_user = create(:user, email: "editor@example.com")
       create(:membership, list: list, user: other_user, role: "editor")
-      
+
       expect(list.editable_by?(user)).to be true # Owner
       expect(list.editable_by?(other_user)).to be true # Editor
     end
@@ -130,7 +130,7 @@ RSpec.describe List, type: :model do
     it 'checks if list is accessible by user' do
       other_user = create(:user, email: "viewer@example.com")
       create(:membership, list: list, user: other_user, role: "viewer")
-      
+
       expect(list.accessible_by?(user)).to be true # Owner
       expect(list.accessible_by?(other_user)).to be true # Viewer
     end
@@ -138,7 +138,7 @@ RSpec.describe List, type: :model do
     it 'returns role for user' do
       other_user = create(:user, email: "editor@example.com")
       create(:membership, list: list, user: other_user, role: "editor")
-      
+
       expect(list.role_for(user)).to eq("owner")
       expect(list.role_for(other_user)).to eq("editor")
     end
@@ -153,7 +153,7 @@ RSpec.describe List, type: :model do
       client = create(:user, role: "client")
       create(:coaching_relationship, coach: coach, client: client, status: :active)
       create(:membership, list: list, user: coach, role: "editor")
-      
+
       expect(list.coach?(coach)).to be true
       expect(list.coach?(client)).to be false
     end
@@ -166,7 +166,7 @@ RSpec.describe List, type: :model do
         can_add_items: true,
         can_delete_items: false
       })
-      
+
       list_share = list.list_shares.find_by(user: other_user)
       expect(list_share).to be_present
       expect(list_share.can_view).to be true
@@ -178,7 +178,7 @@ RSpec.describe List, type: :model do
     it 'unshares list with user' do
       other_user = create(:user, email: "shared@example.com")
       create(:list_share, list: list, user: other_user)
-      
+
       list.unshare_with!(other_user)
       expect(list.list_shares.find_by(user: other_user)).to be_nil
     end
@@ -186,7 +186,7 @@ RSpec.describe List, type: :model do
     it 'checks if list is shared with user' do
       other_user = create(:user, email: "shared@example.com")
       create(:list_share, list: list, user: other_user)
-      
+
       expect(list.shared_with?(other_user)).to be true
     end
 
@@ -195,21 +195,21 @@ RSpec.describe List, type: :model do
       other_user2 = create(:user, email: "shared2@example.com")
       create(:list_share, list: list, user: other_user1)
       create(:list_share, list: list, user: other_user2)
-      
+
       expect(list.shared_users).to include(other_user1, other_user2)
     end
 
     it 'returns members' do
       other_user = create(:user, email: "member@example.com")
       create(:membership, list: list, user: other_user, role: "editor")
-      
+
       expect(list.members).to include(other_user)
     end
 
     it 'adds member to list' do
       other_user = create(:user, email: "member@example.com")
       membership = list.add_member!(other_user, "editor")
-      
+
       expect(membership).to be_persisted
       expect(membership.role).to eq("editor")
       expect(list.members).to include(other_user)
@@ -218,7 +218,7 @@ RSpec.describe List, type: :model do
     it 'removes member from list' do
       other_user = create(:user, email: "member@example.com")
       create(:membership, list: list, user: other_user, role: "editor")
-      
+
       list.remove_member!(other_user)
       expect(list.members).not_to include(other_user)
     end
@@ -226,28 +226,28 @@ RSpec.describe List, type: :model do
     it 'checks if user is member' do
       other_user = create(:user, email: "member@example.com")
       create(:membership, list: list, user: other_user, role: "editor")
-      
+
       expect(list.member?(other_user)).to be true
     end
 
     it 'returns task count' do
       create(:task, list: list, creator: user)
       create(:task, list: list, creator: user)
-      
+
       expect(list.task_count).to eq(2)
     end
 
     it 'returns completed task count' do
       create(:task, list: list, creator: user, status: :done)
       create(:task, list: list, creator: user, status: :pending)
-      
+
       expect(list.completed_task_count).to eq(1)
     end
 
     it 'returns completion rate' do
       create(:task, list: list, creator: user, status: :done)
       create(:task, list: list, creator: user, status: :pending)
-      
+
       expect(list.completion_rate).to eq(50.0)
     end
 
@@ -258,7 +258,7 @@ RSpec.describe List, type: :model do
     it 'returns overdue task count' do
       create(:task, list: list, creator: user, due_at: 1.hour.ago, status: :pending)
       create(:task, list: list, creator: user, due_at: 1.hour.from_now, status: :pending)
-      
+
       expect(list.overdue_task_count).to eq(1)
     end
 
@@ -270,7 +270,7 @@ RSpec.describe List, type: :model do
     it 'returns summary' do
       create(:task, list: list, creator: user, status: :done)
       create(:task, list: list, creator: user, status: :pending)
-      
+
       summary = list.summary
       expect(summary).to include(:id, :name, :description, :task_count, :completed_task_count, :completion_rate)
     end
@@ -280,7 +280,7 @@ RSpec.describe List, type: :model do
     it 'has public scope' do
       public_list = create(:list, owner: user, visibility: "public")
       private_list = create(:list, owner: user, visibility: "private")
-      
+
       expect(List.public).to include(public_list)
       expect(List.public).not_to include(private_list)
     end
@@ -288,7 +288,7 @@ RSpec.describe List, type: :model do
     it 'has private scope' do
       public_list = create(:list, owner: user, visibility: "public")
       private_list = create(:list, owner: user, visibility: "private")
-      
+
       expect(List.private).to include(private_list)
       expect(List.private).not_to include(public_list)
     end
@@ -296,7 +296,7 @@ RSpec.describe List, type: :model do
     it 'has shared scope' do
       shared_list = create(:list, owner: user, visibility: "shared")
       private_list = create(:list, owner: user, visibility: "private")
-      
+
       expect(List.shared).to include(shared_list)
       expect(List.shared).not_to include(private_list)
     end
@@ -358,7 +358,7 @@ RSpec.describe List, type: :model do
 
     it 'allows editor full access' do
       create(:membership, list: list, user: other_user, role: "editor")
-      
+
       expect(list.can_view?(other_user)).to be true
       expect(list.can_edit?(other_user)).to be true
       expect(list.can_add_items_by?(other_user)).to be true
@@ -367,7 +367,7 @@ RSpec.describe List, type: :model do
 
     it 'allows viewer read-only access' do
       create(:membership, list: list, user: other_user, role: "viewer")
-      
+
       expect(list.can_view?(other_user)).to be true
       expect(list.can_edit?(other_user)).to be false
       expect(list.can_add_items_by?(other_user)).to be false
@@ -384,7 +384,7 @@ RSpec.describe List, type: :model do
     it 'handles coaching relationships' do
       create(:coaching_relationship, coach: coach, client: client, status: :active)
       create(:membership, list: list, user: coach, role: "editor")
-      
+
       expect(list.coach?(coach)).to be true
       expect(list.coach?(client)).to be false
     end
@@ -395,7 +395,7 @@ RSpec.describe List, type: :model do
       create(:task, list: list, creator: user, status: :done, created_at: 1.day.ago)
       create(:task, list: list, creator: user, status: :pending, created_at: 1.hour.ago)
       create(:task, list: list, creator: user, status: :pending, due_at: 1.hour.ago)
-      
+
       stats = list.statistics
       expect(stats[:total_tasks]).to eq(3)
       expect(stats[:completed_tasks]).to eq(1)

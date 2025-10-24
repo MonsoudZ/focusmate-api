@@ -10,7 +10,6 @@ module Api
 
       # GET /api/v1/lists/:list_id/tasks
       def index
-        
         # Use Pundit policy to filter tasks visible to current user
         @tasks = policy_scope(@list.tasks)
                       .where(parent_task_id: nil) # Don't include subtasks at top level
@@ -55,7 +54,7 @@ module Api
       def all_tasks
         # Get all lists accessible by the current user
         accessible_lists = policy_scope(List)
-        
+
         # Get all tasks from accessible lists with comprehensive eager loading
         @tasks = Task.joins(:list)
                     .where(lists: { id: accessible_lists.select(:id) })
@@ -70,11 +69,11 @@ module Api
 
         if params[:status].present?
           case params[:status]
-          when 'pending'
+          when "pending"
             @tasks = @tasks.where(status: :pending)
-          when 'completed', 'done'
+          when "completed", "done"
             @tasks = @tasks.where(status: :done)
-          when 'overdue'
+          when "overdue"
             @tasks = @tasks.overdue
           end
         end
@@ -128,7 +127,7 @@ module Api
           # Debug logging for iOS app issues
           Rails.logger.info "Task creation request - Raw params: #{params.inspect}"
           Rails.logger.info "Task creation request - Parsed task_params: #{task_params.inspect}"
-          
+
           unless @list.can_add_items_by?(current_user)
             # Try to find a list the user can add items to
             fallback_list = current_user.owned_lists.first
@@ -325,7 +324,7 @@ module Api
 
         due_time = parse_iso(params[:due_at])
         if Task.validators_on(:due_at).any? { |v| v.kind == :presence } && due_time.nil?
-          return render json: { errors: { due_at: ["is invalid or missing"] } }, status: :unprocessable_content
+          return render json: { errors: { due_at: [ "is invalid or missing" ] } }, status: :unprocessable_content
         end
 
         sub_attrs = {
@@ -429,7 +428,7 @@ module Api
             # Check if user has access to this list
             unless @list.can_view?(current_user)
               render json: { error: "Forbidden" }, status: :forbidden
-              return
+              nil
             end
           rescue ActiveRecord::RecordNotFound => e
             Rails.logger.warn "List access denied: User #{current_user.id} tried to access list #{list_id}"

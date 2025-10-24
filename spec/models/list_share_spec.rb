@@ -135,7 +135,7 @@ RSpec.describe ListShare, type: :model do
     it 'should link user when they accept invitation' do
       user = create(:user, email: 'test@example.com')
       share = create(:list_share, list: list, email: 'test@example.com')
-      
+
       share.accept!(user)
       expect(share.user).to eq(user)
       expect(share.status).to eq('accepted')
@@ -155,7 +155,7 @@ RSpec.describe ListShare, type: :model do
     it 'should change to accepted on acceptance' do
       share = create(:list_share, list: list, user: user, status: 'pending')
       share.accept!(user)
-      
+
       expect(share.status).to eq('accepted')
       expect(share.accepted_at).to be_present
     end
@@ -163,14 +163,14 @@ RSpec.describe ListShare, type: :model do
     it 'should record accepted_at timestamp' do
       share = create(:list_share, list: list, user: user, status: 'pending')
       share.accept!(user)
-      
+
       expect(share.accepted_at).to be_present
     end
 
     it 'should decline invitation' do
       share = create(:list_share, list: list, user: user, status: 'pending')
       share.decline!
-      
+
       expect(share.status).to eq('declined')
     end
 
@@ -207,7 +207,7 @@ RSpec.describe ListShare, type: :model do
         can_add_items: true,
         can_delete_items: false
       })
-      
+
       expect(share.can_edit).to be true
       expect(share.can_add_items).to be true
       expect(share.can_delete_items).to be false
@@ -218,7 +218,7 @@ RSpec.describe ListShare, type: :model do
         can_edit: true,
         can_add_items: true
       })
-      
+
       # The permissions are stored in the individual boolean fields, not in the JSONB field
       expect(share.can_edit).to be true
       expect(share.can_add_items).to be true
@@ -226,7 +226,7 @@ RSpec.describe ListShare, type: :model do
 
     it 'should check if user has specific permission' do
       share.update!(can_edit: true, can_add_items: true)
-      
+
       expect(share.has_permission?('edit')).to be true
       expect(share.has_permission?('add_items')).to be true
       expect(share.has_permission?('delete_items')).to be false
@@ -235,7 +235,7 @@ RSpec.describe ListShare, type: :model do
     it 'should get all permissions as hash' do
       share.update!(can_edit: true, can_add_items: true)
       permissions = share.permissions_hash
-      
+
       expect(permissions).to include(
         can_view: true,
         can_edit: true,
@@ -247,7 +247,7 @@ RSpec.describe ListShare, type: :model do
 
     it 'should check if share allows specific action' do
       share.update!(can_edit: true, can_add_items: true)
-      
+
       expect(share.allows_action?('edit')).to be true
       expect(share.allows_action?('create')).to be true
       expect(share.allows_action?('destroy')).to be false
@@ -268,7 +268,7 @@ RSpec.describe ListShare, type: :model do
 
     it 'editor role should allow can_edit and can_add_items' do
       share = create(:list_share, list: list, user: user, role: 'editor')
-      
+
       expect(share.can_create_tasks?).to be true
       expect(share.can_edit_tasks?).to be true
       expect(share.can_delete_tasks?).to be false
@@ -276,7 +276,7 @@ RSpec.describe ListShare, type: :model do
 
     it 'admin role should allow all permissions' do
       share = create(:list_share, list: list, user: user, role: 'admin')
-      
+
       expect(share.can_create_tasks?).to be true
       expect(share.can_edit_tasks?).to be true
       expect(share.can_delete_tasks?).to be true
@@ -285,7 +285,7 @@ RSpec.describe ListShare, type: :model do
 
     it 'viewer role should have limited permissions' do
       share = create(:list_share, list: list, user: user, role: 'viewer')
-      
+
       expect(share.can_view_tasks?).to be true
       expect(share.can_create_tasks?).to be false
       expect(share.can_edit_tasks?).to be false
@@ -306,7 +306,7 @@ RSpec.describe ListShare, type: :model do
     it 'should scope with permission' do
       create(:list_share, list: list, user: user1, can_edit: true)
       create(:list_share, list: list, user: user2, can_edit: false)
-      
+
       editable_shares = ListShare.with_permission(:can_edit)
       expect(editable_shares).to include(ListShare.find_by(user: user1))
       expect(editable_shares).not_to include(ListShare.find_by(user: user2))
@@ -315,7 +315,7 @@ RSpec.describe ListShare, type: :model do
     it 'should scope for user' do
       create(:list_share, list: list, user: user1)
       create(:list_share, list: list, user: user2)
-      
+
       user_shares = ListShare.for_user(user1)
       expect(user_shares).to include(ListShare.find_by(user: user1))
       expect(user_shares).not_to include(ListShare.find_by(user: user2))
@@ -325,7 +325,7 @@ RSpec.describe ListShare, type: :model do
       other_list = create(:list)
       create(:list_share, list: list, user: user1)
       create(:list_share, list: other_list, user: user1)
-      
+
       list_shares = ListShare.for_list(list)
       expect(list_shares).to include(ListShare.find_by(list: list))
       expect(list_shares).not_to include(ListShare.find_by(list: other_list))
@@ -338,7 +338,7 @@ RSpec.describe ListShare, type: :model do
 
     it 'should prepare status and links on create' do
       share = create(:list_share, list: list, email: user.email)
-      
+
       expect(share.user).to eq(user)
       expect(share.status).to eq('accepted')
       expect(share.accepted_at).to be_present
@@ -348,7 +348,7 @@ RSpec.describe ListShare, type: :model do
       # The callback automatically links users if they exist
       # For truly non-existent emails, the user should be nil
       share = create(:list_share, list: list, email: 'nonexistent@example.com')
-      
+
       expect(share.status).to eq('pending')
       expect(share.invitation_token).to be_present
       # The callback might still link a user if one exists with that email
@@ -422,7 +422,7 @@ RSpec.describe ListShare, type: :model do
     it 'should handle permission updates with invalid keys' do
       share = create(:list_share, list: list)
       share.update_permissions({ invalid_key: true })
-      
+
       expect(share.can_view).to be true
       expect(share.can_edit).to be false
     end

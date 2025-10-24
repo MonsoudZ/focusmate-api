@@ -24,7 +24,7 @@ module Api
       def client_dashboard
         # Cache dashboard data for 5 minutes
         cache_key = "client_dashboard_#{current_user.id}_#{current_user.updated_at.to_i}"
-        
+
         Rails.cache.fetch(cache_key, expires_in: ConfigurationHelper.cache_expiry) do
           {
             blocking_tasks_count: current_user.owned_lists.joins(tasks: :escalation)
@@ -42,7 +42,7 @@ module Api
       def coach_dashboard
         # Cache dashboard data for 5 minutes
         cache_key = "coach_dashboard_#{current_user.id}_#{current_user.updated_at.to_i}"
-        
+
         Rails.cache.fetch(cache_key, expires_in: ConfigurationHelper.cache_expiry) do
           {
             clients_count: current_user.clients.count,
@@ -183,15 +183,15 @@ module Api
         client_ids = clients.pluck(:id)
         task_stats = Task.joins(:list)
                          .where(lists: { user_id: client_ids })
-                         .group('lists.user_id')
-                         .select('lists.user_id, COUNT(*) as total_tasks, SUM(CASE WHEN tasks.status = 1 THEN 1 ELSE 0 END) as completed_tasks')
+                         .group("lists.user_id")
+                         .select("lists.user_id, COUNT(*) as total_tasks, SUM(CASE WHEN tasks.status = 1 THEN 1 ELSE 0 END) as completed_tasks")
 
         stats_by_client = task_stats.index_by(&:user_id)
-        
+
         total_completion_rate = clients.sum do |client|
           stats = stats_by_client[client.id]
           next 0 unless stats && stats.total_tasks.to_i > 0
-          
+
           (stats.completed_tasks.to_f / stats.total_tasks.to_i * 100).round(1)
         end
 
@@ -202,21 +202,21 @@ module Api
         # Optimize with single query instead of N+1
         clients = current_user.clients
         client_ids = clients.pluck(:id)
-        
+
         # Single query to get all task statistics
         task_stats = Task.joins(:list)
                          .where(lists: { user_id: client_ids })
-                         .group('lists.user_id')
-                         .select('lists.user_id, 
+                         .group("lists.user_id")
+                         .select('lists.user_id,
                                   COUNT(*) as total_tasks,
                                   SUM(CASE WHEN tasks.status = 1 THEN 1 ELSE 0 END) as completed_tasks,
                                   SUM(CASE WHEN tasks.status = 0 AND tasks.due_at < NOW() THEN 1 ELSE 0 END) as overdue_tasks')
 
         stats_by_client = task_stats.index_by(&:user_id)
-        
+
         clients.map do |client|
           stats = stats_by_client[client.id]
-          
+
           {
             client_id: client.id,
             client_name: client.name,

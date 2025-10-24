@@ -253,12 +253,12 @@ class User < ApplicationRecord
     # Validate coordinates
     raise ArgumentError, "Invalid latitude: #{latitude}" if latitude < -90 || latitude > 90
     raise ArgumentError, "Invalid longitude: #{longitude}" if longitude < -180 || longitude > 180
-    
+
     # Update current location attributes
     self.current_latitude = latitude
     self.current_longitude = longitude
     save!
-    
+
     # Track in location history
     update_location!(latitude, longitude)
   end
@@ -266,14 +266,14 @@ class User < ApplicationRecord
   # Calculate distance to a saved location
   def distance_to_saved_location(saved_location)
     return nil unless current_location && saved_location
-    
+
     current_location.distance_to(saved_location.latitude, saved_location.longitude)
   end
 
   # Check if user is at a saved location
   def at_saved_location?(saved_location)
     return false unless current_location && saved_location
-    
+
     distance = distance_to_saved_location(saved_location)
     distance && distance <= saved_location.radius_meters
   end
@@ -282,13 +282,13 @@ class User < ApplicationRecord
 
   def valid_timezone
     return if timezone.blank?
-    
+
     begin
       Time.zone = timezone
       # If we can set the timezone, it's valid
       Time.zone
     rescue ArgumentError
-      errors.add(:timezone, 'is not a valid timezone')
+      errors.add(:timezone, "is not a valid timezone")
     end
   end
 

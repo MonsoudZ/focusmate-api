@@ -12,7 +12,7 @@ class AddFieldsToItemVisibilityRestrictions < ActiveRecord::Migration[8.0]
 
     # Helpful indexes
     add_index :item_visibility_restrictions, :deleted_at
-    add_index :item_visibility_restrictions, [:task_id, :coaching_relationship_id],
+    add_index :item_visibility_restrictions, [ :task_id, :coaching_relationship_id ],
               unique: true,
               name: "index_item_vis_restrictions_on_task_and_coaching_rel"
     # Optionally, if you want to allow dupes after soft delete, you can replace the

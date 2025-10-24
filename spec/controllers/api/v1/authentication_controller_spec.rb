@@ -247,5 +247,4 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
       # expect(response).to have_http_status(:unauthorized)
     end
   end
-
 end

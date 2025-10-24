@@ -58,9 +58,9 @@ RSpec.describe DailySummary, type: :model do
 
     it 'validates unique summary_date per coaching_relationship' do
       daily_summary.save!
-      
-      duplicate_summary = build(:daily_summary, 
-                                coaching_relationship: coaching_relationship, 
+
+      duplicate_summary = build(:daily_summary,
+                                coaching_relationship: coaching_relationship,
                                 summary_date: daily_summary.summary_date)
       expect(duplicate_summary).not_to be_valid
       expect(duplicate_summary.errors[:summary_date]).to include("has already been taken")
@@ -70,10 +70,10 @@ RSpec.describe DailySummary, type: :model do
       other_coach = create(:user, role: "coach")
       other_client = create(:user, role: "client")
       other_relationship = create(:coaching_relationship, coach: other_coach, client: other_client, invited_by: other_coach, status: :active)
-      
+
       daily_summary.save!
-      other_summary = build(:daily_summary, 
-                           coaching_relationship: other_relationship, 
+      other_summary = build(:daily_summary,
+                           coaching_relationship: other_relationship,
                            summary_date: daily_summary.summary_date)
       expect(other_summary).to be_valid
     end
@@ -105,7 +105,7 @@ RSpec.describe DailySummary, type: :model do
     it 'has for_date scope' do
       summary1 = create(:daily_summary, coaching_relationship: coaching_relationship, summary_date: Date.current)
       summary2 = create(:daily_summary, coaching_relationship: coaching_relationship, summary_date: 1.day.ago)
-      
+
       expect(DailySummary.for_date(Date.current)).to include(summary1)
       expect(DailySummary.for_date(Date.current)).not_to include(summary2)
     end
@@ -114,10 +114,10 @@ RSpec.describe DailySummary, type: :model do
       other_coach = create(:user, role: "coach")
       other_client = create(:user, role: "client")
       other_relationship = create(:coaching_relationship, coach: other_coach, client: other_client, invited_by: other_coach, status: :active)
-      
+
       summary1 = create(:daily_summary, coaching_relationship: coaching_relationship)
       summary2 = create(:daily_summary, coaching_relationship: other_relationship)
-      
+
       expect(DailySummary.for_coaching_relationship(coaching_relationship)).to include(summary1)
       expect(DailySummary.for_coaching_relationship(coaching_relationship)).not_to include(summary2)
     end
@@ -125,7 +125,7 @@ RSpec.describe DailySummary, type: :model do
     it 'has recent scope' do
       recent_summary = create(:daily_summary, coaching_relationship: coaching_relationship, summary_date: Date.current)
       old_summary = create(:daily_summary, coaching_relationship: coaching_relationship, summary_date: 1.week.ago)
-      
+
       expect(DailySummary.recent).to include(recent_summary)
       expect(DailySummary.recent).not_to include(old_summary)
     end
@@ -133,7 +133,7 @@ RSpec.describe DailySummary, type: :model do
     it 'has with_tasks scope' do
       summary_with_tasks = create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 5, summary_date: Date.current)
       summary_without_tasks = create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 0, tasks_missed: 0, tasks_overdue: 0, summary_date: Date.current - 1.day)
-      
+
       expect(DailySummary.with_tasks).to include(summary_with_tasks)
       expect(DailySummary.with_tasks).not_to include(summary_without_tasks)
     end
@@ -162,7 +162,7 @@ RSpec.describe DailySummary, type: :model do
       daily_summary.tasks_completed = 5
       daily_summary.tasks_missed = 2
       expect(daily_summary.positive?).to be true
-      
+
       daily_summary.tasks_completed = 1
       daily_summary.tasks_missed = 5
       expect(daily_summary.positive?).to be false
@@ -172,7 +172,7 @@ RSpec.describe DailySummary, type: :model do
       daily_summary.tasks_completed = 1
       daily_summary.tasks_missed = 5
       expect(daily_summary.negative?).to be true
-      
+
       daily_summary.tasks_completed = 5
       daily_summary.tasks_missed = 2
       expect(daily_summary.negative?).to be false
@@ -187,7 +187,7 @@ RSpec.describe DailySummary, type: :model do
       daily_summary.tasks_completed = 5
       daily_summary.tasks_missed = 2
       daily_summary.tasks_overdue = 1
-      
+
       description = daily_summary.description
       expect(description).to include("5 completed")
       expect(description).to include("2 missed")
@@ -196,7 +196,7 @@ RSpec.describe DailySummary, type: :model do
 
     it 'returns summary details' do
       daily_summary.summary_data = { "notes" => "Good progress", "mood" => "positive" }
-      
+
       details = daily_summary.details
       expect(details).to include(:id, :summary_date, :tasks_completed, :tasks_missed, :tasks_overdue, :completion_rate, :summary_data)
     end
@@ -209,7 +209,7 @@ RSpec.describe DailySummary, type: :model do
     it 'checks if summary is recent' do
       daily_summary.summary_date = Date.current
       expect(daily_summary.recent?).to be true
-      
+
       daily_summary.summary_date = 1.week.ago.to_date
       expect(daily_summary.recent?).to be false
     end
@@ -219,12 +219,12 @@ RSpec.describe DailySummary, type: :model do
       daily_summary.tasks_missed = 1
       daily_summary.tasks_overdue = 1
       expect(daily_summary.priority).to eq("high")
-      
+
       daily_summary.tasks_completed = 3
       daily_summary.tasks_missed = 3
       daily_summary.tasks_overdue = 0
       expect(daily_summary.priority).to eq("medium")
-      
+
       daily_summary.tasks_completed = 1
       daily_summary.tasks_missed = 5
       daily_summary.tasks_overdue = 0
@@ -236,7 +236,7 @@ RSpec.describe DailySummary, type: :model do
       daily_summary.tasks_missed = 2
       daily_summary.tasks_overdue = 1
       daily_summary.summary_data = { "notes" => "Good day" }
-      
+
       report = daily_summary.generate_report
       expect(report).to include(:date, :completion_rate, :tasks_completed, :tasks_missed, :tasks_overdue, :notes)
     end
@@ -248,7 +248,7 @@ RSpec.describe DailySummary, type: :model do
       daily_summary.tasks_missed = nil
       daily_summary.tasks_overdue = nil
       daily_summary.valid?
-      
+
       expect(daily_summary.tasks_completed).to eq(0)
       expect(daily_summary.tasks_missed).to eq(0)
       expect(daily_summary.tasks_overdue).to eq(0)
@@ -295,7 +295,7 @@ RSpec.describe DailySummary, type: :model do
     it 'calculates coaching relationship statistics' do
       create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 5, tasks_missed: 2, summary_date: Date.current)
       create(:daily_summary, coaching_relationship: coaching_relationship, tasks_completed: 3, tasks_missed: 1, summary_date: Date.current - 1.day)
-      
+
       stats = DailySummary.statistics_for_coaching_relationship(coaching_relationship)
       expect(stats[:total_summaries]).to eq(2)
       expect(stats[:total_tasks_completed]).to eq(8)

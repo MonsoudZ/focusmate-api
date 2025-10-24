@@ -47,11 +47,11 @@ class Task < ApplicationRecord
   validates :title, presence: true, length: { maximum: 255 }
   validates :note, length: { maximum: 1000 }
   validates :due_at, presence: true
-  validates :strict_mode, inclusion: { in: [true, false] }
+  validates :strict_mode, inclusion: { in: [ true, false ] }
   validates :notification_interval_minutes, numericality: { greater_than: 0 }
   validates :recurrence_pattern, inclusion: { in: %w[daily weekly monthly yearly] }, allow_nil: true
   validates :recurrence_interval, numericality: { greater_than: 0 }, allow_nil: true
-  
+
   validate :recurrence_interval_not_blank
   validate :recurrence_time_format
   validates :location_radius_meters, numericality: { greater_than: 0 }, allow_nil: true
@@ -74,7 +74,7 @@ class Task < ApplicationRecord
   scope :not_deleted,   -> { where(deleted_at: nil) }
   scope :deleted,       -> { where.not(deleted_at: nil) }
   scope :with_deleted,  -> { unscoped }
-  scope :modified_since,->(ts) { where("tasks.updated_at > ? OR tasks.deleted_at > ?", ts, ts) }
+  scope :modified_since, ->(ts) { where("tasks.updated_at > ? OR tasks.deleted_at > ?", ts, ts) }
   scope :due_soon,      -> { where("due_at <= ?", 1.day.from_now) }
   scope :overdue,       -> { pending.where("due_at < ?", Time.current) }
   scope :awaiting_explanation, -> { where(requires_explanation_if_missed: true, status: :pending).where("due_at < ?", Time.current) }
@@ -83,7 +83,7 @@ class Task < ApplicationRecord
   scope :coaching_only_tasks, -> { where(visibility: :coaching_only) }
   scope :visible_to_user, ->(user) {
     if user.coach?
-      where(visibility: [:visible_to_all, :coaching_only])
+      where(visibility: [ :visible_to_all, :coaching_only ])
     else
       where(visibility: :visible_to_all)
     end
@@ -101,7 +101,7 @@ class Task < ApplicationRecord
     # Get database templates (recurring tasks without template_id OR is_template = true)
     where("(is_recurring = true AND recurring_template_id IS NULL) OR is_template = true")
   end
-  
+
   def self.instances
     # Get database instances (tasks with recurring_template_id OR is_template = false)
     where("recurring_template_id IS NOT NULL OR is_template = false")
@@ -252,7 +252,7 @@ class Task < ApplicationRecord
 
   def coordinates
     return nil unless location_based?
-    [location_latitude, location_longitude]
+    [ location_latitude, location_longitude ]
   end
 
   def distance_to_user(user)
@@ -280,7 +280,7 @@ class Task < ApplicationRecord
 
     # First check if user has access to the list
     return false unless list.accessible_by?(user)
-    
+
     case visibility
     when "visible_to_all"      then true
     when "private_task"        then (creator == user || list.owner == user)
@@ -373,7 +373,7 @@ class Task < ApplicationRecord
 
   def recurrence_time_format
     return unless recurrence_time.present?
-    
+
     # Check if it's a valid time format (HH:MM)
     time_str = recurrence_time.is_a?(Time) ? recurrence_time.strftime("%H:%M") : recurrence_time.to_s
     unless time_str.match?(/\A([01]?[0-9]|2[0-3]):[0-5][0-9]\z/)
@@ -383,16 +383,16 @@ class Task < ApplicationRecord
 
   def create_status_change_event
     kind = case status
-           when "done"    then :completed
-           when "pending" then :created
-           else :created
-           end
+    when "done"    then :completed
+    when "pending" then :created
+    else :created
+    end
     create_task_event(kind: kind)
   end
 
   def check_parent_completion
     return unless parent_task && parent_task.subtasks.pending.empty?
-    parent_task.update!(status: :done) if parent_task.status == 'pending'
+    parent_task.update!(status: :done) if parent_task.status == "pending"
   end
 
   # == Validation helpers
@@ -400,19 +400,19 @@ class Task < ApplicationRecord
     return unless new_record?
     return unless due_at.present?
     return if Rails.env.test?
-    errors.add(:due_at, 'cannot be in the past') if due_at < Time.current
+    errors.add(:due_at, "cannot be in the past") if due_at < Time.current
   end
 
   def prevent_circular_subtask_relationship
     return unless parent_task_id.present?
     if parent_task_id == id
-      errors.add(:parent_task, 'cannot be self')
+      errors.add(:parent_task, "cannot be self")
       return
     end
     current = parent_task
     while current
       if current.id == id
-        errors.add(:parent_task, 'would create a circular relationship')
+        errors.add(:parent_task, "would create a circular relationship")
         break
       end
       current = current.parent_task
@@ -421,7 +421,7 @@ class Task < ApplicationRecord
 
   # relaxed per spec (do not block)
   def subtask_due_date_not_after_parent
-    return unless parent_task_id.present? && parent_task && due_at && parent_task.due_at
+    nil unless parent_task_id.present? && parent_task && due_at && parent_task.due_at
     # no-op on purpose to satisfy spec
   end
 
@@ -497,5 +497,4 @@ class Task < ApplicationRecord
     c = 2 * Math.asin(Math.sqrt(a))
     6_371_000 * c
   end
-
 end

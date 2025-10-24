@@ -20,7 +20,7 @@ module Api
         # Debug logging
         Rails.logger.info "Device registration params: #{params.inspect}"
         Rails.logger.info "APNS token value: '#{params[:apns_token]}' (blank?: #{params[:apns_token].blank?})"
-        
+
         # Handle both nested and direct parameter formats
         device_attributes = if params[:device].present?
           device_params

@@ -40,7 +40,7 @@ RSpec.describe SavedLocation, type: :model do
       saved_location.latitude = 91
       expect(saved_location).not_to be_valid
       expect(saved_location.errors[:latitude]).to include("must be less than or equal to 90")
-      
+
       saved_location.latitude = -91
       expect(saved_location).not_to be_valid
       expect(saved_location.errors[:latitude]).to include("must be greater than or equal to -90")
@@ -50,7 +50,7 @@ RSpec.describe SavedLocation, type: :model do
       saved_location.longitude = 181
       expect(saved_location).not_to be_valid
       expect(saved_location.errors[:longitude]).to include("must be less than or equal to 180")
-      
+
       saved_location.longitude = -181
       expect(saved_location).not_to be_valid
       expect(saved_location.errors[:longitude]).to include("must be greater than or equal to -180")
@@ -60,7 +60,7 @@ RSpec.describe SavedLocation, type: :model do
       saved_location.radius_meters = 0
       expect(saved_location).not_to be_valid
       expect(saved_location.errors[:radius_meters]).to include("must be greater than 0")
-      
+
       saved_location.radius_meters = 10001
       expect(saved_location).not_to be_valid
       expect(saved_location.errors[:radius_meters]).to include("must be less than or equal to 10000")
@@ -90,7 +90,7 @@ RSpec.describe SavedLocation, type: :model do
       other_user = create(:user)
       user_location = create(:saved_location, user: user)
       other_location = create(:saved_location, user: other_user)
-      
+
       expect(SavedLocation.for_user(user)).to include(user_location)
       expect(SavedLocation.for_user(user)).not_to include(other_location)
     end
@@ -98,7 +98,7 @@ RSpec.describe SavedLocation, type: :model do
     it 'has nearby scope' do
       location1 = create(:saved_location, user: user, latitude: 40.7128, longitude: -74.0060)
       location2 = create(:saved_location, user: user, latitude: 40.8000, longitude: -74.0000)
-      
+
       nearby = SavedLocation.nearby(40.7128, -74.0060, 1000)
       expect(nearby).to include(location1)
       expect(nearby).not_to include(location2)
@@ -107,13 +107,13 @@ RSpec.describe SavedLocation, type: :model do
 
   describe 'methods' do
     it 'returns coordinates as array' do
-      expect(saved_location.coordinates).to eq([40.7128, -74.0060])
+      expect(saved_location.coordinates).to eq([ 40.7128, -74.0060 ])
     end
 
     it 'checks if point is within radius' do
       # Point within radius
       expect(saved_location.contains?(40.7128, -74.0060)).to be true
-      
+
       # Point outside radius
       expect(saved_location.contains?(40.8000, -74.0000)).to be false
     end
@@ -137,7 +137,7 @@ RSpec.describe SavedLocation, type: :model do
     it 'checks if user is at location' do
       user.update!(latitude: 40.7128, longitude: -74.0060)
       expect(saved_location.user_at_location?(user)).to be true
-      
+
       user.update!(latitude: 40.8000, longitude: -74.0000)
       expect(saved_location.user_at_location?(user)).to be false
     end
@@ -145,7 +145,7 @@ RSpec.describe SavedLocation, type: :model do
     it 'returns nearby saved locations for user' do
       other_location = create(:saved_location, user: user, latitude: 40.7130, longitude: -74.0060)
       far_location = create(:saved_location, user: user, latitude: 40.8000, longitude: -74.0000)
-      
+
       nearby = SavedLocation.nearby_for_user(user, 40.7128, -74.0060, 1000)
       expect(nearby).to include(other_location)
       expect(nearby).not_to include(far_location)
@@ -160,7 +160,7 @@ RSpec.describe SavedLocation, type: :model do
       # Test with known coordinates (NYC to LA)
       nyc_location = create(:saved_location, user: user, latitude: 40.7128, longitude: -74.0060)
       la_lat, la_lng = 34.0522, -118.2437
-      
+
       distance = nyc_location.distance_to(la_lat, la_lng)
       expect(distance).to be > 3000000 # Should be over 3000km
       expect(distance).to be < 5000000 # Should be under 5000km
@@ -169,9 +169,9 @@ RSpec.describe SavedLocation, type: :model do
     it 'handles edge cases at poles' do
       north_pole_location = create(:saved_location, user: user, latitude: 90, longitude: 0)
       south_pole_location = create(:saved_location, user: user, latitude: -90, longitude: 0)
-      
-      expect(north_pole_location.coordinates).to eq([90, 0])
-      expect(south_pole_location.coordinates).to eq([-90, 0])
+
+      expect(north_pole_location.coordinates).to eq([ 90, 0 ])
+      expect(south_pole_location.coordinates).to eq([ -90, 0 ])
     end
 
     it 'handles zero distance' do
@@ -236,10 +236,10 @@ RSpec.describe SavedLocation, type: :model do
       saved_location.address = "Times Square, New York, NY"
       saved_location.latitude = nil
       saved_location.longitude = nil
-      
+
       # Mock geocoding response
-      allow(Geocoder).to receive(:search).and_return([double(latitude: 40.7580, longitude: -73.9855)])
-      
+      allow(Geocoder).to receive(:search).and_return([ double(latitude: 40.7580, longitude: -73.9855) ])
+
       saved_location.geocode
       expect(saved_location.latitude).to eq(40.7580)
       expect(saved_location.longitude).to eq(-73.9855)
@@ -249,9 +249,9 @@ RSpec.describe SavedLocation, type: :model do
       saved_location.address = "Invalid Address"
       saved_location.latitude = nil
       saved_location.longitude = nil
-      
+
       allow(Geocoder).to receive(:search).and_return([])
-      
+
       saved_location.geocode
       expect(saved_location.latitude).to be_nil
       expect(saved_location.longitude).to be_nil
@@ -263,7 +263,7 @@ RSpec.describe SavedLocation, type: :model do
       # Test with known distance (NYC to Philadelphia)
       nyc_location = create(:saved_location, user: user, latitude: 40.7128, longitude: -74.0060)
       philly_lat, philly_lng = 39.9526, -75.1652
-      
+
       distance = nyc_location.distance_to(philly_lat, philly_lng)
       expect(distance).to be > 80000 # Should be over 80km
       expect(distance).to be < 130000 # Should be under 130km
@@ -285,7 +285,7 @@ RSpec.describe SavedLocation, type: :model do
     it 'checks if user is currently at location' do
       user.update!(latitude: 40.7128, longitude: -74.0060)
       expect(saved_location.user_at_location?(user)).to be true
-      
+
       user.update!(latitude: 40.8000, longitude: -74.0000)
       expect(saved_location.user_at_location?(user)).to be false
     end
@@ -306,7 +306,7 @@ RSpec.describe SavedLocation, type: :model do
         radius_meters: 100
       )
       expect(location).to be_persisted
-      expect(location.coordinates).to eq([40.7128, -74.0060])
+      expect(location.coordinates).to eq([ 40.7128, -74.0060 ])
     end
 
     it 'creates location with address' do
@@ -323,7 +323,7 @@ RSpec.describe SavedLocation, type: :model do
     it 'updates location coordinates' do
       saved_location.save!
       saved_location.update!(latitude: 40.8000, longitude: -74.0000)
-      expect(saved_location.coordinates).to eq([40.8000, -74.0000])
+      expect(saved_location.coordinates).to eq([ 40.8000, -74.0000 ])
     end
 
     it 'updates location address' do

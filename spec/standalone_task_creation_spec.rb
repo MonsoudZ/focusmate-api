@@ -9,23 +9,23 @@ RSpec.describe "Standalone Task Creation", type: :model do
       password_confirmation: "password123",
       role: "client"
     )
-    
+
     list = List.create!(
       name: "Test List",
       description: "A test list",
       owner: user
     )
-    
+
     # Test TaskCreationService with valid parameters (no priority)
     params = {
       title: "Test Task",
       due_at: 1.hour.from_now,
       strict_mode: true
     }
-    
+
     service = TaskCreationService.new(list, user, params)
     task = service.call
-    
+
     expect(task.title).to eq("Test Task")
     expect(task.creator).to eq(user)
     expect(task.list).to eq(list)
@@ -40,24 +40,24 @@ RSpec.describe "Standalone Task Creation", type: :model do
       password_confirmation: "password123",
       role: "client"
     )
-    
+
     list = List.create!(
       name: "Test List",
       description: "A test list",
       owner: user
     )
-    
+
     # Test with subtasks
     params = {
       title: "Parent Task",
       due_at: 1.hour.from_now,
       strict_mode: true,
-      subtasks: ["Subtask 1", "Subtask 2"]
+      subtasks: [ "Subtask 1", "Subtask 2" ]
     }
-    
+
     service = TaskCreationService.new(list, user, params)
     task = service.call
-    
+
     expect(task.title).to eq("Parent Task")
     expect(task.subtasks.count).to eq(2)
     expect(task.subtasks.first.title).to eq("Subtask 1")
@@ -72,13 +72,13 @@ RSpec.describe "Standalone Task Creation", type: :model do
       password_confirmation: "password123",
       role: "client"
     )
-    
+
     list = List.create!(
       name: "Test List",
       description: "A test list",
       owner: user
     )
-    
+
     # Test with iOS-specific parameters
     params = {
       name: "iOS Task",  # iOS uses 'name' instead of 'title'
@@ -86,10 +86,10 @@ RSpec.describe "Standalone Task Creation", type: :model do
       description: "iOS description",  # iOS uses 'description' instead of 'note'
       strict_mode: false
     }
-    
+
     service = TaskCreationService.new(list, user, params)
     task = service.call
-    
+
     expect(task.title).to eq("iOS Task")
     expect(task.note).to eq("iOS description")
     expect(task.strict_mode).to be_falsy
@@ -102,14 +102,14 @@ RSpec.describe "Standalone Task Creation", type: :model do
       password_confirmation: "password123",
       role: "client"
     )
-    
+
     # Test device creation with correct attributes
     device = user.devices.create!(
       platform: "ios",
       apns_token: "test_token_#{SecureRandom.hex(8)}",
       bundle_id: "com.focusmate.app"
     )
-    
+
     expect(device.platform).to eq("ios")
     expect(device.bundle_id).to eq("com.focusmate.app")
     expect(user.devices).to include(device)

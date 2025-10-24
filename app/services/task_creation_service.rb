@@ -76,7 +76,7 @@ class TaskCreationService
 
   def set_default_values
     @attrs[:strict_mode] = true if @attrs[:strict_mode].nil?
-    
+
     # Handle boolean attributes
     @attrs[:can_be_snoozed] = boolean(@attrs[:can_be_snoozed]) unless @attrs[:can_be_snoozed].nil?
     @attrs[:requires_explanation_if_missed] = boolean(@attrs[:requires_explanation_if_missed]) unless @attrs[:requires_explanation_if_missed].nil?
@@ -105,10 +105,10 @@ class TaskCreationService
   def create_task
     @task = @list.tasks.build(@attrs)
     @task.creator = @user
-    
+
     # Only set default due_at if explicitly requested or if strict_mode is true and due_at is still blank after validation
     # This allows validation to fail for missing due_at when required
-    
+
     @task.save!
   end
 

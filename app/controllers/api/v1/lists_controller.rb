@@ -2,10 +2,10 @@
 module Api
   module V1
     class ListsController < ApplicationController
-      before_action :set_list, only: [:show, :update, :destroy, :members, :share, :unshare]
-      before_action :authorize_list_view!, only: [:show, :members]
-      before_action :authorize_list_edit!, only: [:update]
-      before_action :authorize_list_owner!, only: [:destroy, :share, :unshare]
+      before_action :set_list, only: [ :show, :update, :destroy, :members, :share, :unshare ]
+      before_action :authorize_list_view!, only: [ :show, :members ]
+      before_action :authorize_list_edit!, only: [ :update ]
+      before_action :authorize_list_owner!, only: [ :destroy, :share, :unshare ]
 
       # GET /api/v1/lists/validate/:id (convenience check)
       def validate_access
@@ -89,16 +89,16 @@ module Api
       def share
         target_id = params[:user_id]
         target_email = params[:email]
-        
+
         # Check if both user_id and email are missing
         if target_id.blank? && target_email.blank?
-          return render json: { errors: { email: ["is required"] } }, status: :unprocessable_entity
+          return render json: { errors: { email: [ "is required" ] } }, status: :unprocessable_entity
         end
 
         # If email is provided, find user by email
         if target_email.present?
           user = User.find_by(email: target_email)
-          return render json: { errors: { email: ["User not found"] } }, status: :unprocessable_entity unless user
+          return render json: { errors: { email: [ "User not found" ] } }, status: :unprocessable_entity unless user
           target_id = user.id
         end
 
@@ -238,7 +238,7 @@ module Api
       end
 
       def validation_error_message!(msg)
-        render json: { error: { message: "Validation failed", details: { base: [msg] } } },
+        render json: { error: { message: "Validation failed", details: { base: [ msg ] } } },
                status: :unprocessable_entity
       end
     end

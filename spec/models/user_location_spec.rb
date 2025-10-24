@@ -36,7 +36,7 @@ RSpec.describe UserLocation, type: :model do
       user_location.latitude = 91
       expect(user_location).not_to be_valid
       expect(user_location.errors[:latitude]).to include("must be less than or equal to 90")
-      
+
       user_location.latitude = -91
       expect(user_location).not_to be_valid
       expect(user_location.errors[:latitude]).to include("must be greater than or equal to -90")
@@ -46,7 +46,7 @@ RSpec.describe UserLocation, type: :model do
       user_location.longitude = 181
       expect(user_location).not_to be_valid
       expect(user_location.errors[:longitude]).to include("must be less than or equal to 180")
-      
+
       user_location.longitude = -181
       expect(user_location).not_to be_valid
       expect(user_location.errors[:longitude]).to include("must be greater than or equal to -180")
@@ -56,7 +56,7 @@ RSpec.describe UserLocation, type: :model do
       user_location.accuracy = -1
       expect(user_location).not_to be_valid
       expect(user_location.errors[:accuracy]).to include("must be greater than or equal to 0")
-      
+
       user_location.accuracy = 1001
       expect(user_location).not_to be_valid
       expect(user_location.errors[:accuracy]).to include("must be less than or equal to 1000")
@@ -90,7 +90,7 @@ RSpec.describe UserLocation, type: :model do
       other_user = create(:user)
       user_location_record = create(:user_location, user: user)
       other_location = create(:user_location, user: other_user)
-      
+
       expect(UserLocation.for_user(user)).to include(user_location_record)
       expect(UserLocation.for_user(user)).not_to include(other_location)
     end
@@ -98,7 +98,7 @@ RSpec.describe UserLocation, type: :model do
     it 'has recent scope' do
       recent_location = create(:user_location, user: user, recorded_at: 1.hour.ago)
       old_location = create(:user_location, user: user, recorded_at: 1.week.ago)
-      
+
       expect(UserLocation.recent).to include(recent_location)
       expect(UserLocation.recent).not_to include(old_location)
     end
@@ -106,7 +106,7 @@ RSpec.describe UserLocation, type: :model do
     it 'has accurate scope' do
       accurate_location = create(:user_location, user: user, accuracy: 5.0)
       inaccurate_location = create(:user_location, user: user, accuracy: 100.0)
-      
+
       expect(UserLocation.accurate).to include(accurate_location)
       expect(UserLocation.accurate).not_to include(inaccurate_location)
     end
@@ -114,7 +114,7 @@ RSpec.describe UserLocation, type: :model do
     it 'has by_source scope' do
       gps_location = create(:user_location, user: user, source: "gps")
       network_location = create(:user_location, user: user, source: "network")
-      
+
       expect(UserLocation.by_source("gps")).to include(gps_location)
       expect(UserLocation.by_source("gps")).not_to include(network_location)
     end
@@ -122,7 +122,7 @@ RSpec.describe UserLocation, type: :model do
 
   describe 'methods' do
     it 'returns coordinates as array' do
-      expect(user_location.coordinates).to eq([40.7128, -74.0060])
+      expect(user_location.coordinates).to eq([ 40.7128, -74.0060 ])
     end
 
     it 'calculates distance to another location' do
@@ -139,7 +139,7 @@ RSpec.describe UserLocation, type: :model do
     it 'checks if location is accurate' do
       accurate_location = create(:user_location, user: user, accuracy: 5.0)
       inaccurate_location = create(:user_location, user: user, accuracy: 100.0)
-      
+
       expect(accurate_location.accurate?).to be true
       expect(inaccurate_location.accurate?).to be false
     end
@@ -147,7 +147,7 @@ RSpec.describe UserLocation, type: :model do
     it 'checks if location is recent' do
       recent_location = create(:user_location, user: user, recorded_at: 30.minutes.ago)
       old_location = create(:user_location, user: user, recorded_at: 2.hours.ago)
-      
+
       expect(recent_location.recent?).to be true
       expect(old_location.recent?).to be false
     end
@@ -155,7 +155,7 @@ RSpec.describe UserLocation, type: :model do
     it 'returns location summary' do
       user_location.accuracy = 10.0
       user_location.source = "gps"
-      
+
       summary = user_location.summary
       expect(summary).to include(:id, :latitude, :longitude, :accuracy, :source, :recorded_at)
     end
@@ -163,7 +163,7 @@ RSpec.describe UserLocation, type: :model do
     it 'returns location details' do
       user_location.accuracy = 10.0
       user_location.source = "gps"
-      
+
       details = user_location.details
       expect(details).to include(:id, :latitude, :longitude, :accuracy, :source, :recorded_at, :coordinates)
     end
@@ -181,10 +181,10 @@ RSpec.describe UserLocation, type: :model do
     it 'returns priority level' do
       user_location.accuracy = 5.0
       expect(user_location.priority).to eq("high")
-      
+
       user_location.accuracy = 50.0
       expect(user_location.priority).to eq("medium")
-      
+
       user_location.accuracy = 100.0
       expect(user_location.priority).to eq("low")
     end
@@ -192,10 +192,10 @@ RSpec.describe UserLocation, type: :model do
     it 'returns location type' do
       user_location.source = "gps"
       expect(user_location.location_type).to eq("gps")
-      
+
       user_location.source = "network"
       expect(user_location.location_type).to eq("network")
-      
+
       user_location.source = "passive"
       expect(user_location.location_type).to eq("passive")
     end
@@ -203,7 +203,7 @@ RSpec.describe UserLocation, type: :model do
     it 'checks if location is actionable' do
       user_location.accuracy = 10.0
       expect(user_location.actionable?).to be true
-      
+
       user_location.accuracy = 100.0
       expect(user_location.actionable?).to be false
     end
@@ -211,7 +211,7 @@ RSpec.describe UserLocation, type: :model do
     it 'returns location data' do
       user_location.accuracy = 10.0
       user_location.source = "gps"
-      
+
       data = user_location.location_data
       expect(data).to include(:latitude, :longitude, :accuracy, :source, :recorded_at)
     end
@@ -219,7 +219,7 @@ RSpec.describe UserLocation, type: :model do
     it 'generates location report' do
       user_location.accuracy = 10.0
       user_location.source = "gps"
-      
+
       report = user_location.generate_report
       expect(report).to include(:coordinates, :accuracy, :source, :age)
     end
@@ -286,14 +286,14 @@ RSpec.describe UserLocation, type: :model do
         source: "gps"
       )
       expect(location).to be_persisted
-      expect(location.coordinates).to eq([40.7128, -74.0060])
+      expect(location.coordinates).to eq([ 40.7128, -74.0060 ])
     end
 
     it 'tracks location with different sources' do
       gps_location = create(:user_location, user: user, source: "gps")
       network_location = create(:user_location, user: user, source: "network")
       passive_location = create(:user_location, user: user, source: "passive")
-      
+
       expect(gps_location.source).to eq("gps")
       expect(network_location.source).to eq("network")
       expect(passive_location.source).to eq("passive")
@@ -302,7 +302,7 @@ RSpec.describe UserLocation, type: :model do
     it 'tracks location accuracy' do
       accurate_location = create(:user_location, user: user, accuracy: 5.0)
       inaccurate_location = create(:user_location, user: user, accuracy: 100.0)
-      
+
       expect(accurate_location.accurate?).to be true
       expect(inaccurate_location.accurate?).to be false
     end
@@ -313,7 +313,7 @@ RSpec.describe UserLocation, type: :model do
       # Test with known distance (NYC to Philadelphia)
       nyc_location = create(:user_location, user: user, latitude: 40.7128, longitude: -74.0060)
       philly_lat, philly_lng = 39.9526, -75.1652
-      
+
       distance = nyc_location.distance_to_coordinates(philly_lat, philly_lng)
       expect(distance).to be > 80_000 # Should be over 80km
       expect(distance).to be < 140_000 # Should be under 140km (real value ≈ 129.6km)
@@ -335,7 +335,7 @@ RSpec.describe UserLocation, type: :model do
     it 'returns user location history' do
       location1 = create(:user_location, user: user, recorded_at: 1.hour.ago)
       location2 = create(:user_location, user: user, recorded_at: 30.minutes.ago)
-      
+
       history = UserLocation.for_user(user).order(:recorded_at)
       expect(history).to include(location1, location2)
     end
@@ -343,7 +343,7 @@ RSpec.describe UserLocation, type: :model do
     it 'returns recent locations for user' do
       recent_location = create(:user_location, user: user, recorded_at: 1.hour.ago)
       old_location = create(:user_location, user: user, recorded_at: 1.week.ago)
-      
+
       recent_locations = UserLocation.for_user(user).recent
       expect(recent_locations).to include(recent_location)
       expect(recent_locations).not_to include(old_location)
@@ -352,7 +352,7 @@ RSpec.describe UserLocation, type: :model do
     it 'returns accurate locations for user' do
       accurate_location = create(:user_location, user: user, accuracy: 5.0)
       inaccurate_location = create(:user_location, user: user, accuracy: 100.0)
-      
+
       accurate_locations = UserLocation.for_user(user).accurate
       expect(accurate_locations).to include(accurate_location)
       expect(accurate_locations).not_to include(inaccurate_location)
@@ -370,7 +370,7 @@ RSpec.describe UserLocation, type: :model do
       high_accuracy = create(:user_location, user: user, accuracy: 5.0)
       medium_accuracy = create(:user_location, user: user, accuracy: 30.0)
       low_accuracy = create(:user_location, user: user, accuracy: 80.0)
-      
+
       expect(high_accuracy.accuracy_level).to eq("high")
       expect(medium_accuracy.accuracy_level).to eq("medium")
       expect(low_accuracy.accuracy_level).to eq("low")

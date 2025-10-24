@@ -120,10 +120,10 @@ RSpec.describe User, type: :model do
     it 'can filter users by role' do
       coach = create(:user, role: "coach")
       client = create(:user, role: "client")
-      
+
       coaches = User.where(role: "coach")
       clients = User.where(role: "client")
-      
+
       expect(coaches).to include(coach)
       expect(coaches).not_to include(client)
       expect(clients).to include(client)
@@ -135,7 +135,7 @@ RSpec.describe User, type: :model do
     it 'checks if user is coach' do
       coach = create(:user, role: "coach")
       client = create(:user, role: "client")
-      
+
       expect(coach.coach?).to be true
       expect(client.coach?).to be false
     end
@@ -143,7 +143,7 @@ RSpec.describe User, type: :model do
     it 'checks if user is client' do
       coach = create(:user, role: "coach")
       client = create(:user, role: "client")
-      
+
       expect(client.client?).to be true
       expect(coach.client?).to be false
     end
@@ -222,7 +222,7 @@ RSpec.describe User, type: :model do
     it 'returns correct role methods' do
       coach = create(:user, role: "coach")
       client = create(:user, role: "client")
-      
+
       expect(coach.coach?).to be true
       expect(coach.client?).to be false
       expect(client.coach?).to be false

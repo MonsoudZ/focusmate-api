@@ -14,7 +14,7 @@ module Api
           render json: { error: "Device token is required" }, status: :bad_request
           return
         end
-        
+
         # Reject empty or whitespace-only tokens (but allow nil for logout)
         if token && token.strip.blank?
           render json: { error: "Device token is required" }, status: :bad_request
@@ -46,7 +46,7 @@ module Api
         end
 
         Rails.logger.info "Updating location for user #{current_user.id}: lat=#{latitude}, lng=#{longitude}"
-        
+
         if current_user.update(
           latitude: latitude.to_f,
           longitude: longitude.to_f,
@@ -58,7 +58,7 @@ module Api
             longitude: longitude.to_f,
             recorded_at: Time.current
           )
-          
+
           current_user.reload
           Rails.logger.info "Location updated successfully: lat=#{current_user.latitude}, lng=#{current_user.longitude}"
           render json: {

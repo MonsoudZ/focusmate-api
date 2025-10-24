@@ -16,13 +16,13 @@ RSpec.describe "Working", type: :model do
       password_confirmation: "password123",
       role: "client"
     )
-    
+
     list = List.create!(
       name: "Test List",
       description: "A test list",
       owner: user
     )
-    
+
     expect(list.owner).to eq(user)
     expect(list.user_id == user.id ? user : nil).to eq(user)
   end
@@ -35,13 +35,13 @@ RSpec.describe "Working", type: :model do
       password_confirmation: "password123",
       role: "client"
     )
-    
+
     list = List.create!(
       name: "Test List",
       description: "A test list",
       owner: user
     )
-    
+
     task = list.tasks.create!(
       title: "Test Task",
       due_at: 1.hour.from_now,
@@ -49,7 +49,7 @@ RSpec.describe "Working", type: :model do
       status: :pending,
       strict_mode: true
     )
-    
+
     expect(task.creator).to eq(user)
     expect(task.list).to eq(list)
     expect(task.title).to eq("Test Task")

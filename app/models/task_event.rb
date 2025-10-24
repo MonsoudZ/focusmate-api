@@ -73,11 +73,11 @@ class TaskEvent < ApplicationRecord
   scope :for_task,   ->(task) { where(task: task) }
   scope :for_user,   ->(user) { where(user: user) }
   scope :by_kind,    ->(k) { where(kind: k) }
-  scope :with_reasons, -> { where.not(reason: [nil, ""]) }
-  
+  scope :with_reasons, -> { where.not(reason: [ nil, "" ]) }
+
   # Recent = last 24h (filter, not just order)
   scope :recent, -> { where("occurred_at >= ?", 24.hours.ago) }
-  
+
   # Optional helper if you need it elsewhere (not used by the specs)
   scope :newest_first, -> { order(occurred_at: :desc) }
 
@@ -201,5 +201,4 @@ class TaskEvent < ApplicationRecord
     return if metadata.nil?
     errors.add(:metadata, "is not a valid JSON") unless metadata.is_a?(Hash)
   end
-
 end

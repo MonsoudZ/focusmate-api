@@ -29,8 +29,8 @@ class DailySummary < ApplicationRecord
   scope :for_date, ->(date) { where(summary_date: date.to_date) }
   scope :for_coaching_relationship, ->(rel) { where(coaching_relationship_id: rel.is_a?(CoachingRelationship) ? rel.id : rel) }
   # “recent” excludes exactly-7-days-old entries (strictly greater-than per earlier failures)
-  scope :recent,  -> { where('summary_date > ?', 7.days.ago.to_date).order(summary_date: :desc) }
-  scope :with_tasks, -> { where('tasks_completed > 0 OR tasks_missed > 0 OR tasks_overdue > 0') }
+  scope :recent,  -> { where("summary_date > ?", 7.days.ago.to_date).order(summary_date: :desc) }
+  scope :with_tasks, -> { where("tasks_completed > 0 OR tasks_missed > 0 OR tasks_overdue > 0") }
 
   # Instance helpers
   def mark_sent!

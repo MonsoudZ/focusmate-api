@@ -20,7 +20,7 @@ RSpec.describe CoachingRelationship, type: :model do
       coach = create(:user, :coach)
       client = create(:user, :client)
       create(:coaching_relationship, coach: coach, client: client)
-      
+
       duplicate = build(:coaching_relationship, coach: coach, client: client)
       expect(duplicate).not_to be_valid
       expect(duplicate.errors[:coach_id]).to include('has already been taken')
@@ -37,7 +37,7 @@ RSpec.describe CoachingRelationship, type: :model do
       coach = create(:user, :coach)
       client = create(:user, :client)
       create(:coaching_relationship, coach: coach, client: client)
-      
+
       duplicate = build(:coaching_relationship, coach: coach, client: client)
       expect(duplicate).not_to be_valid
       expect(duplicate.errors[:coach_id]).to include('has already been taken')
@@ -123,7 +123,7 @@ RSpec.describe CoachingRelationship, type: :model do
         notify_on_missed_deadline: false,
         send_daily_summary: false
       )
-      
+
       expect(relationship.notify_on_completion).to be false
       expect(relationship.notify_on_missed_deadline).to be false
       expect(relationship.send_daily_summary).to be false
@@ -158,10 +158,10 @@ RSpec.describe CoachingRelationship, type: :model do
     it 'coach should see clients tasks (except hidden ones)' do
       # Create a task that coach can see
       visible_task = create(:task, list: list, creator: client, visibility: 'visible_to_all')
-      
+
       # Create a task hidden from coaches
       hidden_task = create(:task, list: list, creator: client, visibility: 'hidden_from_coaches')
-      
+
       # Test that the membership was created and the coach has access to the list
       membership = Membership.find_by(list: list, user: coach)
       expect(membership).to be_present
@@ -177,12 +177,12 @@ RSpec.describe CoachingRelationship, type: :model do
 
     it 'coach should NOT see tasks with visibility restriction for this relationship' do
       restricted_task = create(:task, list: list, creator: client, visibility: 'visible_to_all')
-      
+
       # Create visibility restriction
-      restriction = create(:item_visibility_restriction, 
-             coaching_relationship: relationship, 
+      restriction = create(:item_visibility_restriction,
+             coaching_relationship: relationship,
              task: restricted_task)
-      
+
       # Test that the restriction was created
       expect(restriction.coaching_relationship).to eq(relationship)
       expect(restriction.task).to eq(restricted_task)
@@ -192,7 +192,7 @@ RSpec.describe CoachingRelationship, type: :model do
       other_client = create(:user, :client)
       other_list = create(:list, owner: other_client)
       other_task = create(:task, list: other_list, creator: other_client)
-      
+
       # Test that the other client's task is not in the relationship's lists
       expect(relationship.lists).not_to include(other_list)
     end
@@ -217,7 +217,7 @@ RSpec.describe CoachingRelationship, type: :model do
     it 'should generate daily summary if send_daily_summary is true' do
       relationship.update!(send_daily_summary: true)
       summary = relationship.create_daily_summary!(Date.current)
-      
+
       expect(summary).to be_present
       expect(summary.summary_date).to eq(Date.current)
     end
@@ -225,7 +225,7 @@ RSpec.describe CoachingRelationship, type: :model do
     it 'should not generate daily summary if send_daily_summary is false' do
       relationship.update!(send_daily_summary: false)
       summary = relationship.create_daily_summary!(Date.current)
-      
+
       expect(summary).to be_present # Still creates but won't be sent
     end
 
@@ -234,7 +234,7 @@ RSpec.describe CoachingRelationship, type: :model do
         send_daily_summary: true,
         daily_summary_time: Time.parse('09:00')
       )
-      
+
       # Mock the time to be after summary time
       travel_to(Time.parse('10:00')) do
         expect(relationship.should_send_daily_summary?).to be true
@@ -244,7 +244,7 @@ RSpec.describe CoachingRelationship, type: :model do
     it 'should get daily summary for a specific date' do
       summary = relationship.create_daily_summary!(Date.current)
       found_summary = relationship.daily_summary_for(Date.current)
-      
+
       expect(found_summary).to eq(summary)
     end
 
@@ -253,7 +253,7 @@ RSpec.describe CoachingRelationship, type: :model do
       relationship.create_daily_summary!(Date.current)
       relationship.create_daily_summary!(1.day.ago)
       relationship.create_daily_summary!(2.days.ago)
-      
+
       recent = relationship.recent_summaries(2)
       expect(recent.count).to eq(2)
     end
@@ -262,7 +262,7 @@ RSpec.describe CoachingRelationship, type: :model do
       # Create summaries with different completion rates for different dates
       create(:daily_summary, coaching_relationship: relationship, summary_date: 1.day.ago, tasks_completed: 8, tasks_missed: 2)
       create(:daily_summary, coaching_relationship: relationship, summary_date: 2.days.ago, tasks_completed: 6, tasks_missed: 4)
-      
+
       average = relationship.average_completion_rate(30)
       expect(average).to eq(70.0)
     end
@@ -273,10 +273,10 @@ RSpec.describe CoachingRelationship, type: :model do
       create(:daily_summary, coaching_relationship: relationship, summary_date: 2.days.ago, tasks_completed: 1, tasks_missed: 9)
       # Second summary: 90% completion rate (9 completed, 1 missed)
       create(:daily_summary, coaching_relationship: relationship, summary_date: Date.current, tasks_completed: 9, tasks_missed: 1)
-      
+
       trend = relationship.performance_trend(7)
       # The trend calculation may be affected by the order of summaries
-      expect(trend).to be_in(['improving', 'declining', 'stable'])
+      expect(trend).to be_in([ 'improving', 'declining', 'stable' ])
     end
   end
 
@@ -299,7 +299,7 @@ RSpec.describe CoachingRelationship, type: :model do
     it 'should scope by coach' do
       coach = create(:user, :coach)
       relationship = create(:coaching_relationship, coach: coach)
-      
+
       expect(CoachingRelationship.for_coach(coach)).to include(relationship)
       expect(CoachingRelationship.for_coach(coach)).not_to include(active_relationship)
     end
@@ -307,7 +307,7 @@ RSpec.describe CoachingRelationship, type: :model do
     it 'should scope by client' do
       client = create(:user, :client)
       relationship = create(:coaching_relationship, client: client)
-      
+
       expect(CoachingRelationship.for_client(client)).to include(relationship)
       expect(CoachingRelationship.for_client(client)).not_to include(active_relationship)
     end
@@ -351,7 +351,7 @@ RSpec.describe CoachingRelationship, type: :model do
     it 'should get all tasks across all shared lists' do
       task1 = create(:task, list: list, creator: client)
       task2 = create(:task, list: list, creator: client)
-      
+
       # Test that the membership was created and the coach has access to the list
       membership = Membership.find_by(list: list, user: coach)
       expect(membership).to be_present
@@ -362,28 +362,28 @@ RSpec.describe CoachingRelationship, type: :model do
     it 'should get overdue tasks across all shared lists' do
       overdue_task = create(:task, list: list, creator: client, due_at: 1.day.ago, status: 'pending')
       current_task = create(:task, list: list, creator: client, due_at: 1.day.from_now, status: 'pending')
-      
+
       # Test that the tasks exist and have the correct attributes
       expect(overdue_task.due_at).to be < Time.current
       expect(current_task.due_at).to be > Time.current
     end
 
     it 'should get tasks requiring explanation' do
-      task_requiring_explanation = create(:task, 
-        list: list, 
-        creator: client, 
+      task_requiring_explanation = create(:task,
+        list: list,
+        creator: client,
         requires_explanation_if_missed: true,
         due_at: 1.day.ago,
         status: 'pending'
       )
-      regular_task = create(:task, 
-        list: list, 
-        creator: client, 
+      regular_task = create(:task,
+        list: list,
+        creator: client,
         requires_explanation_if_missed: false,
         due_at: 1.day.ago,
         status: 'pending'
       )
-      
+
       # Test that the tasks have the correct attributes
       expect(task_requiring_explanation.requires_explanation_if_missed).to be true
       expect(regular_task.requires_explanation_if_missed).to be false

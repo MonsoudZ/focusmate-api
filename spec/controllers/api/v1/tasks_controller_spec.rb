@@ -17,14 +17,14 @@ RSpec.describe Api::V1::TasksController, type: :request do
         password_confirmation: "password123",
         role: "client"
       )
-      
+
       # Create list manually
       test_list = List.create!(
         name: "Test List",
         description: "A test list",
         owner: test_user
       )
-      
+
       # Create task manually
       test_task = Task.create!(
         title: "Test Task",
@@ -34,17 +34,17 @@ RSpec.describe Api::V1::TasksController, type: :request do
         list: test_list,
         creator: test_user
       )
-      
+
       # Create auth headers
       token = JWT.encode({ user_id: test_user.id, exp: 24.hours.from_now.to_i }, Rails.application.credentials.secret_key_base)
       test_auth_headers = { 'Authorization' => "Bearer #{token}" }
-      
+
       get "/api/v1/lists/#{test_list.id}/tasks", headers: test_auth_headers
-      
+
       if response.status == 500
         puts "Response body: #{response.body}"
       end
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to have_key("tasks")
@@ -56,9 +56,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
     it 'should get all tasks across lists' do
       other_list = create(:list, owner: user, name: "Other List")
       create(:task, list: other_list, creator: user)
-      
+
       get "/api/v1/tasks/all_tasks", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to have_key("tasks")
@@ -69,13 +69,13 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should filter tasks by status' do
       completed_task = create(:task, list: list, creator: user, status: :done)
-      
+
       get "/api/v1/tasks/all_tasks?status=completed", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to have_key("tasks")
-      
+
       task_ids = json["tasks"].map { |t| t["id"] }
       expect(task_ids).to include(completed_task.id)
       expect(task_ids).not_to include(task.id)
@@ -84,13 +84,13 @@ RSpec.describe Api::V1::TasksController, type: :request do
     it 'should filter tasks by list_id' do
       other_list = create(:list, owner: user, name: "Other List")
       other_task = create(:task, list: other_list, creator: user)
-      
+
       get "/api/v1/tasks/all_tasks?list_id=#{other_list.id}", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to have_key("tasks")
-      
+
       task_ids = json["tasks"].map { |t| t["id"] }
       expect(task_ids).to include(other_task.id)
       expect(task_ids).not_to include(task.id)
@@ -98,16 +98,16 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not get tasks without authentication' do
       get "/api/v1/lists/#{list.id}/tasks"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'should not get tasks from other user\'s list' do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
-      
+
       get "/api/v1/lists/#{other_list.id}/tasks", headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
   end
@@ -115,7 +115,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
   describe 'GET /api/v1/tasks/:id' do
     it 'should show task' do
       get "/api/v1/tasks/#{task.id}", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["id"]).to eq(task.id)
@@ -124,7 +124,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not show task without authentication' do
       get "/api/v1/tasks/#{task.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
@@ -132,9 +132,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
-      
+
       get "/api/v1/tasks/#{other_task.id}", headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
   end
@@ -147,9 +147,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
         due_at: 1.hour.from_now.iso8601,
         strict_mode: true
       }
-      
+
       post "/api/v1/lists/#{list.id}/tasks", params: task_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["title"]).to eq("New Task")
@@ -161,23 +161,23 @@ RSpec.describe Api::V1::TasksController, type: :request do
         title: "New Task",
         due_at: 1.hour.from_now.iso8601
       }
-      
+
       post "/api/v1/lists/#{list.id}/tasks", params: task_params
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'should not create task in other user\'s list' do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
-      
+
       task_params = {
         title: "New Task",
         due_at: 1.hour.from_now.iso8601
       }
-      
+
       post "/api/v1/lists/#{other_list.id}/tasks", params: task_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
 
@@ -185,9 +185,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
       task_params = {
         note: "Task description"
       }
-      
+
       post "/api/v1/lists/#{list.id}/tasks", params: task_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to have_key("title")
@@ -201,9 +201,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
         title: "Updated Task",
         note: "Updated description"
       }
-      
+
       patch "/api/v1/tasks/#{task.id}", params: update_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["title"]).to eq("Updated Task")
@@ -214,9 +214,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
       update_params = {
         title: "Updated Task"
       }
-      
+
       patch "/api/v1/tasks/#{task.id}", params: update_params
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
@@ -224,13 +224,13 @@ RSpec.describe Api::V1::TasksController, type: :request do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
-      
+
       update_params = {
         title: "Updated Task"
       }
-      
+
       patch "/api/v1/tasks/#{other_task.id}", params: update_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
   end
@@ -238,14 +238,14 @@ RSpec.describe Api::V1::TasksController, type: :request do
   describe 'DELETE /api/v1/tasks/:id' do
     it 'should delete task' do
       delete "/api/v1/tasks/#{task.id}", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       expect(Task.find_by(id: task.id)).to be_nil
     end
 
     it 'should not delete task without authentication' do
       delete "/api/v1/tasks/#{task.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
@@ -253,9 +253,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
-      
+
       delete "/api/v1/tasks/#{other_task.id}", headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
   end
@@ -263,7 +263,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
   describe 'PATCH /api/v1/tasks/:id/complete' do
     it 'should complete task' do
       patch "/api/v1/tasks/#{task.id}/complete", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       task.reload
       expect(task.status).to eq("done")
@@ -272,7 +272,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not complete task without authentication' do
       patch "/api/v1/tasks/#{task.id}/complete"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
@@ -280,9 +280,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
-      
+
       patch "/api/v1/tasks/#{other_task.id}/complete", headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
   end
@@ -290,9 +290,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
   describe 'PATCH /api/v1/tasks/:id/uncomplete' do
     it 'should uncomplete task' do
       task.update!(status: :done, completed_at: Time.current)
-      
+
       patch "/api/v1/tasks/#{task.id}/uncomplete", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       task.reload
       expect(task.status).to eq("pending")
@@ -301,7 +301,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not uncomplete task without authentication' do
       patch "/api/v1/tasks/#{task.id}/uncomplete"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
   end
@@ -310,13 +310,13 @@ RSpec.describe Api::V1::TasksController, type: :request do
     it 'should reassign task' do
       other_user = create(:user)
       list.share_with!(other_user, { can_view: true, can_edit: true, can_add_items: true, can_delete_items: true })
-      
+
       reassign_params = {
         assigned_to: other_user.id
       }
-      
+
       patch "/api/v1/tasks/#{task.id}/reassign", params: reassign_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       task.reload
       expect(task.assigned_to).to eq(other_user)
@@ -326,9 +326,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
       reassign_params = {
         assigned_to: user.id
       }
-      
+
       patch "/api/v1/tasks/#{task.id}/reassign", params: reassign_params
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
   end
@@ -336,13 +336,13 @@ RSpec.describe Api::V1::TasksController, type: :request do
   describe 'POST /api/v1/tasks/:id/submit_explanation' do
     it 'should submit explanation for missed task' do
       task.update!(requires_explanation_if_missed: true, due_at: 1.hour.ago, status: :pending)
-      
+
       explanation_params = {
         missed_reason: "I was sick and couldn't complete the task"
       }
-      
+
       post "/api/v1/tasks/#{task.id}/submit_explanation", params: explanation_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       task.reload
       expect(task.missed_reason).to eq("I was sick and couldn't complete the task")
@@ -353,9 +353,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
       explanation_params = {
         missed_reason: "I was sick"
       }
-      
+
       post "/api/v1/tasks/#{task.id}/submit_explanation", params: explanation_params
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
   end
@@ -365,9 +365,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
       visibility_params = {
         visibility: "hidden_from_coaches"
       }
-      
+
       patch "/api/v1/tasks/#{task.id}/toggle_visibility", params: visibility_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       task.reload
       expect(task.visibility).to eq("hidden_from_coaches")
@@ -377,9 +377,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
       visibility_params = {
         visibility: "hidden_from_coaches"
       }
-      
+
       patch "/api/v1/tasks/#{task.id}/toggle_visibility", params: visibility_params
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
   end
@@ -390,9 +390,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
         title: "Subtask",
         due_at: 1.hour.from_now.iso8601
       }
-      
+
       post "/api/v1/tasks/#{task.id}/add_subtask", params: subtask_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["title"]).to eq("Subtask")
@@ -404,9 +404,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
         title: "Subtask",
         due_at: 1.hour.from_now.iso8601
       }
-      
+
       post "/api/v1/tasks/#{task.id}/add_subtask", params: subtask_params
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
   end
@@ -414,13 +414,13 @@ RSpec.describe Api::V1::TasksController, type: :request do
   describe 'PATCH /api/v1/tasks/:id/update_subtask' do
     it 'should update subtask' do
       subtask = create(:task, list: list, creator: user, parent_task: task, due_at: 30.minutes.from_now)
-      
+
       update_params = {
         title: "Updated Subtask"
       }
-      
+
       patch "/api/v1/tasks/#{subtask.id}/update_subtask", params: update_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       subtask.reload
       expect(subtask.title).to eq("Updated Subtask")
@@ -428,13 +428,13 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not update subtask without authentication' do
       subtask = create(:task, list: list, creator: user, parent_task: task, due_at: 30.minutes.from_now)
-      
+
       update_params = {
         title: "Updated Subtask"
       }
-      
+
       patch "/api/v1/tasks/#{subtask.id}/update_subtask", params: update_params
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
   end
@@ -442,18 +442,18 @@ RSpec.describe Api::V1::TasksController, type: :request do
   describe 'DELETE /api/v1/tasks/:id/delete_subtask' do
     it 'should delete subtask' do
       subtask = create(:task, list: list, creator: user, parent_task: task, due_at: 30.minutes.from_now)
-      
+
       delete "/api/v1/tasks/#{subtask.id}/delete_subtask", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       expect(Task.find_by(id: subtask.id)).to be_nil
     end
 
     it 'should not delete subtask without authentication' do
       subtask = create(:task, list: list, creator: user, parent_task: task, due_at: 30.minutes.from_now)
-      
+
       delete "/api/v1/tasks/#{subtask.id}/delete_subtask"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
   end
@@ -461,9 +461,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
   describe 'GET /api/v1/tasks/overdue' do
     it 'should get overdue tasks' do
       overdue_task = create(:task, list: list, creator: user, due_at: 1.hour.ago, status: :pending)
-      
+
       get "/api/v1/tasks/overdue", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to have_key("tasks")
@@ -472,7 +472,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not get overdue tasks without authentication' do
       get "/api/v1/tasks/overdue"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
   end
@@ -480,9 +480,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
   describe 'GET /api/v1/tasks/awaiting_explanation' do
     it 'should get tasks awaiting explanation' do
       task.update!(requires_explanation_if_missed: true, due_at: 1.hour.ago, status: :pending)
-      
+
       get "/api/v1/tasks/awaiting_explanation", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to have_key("tasks")
@@ -491,25 +491,25 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not get tasks awaiting explanation without authentication' do
       get "/api/v1/tasks/awaiting_explanation"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
   end
 
   describe 'error handling' do
     it 'should handle malformed JSON' do
-      post "/api/v1/lists/#{list.id}/tasks", 
-           params: "invalid json", 
+      post "/api/v1/lists/#{list.id}/tasks",
+           params: "invalid json",
            headers: auth_headers.merge("Content-Type" => "application/json")
-      
+
       expect(response).to have_http_status(:bad_request)
     end
 
     it 'should handle empty request body' do
-      post "/api/v1/lists/#{list.id}/tasks", 
-           params: "", 
+      post "/api/v1/lists/#{list.id}/tasks",
+           params: "",
            headers: auth_headers.merge("Content-Type" => "application/json")
-      
+
       expect(response).to have_http_status(:bad_request)
     end
 
@@ -519,9 +519,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
         title: long_title,
         due_at: 1.hour.from_now.iso8601
       }
-      
+
       post "/api/v1/lists/#{list.id}/tasks", params: task_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
     end
 
@@ -531,9 +531,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
         title: special_title,
         due_at: 1.hour.from_now.iso8601
       }
-      
+
       post "/api/v1/lists/#{list.id}/tasks", params: task_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:created)
     end
 
@@ -543,9 +543,9 @@ RSpec.describe Api::V1::TasksController, type: :request do
         title: unicode_title,
         due_at: 1.hour.from_now.iso8601
       }
-      
+
       post "/api/v1/lists/#{list.id}/tasks", params: task_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:created)
     end
   end

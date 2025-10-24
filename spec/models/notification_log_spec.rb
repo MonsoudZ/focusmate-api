@@ -98,7 +98,7 @@ RSpec.describe NotificationLog, type: :model do
       other_user = create(:user)
       user_notification = create(:notification_log, user: user)
       other_notification = create(:notification_log, user: other_user)
-      
+
       expect(NotificationLog.for_user(user)).to include(user_notification)
       expect(NotificationLog.for_user(user)).not_to include(other_notification)
     end
@@ -107,7 +107,7 @@ RSpec.describe NotificationLog, type: :model do
       other_task = create(:task, list: list, creator: user)
       task_notification = create(:notification_log, user: user, task: task)
       other_notification = create(:notification_log, user: user, task: other_task)
-      
+
       expect(NotificationLog.for_task(task)).to include(task_notification)
       expect(NotificationLog.for_task(task)).not_to include(other_notification)
     end
@@ -115,7 +115,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'has delivered scope' do
       delivered_notification = create(:notification_log, user: user, delivered: true)
       undelivered_notification = create(:notification_log, user: user, delivered: false)
-      
+
       expect(NotificationLog.delivered).to include(delivered_notification)
       expect(NotificationLog.delivered).not_to include(undelivered_notification)
     end
@@ -123,7 +123,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'has undelivered scope' do
       delivered_notification = create(:notification_log, user: user, delivered: true)
       undelivered_notification = create(:notification_log, user: user, delivered: false)
-      
+
       expect(NotificationLog.undelivered).to include(undelivered_notification)
       expect(NotificationLog.undelivered).not_to include(delivered_notification)
     end
@@ -131,7 +131,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'has recent scope' do
       recent_notification = create(:notification_log, user: user, created_at: 1.hour.ago)
       old_notification = create(:notification_log, user: user, created_at: 1.week.ago)
-      
+
       expect(NotificationLog.recent).to include(recent_notification)
       expect(NotificationLog.recent).not_to include(old_notification)
     end
@@ -139,7 +139,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'has by_type scope' do
       reminder_notification = create(:notification_log, user: user, notification_type: "task_reminder")
       announcement_notification = create(:notification_log, user: user, notification_type: "system_announcement")
-      
+
       expect(NotificationLog.by_type("task_reminder")).to include(reminder_notification)
       expect(NotificationLog.by_type("task_reminder")).not_to include(announcement_notification)
     end
@@ -149,7 +149,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'checks if notification is delivered' do
       delivered_notification = create(:notification_log, user: user, delivered: true)
       undelivered_notification = create(:notification_log, user: user, delivered: false)
-      
+
       expect(delivered_notification.delivered?).to be true
       expect(undelivered_notification.delivered?).to be false
     end
@@ -157,7 +157,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'checks if notification is undelivered' do
       delivered_notification = create(:notification_log, user: user, delivered: true)
       undelivered_notification = create(:notification_log, user: user, delivered: false)
-      
+
       expect(undelivered_notification.undelivered?).to be true
       expect(delivered_notification.undelivered?).to be false
     end
@@ -183,7 +183,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'returns notification details' do
       notification_log.delivery_method = "push"
       notification_log.metadata = { "priority" => "high" }
-      
+
       details = notification_log.details
       expect(details).to include(:id, :notification_type, :message, :delivered, :delivery_method, :metadata)
     end
@@ -196,7 +196,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'checks if notification is recent' do
       notification_log.created_at = 30.minutes.ago
       expect(notification_log.recent?).to be true
-      
+
       notification_log.created_at = 2.hours.ago
       expect(notification_log.recent?).to be false
     end
@@ -204,10 +204,10 @@ RSpec.describe NotificationLog, type: :model do
     it 'returns priority level' do
       notification_log.notification_type = "urgent_alert"
       expect(notification_log.priority).to eq("high")
-      
+
       notification_log.notification_type = "task_reminder"
       expect(notification_log.priority).to eq("medium")
-      
+
       notification_log.notification_type = "system_announcement"
       expect(notification_log.priority).to eq("low")
     end
@@ -215,10 +215,10 @@ RSpec.describe NotificationLog, type: :model do
     it 'returns notification type category' do
       notification_log.notification_type = "task_reminder"
       expect(notification_log.category).to eq("task")
-      
+
       notification_log.notification_type = "system_announcement"
       expect(notification_log.category).to eq("system")
-      
+
       notification_log.notification_type = "coaching_message"
       expect(notification_log.category).to eq("coaching")
     end
@@ -226,7 +226,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'checks if notification is actionable' do
       notification_log.notification_type = "task_reminder"
       expect(notification_log.actionable?).to be true
-      
+
       notification_log.notification_type = "system_announcement"
       expect(notification_log.actionable?).to be false
     end
@@ -241,7 +241,7 @@ RSpec.describe NotificationLog, type: :model do
       notification_log.notification_type = "task_reminder"
       notification_log.message = "Your task is due soon"
       notification_log.metadata = { "priority" => "high" }
-      
+
       report = notification_log.generate_report
       expect(report).to include(:type, :message, :delivered, :priority)
     end
@@ -321,7 +321,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'tracks delivery status' do
       notification_log.delivered = false
       expect(notification_log.undelivered?).to be true
-      
+
       notification_log.mark_delivered!
       expect(notification_log.delivered?).to be true
     end
@@ -342,7 +342,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'returns user notification count' do
       create(:notification_log, user: user, delivered: false)
       create(:notification_log, user: user, delivered: true)
-      
+
       expect(NotificationLog.for_user(user).count).to eq(2)
       expect(NotificationLog.for_user(user).undelivered.count).to eq(1)
     end
@@ -350,7 +350,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'returns recent notifications for user' do
       recent_notification = create(:notification_log, user: user, created_at: 1.hour.ago)
       old_notification = create(:notification_log, user: user, created_at: 1.week.ago)
-      
+
       recent_notifications = NotificationLog.for_user(user).recent
       expect(recent_notifications).to include(recent_notification)
       expect(recent_notifications).not_to include(old_notification)
@@ -361,7 +361,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'returns task notification count' do
       create(:notification_log, user: user, task: task, delivered: false)
       create(:notification_log, user: user, task: task, delivered: true)
-      
+
       expect(NotificationLog.for_task(task).count).to eq(2)
       expect(NotificationLog.for_task(task).undelivered.count).to eq(1)
     end
@@ -369,7 +369,7 @@ RSpec.describe NotificationLog, type: :model do
     it 'returns task notification timeline' do
       notification1 = create(:notification_log, user: user, task: task, created_at: 1.hour.ago)
       notification2 = create(:notification_log, user: user, task: task, created_at: 30.minutes.ago)
-      
+
       timeline = NotificationLog.for_task(task).order(:created_at)
       expect(timeline.first).to eq(notification1)
       expect(timeline.last).to eq(notification2)
@@ -382,9 +382,9 @@ RSpec.describe NotificationLog, type: :model do
         "priority" => "high",
         "channel" => "push",
         "delivery_time" => Time.current.iso8601,
-        "tags" => ["urgent", "important"]
+        "tags" => [ "urgent", "important" ]
       }
-      
+
       notification_log.metadata = complex_metadata
       expect(notification_log).to be_valid
       expect(notification_log.metadata).to eq(complex_metadata)

@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe Api::V1::NotificationsController, type: :request do
   let(:user) { create(:user, email: "user_#{SecureRandom.hex(4)}@example.com") }
   let(:other_user) { create(:user, email: "other_#{SecureRandom.hex(4)}@example.com") }
-  
+
   let(:notification1) do
     NotificationLog.create!(
       user: user,
@@ -14,7 +14,7 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
       delivered_at: 1.hour.ago
     )
   end
-  
+
   let(:notification2) do
     NotificationLog.create!(
       user: user,
@@ -25,7 +25,7 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
       delivered_at: 2.hours.ago
     )
   end
-  
+
   let(:notification3) do
     NotificationLog.create!(
       user: user,
@@ -36,7 +36,7 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
       delivered_at: 3.hours.ago
     )
   end
-  
+
   let(:other_user_notification) do
     NotificationLog.create!(
       user: other_user,
@@ -47,20 +47,20 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
       delivered_at: 1.hour.ago
     )
   end
-  
+
   let(:user_headers) { auth_headers(user) }
   let(:other_user_headers) { auth_headers(other_user) }
 
   describe "GET /api/v1/notifications" do
     it "should get all notifications for user" do
       get "/api/v1/notifications", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(3)
-      
+
       notification_ids = json.map { |n| n["id"] }
       expect(notification_ids).to include(notification1.id)
       expect(notification_ids).to include(notification2.id)
@@ -71,24 +71,24 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
     it "should filter by read/unread" do
       # Test unread notifications
       get "/api/v1/notifications?read=false", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(2)
-      
+
       unread_ids = json.map { |n| n["id"] }
       expect(unread_ids).to include(notification1.id)
       expect(unread_ids).to include(notification3.id)
       expect(unread_ids).not_to include(notification2.id)
-      
+
       # Test read notifications
       get "/api/v1/notifications?read=true", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(notification2.id)
@@ -106,12 +106,12 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
           delivered_at: (i + 4).hours.ago
         )
       end
-      
+
       get "/api/v1/notifications", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(10) # Should be limited to 50, but we have 13 total
     end
@@ -126,7 +126,7 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
         delivered: true,
         delivered_at: 5.hours.ago
       )
-      
+
       new_notification = NotificationLog.create!(
         user: user,
         notification_type: "new_notification",
@@ -135,12 +135,12 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
         delivered: true,
         delivered_at: 30.minutes.ago
       )
-      
+
       get "/api/v1/notifications", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.first["id"]).to eq(new_notification.id)
       expect(json.last["id"]).to eq(old_notification.id)
@@ -148,21 +148,21 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
 
     it "should not get notifications without authentication" do
       get "/api/v1/notifications"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
 
     it "should only show user's own notifications" do
       get "/api/v1/notifications", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(3)
-      
+
       notification_ids = json.map { |n| n["id"] }
       expect(notification_ids).not_to include(other_user_notification.id)
     end
@@ -170,25 +170,25 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
     it "should handle empty notifications list" do
       new_user = create(:user, email: "new_user_#{SecureRandom.hex(4)}@example.com")
       new_user_headers = auth_headers(new_user)
-      
+
       get "/api/v1/notifications", headers: new_user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(0)
     end
 
     it "should include notification details" do
       get "/api/v1/notifications", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(3)
-      
+
       first_notification = json.first
       expect(first_notification).to have_key("id")
       expect(first_notification).to have_key("message")
@@ -201,65 +201,65 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
   describe "PATCH /api/v1/notifications/:id/mark_read" do
     it "should mark single notification as read" do
       patch "/api/v1/notifications/#{notification1.id}/mark_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       notification1.reload
       expect(notification1.metadata["read"]).to be_truthy
     end
 
     it "should update read status" do
       expect(notification1.metadata["read"]).to be_falsy
-      
+
       patch "/api/v1/notifications/#{notification1.id}/mark_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       notification1.reload
       expect(notification1.metadata["read"]).to be_truthy
     end
 
     it "should return 404 if not user's notification" do
       patch "/api/v1/notifications/#{other_user_notification.id}/mark_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Notification not found")
+      expect(json["error"]["message"]).to eq("Notification not found")
     end
 
     it "should not mark notification as read without authentication" do
       patch "/api/v1/notifications/#{notification1.id}/mark_read"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
 
     it "should handle marking already read notification" do
       # notification2 is already read
       patch "/api/v1/notifications/#{notification2.id}/mark_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       notification2.reload
       expect(notification2.metadata["read"]).to be_truthy
     end
 
     it "should handle non-existent notification" do
       patch "/api/v1/notifications/99999/mark_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Notification not found")
+      expect(json["error"]["message"]).to eq("Notification not found")
     end
 
     it "should preserve other metadata when marking as read" do
       original_metadata = notification1.metadata.dup
-      
+
       patch "/api/v1/notifications/#{notification1.id}/mark_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       notification1.reload
       expect(notification1.metadata["read"]).to be_truthy
       expect(notification1.metadata["priority"]).to eq(original_metadata["priority"])
@@ -269,13 +269,13 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
   describe "PATCH /api/v1/notifications/mark_all_read" do
     it "should mark all notifications as read" do
       patch "/api/v1/notifications/mark_all_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       notification1.reload
       notification2.reload
       notification3.reload
-      
+
       expect(notification1.metadata["read"]).to be_truthy
       expect(notification2.metadata["read"]).to be_truthy # Was already read
       expect(notification3.metadata["read"]).to be_truthy
@@ -283,14 +283,14 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
 
     it "should only affect current user's notifications" do
       patch "/api/v1/notifications/mark_all_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       notification1.reload
       notification2.reload
       notification3.reload
       other_user_notification.reload
-      
+
       expect(notification1.metadata["read"]).to be_truthy
       expect(notification2.metadata["read"]).to be_truthy
       expect(notification3.metadata["read"]).to be_truthy
@@ -299,33 +299,33 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
 
     it "should not mark all notifications as read without authentication" do
       patch "/api/v1/notifications/mark_all_read"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
 
     it "should handle user with no notifications" do
       new_user = create(:user, email: "no_notifications_#{SecureRandom.hex(4)}@example.com")
       new_user_headers = auth_headers(new_user)
-      
+
       patch "/api/v1/notifications/mark_all_read", headers: new_user_headers
-      
+
       expect(response).to have_http_status(:no_content)
     end
 
     it "should handle user with all notifications already read" do
       # Mark all notifications as read first
       user.notification_logs.update_all(metadata: { read: true })
-      
+
       patch "/api/v1/notifications/mark_all_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       notification1.reload
       notification2.reload
       notification3.reload
-      
+
       expect(notification1.metadata["read"]).to be_truthy
       expect(notification2.metadata["read"]).to be_truthy
       expect(notification3.metadata["read"]).to be_truthy
@@ -334,14 +334,14 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
     it "should preserve other metadata when marking all as read" do
       original_metadata1 = notification1.metadata.dup
       original_metadata3 = notification3.metadata.dup
-      
+
       patch "/api/v1/notifications/mark_all_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       notification1.reload
       notification3.reload
-      
+
       expect(notification1.metadata["read"]).to be_truthy
       expect(notification3.metadata["read"]).to be_truthy
       expect(notification1.metadata["priority"]).to eq(original_metadata1["priority"])
@@ -351,10 +351,10 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
 
   describe "Edge cases" do
     it "should handle malformed JSON" do
-      patch "/api/v1/notifications/#{notification1.id}/mark_read", 
+      patch "/api/v1/notifications/#{notification1.id}/mark_read",
             params: "invalid json",
             headers: user_headers.merge("Content-Type" => "application/json")
-      
+
       expect(response).to have_http_status(:no_content)
     end
 
@@ -370,12 +370,12 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
           delivered_at: (i + 1).hours.ago
         )
       end
-      
+
       get "/api/v1/notifications", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(50) # Should be limited to 50
     end
@@ -389,7 +389,7 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
           read: false,
           priority: "high",
           category: "urgent",
-          tags: ["important", "urgent"],
+          tags: [ "important", "urgent" ],
           data: {
             task_id: 123,
             list_id: 456,
@@ -399,12 +399,12 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
         delivered: true,
         delivered_at: 1.hour.ago
       )
-      
+
       get "/api/v1/notifications", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       complex_notification_json = json.find { |n| n["id"] == complex_notification.id }
       expect(complex_notification_json).not_to be_nil
@@ -422,11 +422,11 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
         delivered: true,
         delivered_at: 1.hour.ago
       )
-      
+
       patch "/api/v1/notifications/#{nil_metadata_notification.id}/mark_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       nil_metadata_notification.reload
       expect(nil_metadata_notification.metadata).not_to be_nil
       expect(nil_metadata_notification.metadata["read"]).to be_truthy
@@ -441,11 +441,11 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
         delivered: true,
         delivered_at: 1.hour.ago
       )
-      
+
       patch "/api/v1/notifications/#{empty_metadata_notification.id}/mark_read", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       empty_metadata_notification.reload
       expect(empty_metadata_notification.metadata["read"]).to be_truthy
     end
@@ -457,9 +457,9 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
           patch "/api/v1/notifications/#{notification1.id}/mark_read", headers: user_headers
         end
       end
-      
+
       threads.each(&:join)
-      
+
       notification1.reload
       expect(notification1.metadata["read"]).to be_truthy
     end
@@ -471,9 +471,9 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
           patch "/api/v1/notifications/mark_all_read", headers: user_headers
         end
       end
-      
+
       threads.each(&:join)
-      
+
       notification1.reload
       notification3.reload
       expect(notification1.metadata["read"]).to be_truthy
@@ -489,12 +489,12 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
         delivered: true,
         delivered_at: 1.hour.ago
       )
-      
+
       get "/api/v1/notifications", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       special_notification_json = json.find { |n| n["id"] == special_notification.id }
       expect(special_notification_json).not_to be_nil
@@ -503,7 +503,7 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
 
     it "should handle notifications with very long content" do
       long_message = "B" * 5000
-      
+
       long_notification = NotificationLog.create!(
         user: user,
         notification_type: "long_content",
@@ -512,12 +512,12 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
         delivered: true,
         delivered_at: 1.hour.ago
       )
-      
+
       get "/api/v1/notifications", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       long_notification_json = json.find { |n| n["id"] == long_notification.id }
       expect(long_notification_json).not_to be_nil
@@ -533,12 +533,12 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
         delivered: true,
         delivered_at: 1.hour.ago
       )
-      
+
       get "/api/v1/notifications", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       unicode_notification_json = json.find { |n| n["id"] == unicode_notification.id }
       expect(unicode_notification_json).not_to be_nil

@@ -33,7 +33,7 @@ RSpec.describe "API Integration", type: :request do
       expect(lists_json).to be_a(Array)
 
       # 4. Create a task
-      post "/api/v1/lists/#{list.id}/tasks", 
+      post "/api/v1/lists/#{list.id}/tasks",
            params: {
              title: "Integration Test Task",
              due_at: 1.hour.from_now.iso8601,
@@ -47,7 +47,7 @@ RSpec.describe "API Integration", type: :request do
       task_id = task_json["id"]
 
       # 5. Get tasks for list
-      get "/api/v1/lists/#{list.id}/tasks", 
+      get "/api/v1/lists/#{list.id}/tasks",
           headers: { "Authorization" => "Bearer #{token}" }
       expect(response).to have_http_status(:success)
       tasks_json = JSON.parse(response.body)
@@ -55,7 +55,7 @@ RSpec.describe "API Integration", type: :request do
       expect(tasks_json["tasks"]).to be_a(Array)
 
       # 6. Get specific task
-      get "/api/v1/lists/#{list.id}/tasks/#{task_id}", 
+      get "/api/v1/lists/#{list.id}/tasks/#{task_id}",
           headers: { "Authorization" => "Bearer #{token}" }
       expect(response).to have_http_status(:success)
       task_detail_json = JSON.parse(response.body)
@@ -64,7 +64,7 @@ RSpec.describe "API Integration", type: :request do
       expect(task_detail_json["id"]).to eq(task_id)
 
       # 7. Update task
-      patch "/api/v1/lists/#{list.id}/tasks/#{task_id}", 
+      patch "/api/v1/lists/#{list.id}/tasks/#{task_id}",
             params: {
               title: "Updated Integration Test Task",
               note: "Updated note"
@@ -77,7 +77,7 @@ RSpec.describe "API Integration", type: :request do
       expect(updated_task_json["title"]).to eq("Updated Integration Test Task")
 
       # 8. Complete task
-      post "/api/v1/lists/#{list.id}/tasks/#{task_id}/complete", 
+      post "/api/v1/lists/#{list.id}/tasks/#{task_id}/complete",
            params: { completed: true },
            headers: { "Authorization" => "Bearer #{token}" }
       expect(response).to have_http_status(:success)
@@ -87,7 +87,7 @@ RSpec.describe "API Integration", type: :request do
       expect(completed_task_json["status"]).to eq("done")
 
       # 9. Get all tasks
-      get "/api/v1/tasks/all_tasks", 
+      get "/api/v1/tasks/all_tasks",
           headers: { "Authorization" => "Bearer #{token}" }
       expect(response).to have_http_status(:success)
       all_tasks_json = JSON.parse(response.body)
@@ -114,12 +114,12 @@ RSpec.describe "API Integration", type: :request do
       token = login_json["token"]
 
       # 2. Create task with iOS parameters
-      post "/api/v1/lists/#{list.id}/tasks", 
+      post "/api/v1/lists/#{list.id}/tasks",
            params: {
              name: "iOS Task", # iOS uses 'name'
              dueDate: 1.hour.from_now.to_i, # iOS sends epoch seconds
              description: "iOS description", # iOS uses 'description'
-             subtasks: ["iOS Subtask 1", "iOS Subtask 2"]
+             subtasks: [ "iOS Subtask 1", "iOS Subtask 2" ]
            },
            headers: { "Authorization" => "Bearer #{token}" }
       expect(response).to have_http_status(:created)
@@ -129,7 +129,7 @@ RSpec.describe "API Integration", type: :request do
       task_id = task_json["id"]
 
       # 3. Verify task was created correctly
-      get "/api/v1/lists/#{list.id}/tasks/#{task_id}", 
+      get "/api/v1/lists/#{list.id}/tasks/#{task_id}",
           headers: { "Authorization" => "Bearer #{token}" }
       expect(response).to have_http_status(:success)
       task_detail_json = JSON.parse(response.body)
@@ -140,7 +140,7 @@ RSpec.describe "API Integration", type: :request do
       expect(task_detail_json["note"]).to eq("iOS description")
 
       # 4. Complete task
-      post "/api/v1/lists/#{list.id}/tasks/#{task_id}/complete", 
+      post "/api/v1/lists/#{list.id}/tasks/#{task_id}/complete",
            params: { completed: true },
            headers: { "Authorization" => "Bearer #{token}" }
       expect(response).to have_http_status(:success)
@@ -181,14 +181,14 @@ RSpec.describe "API Integration", type: :request do
       # 4. Try to access other user's resources
       other_user = create(:user, email: "other_#{SecureRandom.hex(4)}@example.com")
       other_list = create(:list, owner: other_user)
-      
+
       get "/api/v1/lists/#{other_list.id}/tasks", headers: auth_headers
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]).to eq("List not found")
 
       # 5. Try to create task with invalid data
-      post "/api/v1/lists/#{list.id}/tasks", 
+      post "/api/v1/lists/#{list.id}/tasks",
            params: {
              title: "", # Invalid: empty title
              due_at: "invalid-date" # Invalid: bad date format
@@ -214,20 +214,20 @@ RSpec.describe "API Integration", type: :request do
         threads << Thread.new do
           auth_headers = auth_headers(user)
           list = create(:list, owner: user, name: "List #{index}")
-          
+
           # Create multiple tasks
           5.times do |j|
-            post "/api/v1/lists/#{list.id}/tasks", 
+            post "/api/v1/lists/#{list.id}/tasks",
                  params: {
                    title: "Task #{j} for User #{index}",
                    due_at: (j + 1).hours.from_now.iso8601
                  },
                  headers: auth_headers
           end
-          
+
           # Get tasks
           get "/api/v1/lists/#{list.id}/tasks", headers: auth_headers
-          
+
           # Get all tasks
           get "/api/v1/tasks/all_tasks", headers: auth_headers
         end
@@ -242,7 +242,7 @@ RSpec.describe "API Integration", type: :request do
   describe "data consistency workflow" do
     it "should maintain data consistency" do
       # 1. Create task
-      post "/api/v1/lists/#{list.id}/tasks", 
+      post "/api/v1/lists/#{list.id}/tasks",
            params: {
              title: "Consistency Test Task",
              due_at: 1.hour.from_now.iso8601,
@@ -262,7 +262,7 @@ RSpec.describe "API Integration", type: :request do
       ]
 
       updates.each do |update|
-        patch "/api/v1/lists/#{list.id}/tasks/#{task_id}", 
+        patch "/api/v1/lists/#{list.id}/tasks/#{task_id}",
               params: update,
               headers: auth_headers
         expect(response).to have_http_status(:success)
@@ -279,7 +279,7 @@ RSpec.describe "API Integration", type: :request do
       expect(final_task_json["note"]).to eq("Final note")
 
       # 4. Complete task
-      post "/api/v1/lists/#{list.id}/tasks/#{task_id}/complete", 
+      post "/api/v1/lists/#{list.id}/tasks/#{task_id}/complete",
            params: { completed: true },
            headers: auth_headers
       expect(response).to have_http_status(:success)
@@ -298,23 +298,23 @@ RSpec.describe "API Integration", type: :request do
     it "should handle filtering and querying" do
       # Create tasks with different statuses and due dates
       tasks = []
-      
+
       # Pending task
-      tasks << create(:task, list: list, creator: user, 
-                     title: "Pending Task", 
-                     status: :pending, 
+      tasks << create(:task, list: list, creator: user,
+                     title: "Pending Task",
+                     status: :pending,
                      due_at: 1.hour.from_now)
-      
+
       # Completed task
-      tasks << create(:task, list: list, creator: user, 
-                     title: "Completed Task", 
-                     status: :done, 
+      tasks << create(:task, list: list, creator: user,
+                     title: "Completed Task",
+                     status: :done,
                      due_at: 1.hour.ago)
-      
+
       # Overdue task
-      tasks << create(:task, list: list, creator: user, 
-                     title: "Overdue Task", 
-                     status: :pending, 
+      tasks << create(:task, list: list, creator: user,
+                     title: "Overdue Task",
+                     status: :pending,
                      due_at: 2.hours.ago)
 
       # 1. Get all tasks
@@ -398,7 +398,7 @@ RSpec.describe "API Integration", type: :request do
       # Make multiple requests quickly to test rate limiting
       # Note: This test might not trigger rate limiting in test environment
       # but it tests the endpoint behavior under load
-      
+
       10.times do |i|
         get "/api/v1/profile", headers: auth_headers
         # All requests should succeed in test environment
@@ -411,9 +411,9 @@ RSpec.describe "API Integration", type: :request do
     it "should handle large data sets" do
       # Create many tasks to test performance
       task_count = 50
-      
+
       task_count.times do |i|
-        post "/api/v1/lists/#{list.id}/tasks", 
+        post "/api/v1/lists/#{list.id}/tasks",
              params: {
                title: "Bulk Task #{i}",
                due_at: (i + 1).hours.from_now.iso8601

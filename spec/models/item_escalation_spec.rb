@@ -14,7 +14,7 @@ RSpec.describe ItemEscalation, type: :model do
       list = create(:list, owner: user)
       task = create(:task, list: list, creator: user)
       create(:item_escalation, task: task)
-      
+
       duplicate_escalation = build(:item_escalation, task: task)
       expect(duplicate_escalation).not_to be_valid
       expect(duplicate_escalation.errors[:task_id]).to include('has already been taken')
@@ -120,7 +120,7 @@ RSpec.describe ItemEscalation, type: :model do
     it 'should set blocking_app and blocking_started_at when escalating to blocking' do
       escalation.update!(escalation_level: 'critical')
       escalation.escalate!
-      
+
       expect(escalation.blocking_app).to be true
       expect(escalation.blocking_started_at).to be_present
     end
@@ -149,7 +149,7 @@ RSpec.describe ItemEscalation, type: :model do
     it 'should not update became_overdue_at if already set' do
       escalation.mark_overdue!
       original_time = escalation.became_overdue_at
-      
+
       travel_to(1.hour.from_now) do
         escalation.mark_overdue!
         expect(escalation.became_overdue_at).to eq(original_time)
@@ -172,7 +172,7 @@ RSpec.describe ItemEscalation, type: :model do
       escalation.notify_coaches!
       expect(escalation.coaches_notified).to be true
       expect(escalation.coaches_notified_at).to be_present
-      
+
       # The method should still work but coaches are already notified
       escalation.notify_coaches!
       expect(escalation.coaches_notified).to be true
@@ -211,7 +211,7 @@ RSpec.describe ItemEscalation, type: :model do
 
     it 'should reset escalation when task completed' do
       escalation.reset!
-      
+
       expect(escalation.escalation_level).to eq('normal')
       expect(escalation.notification_count).to eq(0)
       expect(escalation.last_notification_at).to be_nil
@@ -224,7 +224,7 @@ RSpec.describe ItemEscalation, type: :model do
 
     it 'should reset escalation when task reassigned' do
       escalation.clear!
-      
+
       expect(escalation.escalation_level).to eq('normal')
       expect(escalation.notification_count).to eq(0)
       expect(escalation.blocking_app).to be false
@@ -244,7 +244,7 @@ RSpec.describe ItemEscalation, type: :model do
     it 'should have clear! as alias for reset!' do
       escalation.update!(escalation_level: 'critical', notification_count: 5)
       escalation.clear!
-      
+
       expect(escalation.escalation_level).to eq('normal')
       expect(escalation.notification_count).to eq(0)
     end
@@ -259,7 +259,7 @@ RSpec.describe ItemEscalation, type: :model do
       # This test verifies that escalations can be created for any task
       task = create(:task, list: list, creator: user, due_at: 1.day.from_now)
       escalation = create(:item_escalation, task: task)
-      
+
       # Escalation should be associated with the task
       expect(escalation.task).to eq(task)
       expect(escalation.escalation_level).to eq('normal')
@@ -268,7 +268,7 @@ RSpec.describe ItemEscalation, type: :model do
     it 'should handle already-completed tasks (should not escalate)' do
       task = create(:task, list: list, creator: user, status: 'done')
       escalation = create(:item_escalation, task: task)
-      
+
       expect(task.status).to eq('done')
       expect(escalation.task).to eq(task)
     end
@@ -276,7 +276,7 @@ RSpec.describe ItemEscalation, type: :model do
     it 'should handle deleted tasks (should not escalate)' do
       task = create(:task, list: list, creator: user, status: 'deleted')
       escalation = create(:item_escalation, task: task)
-      
+
       expect(task.status).to eq('deleted')
       expect(escalation.task).to eq(task)
     end
@@ -290,7 +290,7 @@ RSpec.describe ItemEscalation, type: :model do
     it 'should validate task_id uniqueness' do
       task = create(:task, list: list, creator: user)
       create(:item_escalation, task: task)
-      
+
       duplicate_escalation = build(:item_escalation, task: task)
       expect(duplicate_escalation).not_to be_valid
       expect(duplicate_escalation.errors[:task_id]).to include('has already been taken')
@@ -306,32 +306,32 @@ RSpec.describe ItemEscalation, type: :model do
     it 'should handle complete escalation workflow' do
       # Start at normal
       expect(escalation.normal?).to be true
-      
+
       # Escalate to warning
       escalation.escalate!
       expect(escalation.warning?).to be true
-      
+
       # Increment notifications
       escalation.increment_notifications!
       expect(escalation.notification_count).to eq(1)
-      
+
       # Mark overdue
       escalation.mark_overdue!
       expect(escalation.became_overdue_at).to be_present
-      
+
       # Escalate to critical
       escalation.escalate!
       expect(escalation.critical?).to be true
-      
+
       # Notify coaches
       escalation.notify_coaches!
       expect(escalation.coaches_notified).to be true
-      
+
       # Escalate to blocking
       escalation.escalate!
       expect(escalation.blocking?).to be true
       expect(escalation.blocking_app).to be true
-      
+
       # Complete task and reset
       task.update!(status: 'done')
       escalation.reset!
@@ -342,11 +342,11 @@ RSpec.describe ItemEscalation, type: :model do
     it 'should handle reassignment workflow' do
       # Set up critical escalation
       escalation.update!(escalation_level: 'critical', coaches_notified: true)
-      
+
       # Task gets reassigned
       task.update!(due_at: 1.day.from_now)
       escalation.clear!
-      
+
       expect(escalation.normal?).to be true
       expect(escalation.coaches_notified).to be false
       expect(escalation.blocking_app).to be false

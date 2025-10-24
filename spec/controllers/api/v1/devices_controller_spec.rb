@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe Api::V1::DevicesController, type: :request do
   let(:user) { create(:user, email: "user_#{SecureRandom.hex(4)}@example.com") }
   let(:other_user) { create(:user, email: "other_#{SecureRandom.hex(4)}@example.com") }
-  
+
   let(:device) do
     Device.create!(
       user: user,
@@ -12,17 +12,17 @@ RSpec.describe Api::V1::DevicesController, type: :request do
       bundle_id: "com.example.app"
     )
   end
-  
+
   let(:user_headers) { auth_headers(user) }
   let(:other_user_headers) { auth_headers(other_user) }
 
   describe "GET /api/v1/devices" do
     it "should get all devices for current user" do
       get "/api/v1/devices", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(device.id)
@@ -30,10 +30,10 @@ RSpec.describe Api::V1::DevicesController, type: :request do
 
     it "should not get devices without authentication" do
       get "/api/v1/devices"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
 
     it "should only show user's own devices" do
@@ -43,12 +43,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "android",
         bundle_id: "com.other.app"
       )
-      
+
       get "/api/v1/devices", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(device.id)
@@ -59,10 +59,10 @@ RSpec.describe Api::V1::DevicesController, type: :request do
   describe "GET /api/v1/devices/:id" do
     it "should show device details" do
       get "/api/v1/devices/#{device.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("id", "apns_token", "platform", "bundle_id", "user")
       expect(json["id"]).to eq(device.id)
       expect(json["apns_token"]).to eq(device.apns_token)
@@ -77,20 +77,20 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "android",
         bundle_id: "com.other.app"
       )
-      
+
       get "/api/v1/devices/#{other_device.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Device not found")
     end
 
     it "should not show device without authentication" do
       get "/api/v1/devices/#{device.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
   end
 
@@ -101,12 +101,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.newapp.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("id", "apns_token", "platform", "bundle_id")
       expect(json["apns_token"]).to eq(device_params[:apns_token])
       expect(json["platform"]).to eq("ios")
@@ -121,23 +121,23 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "android",
         bundle_id: "com.old.app"
       )
-      
+
       device_params = {
         apns_token: existing_token,
         platform: "ios",
         bundle_id: "com.new.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("id", "apns_token", "platform", "bundle_id")
       expect(json["apns_token"]).to eq(existing_token)
       expect(json["platform"]).to eq("ios")
       expect(json["bundle_id"]).to eq("com.new.app")
-      
+
       # Verify the device was updated, not created new
       expect(json["id"]).to eq(existing_device.id)
     end
@@ -148,15 +148,15 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.user.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("id", "user")
       expect(json["user"]["id"]).to eq(user.id)
-      
+
       # Verify device is associated with user
       device = Device.find(json["id"])
       expect(device.user_id).to eq(user.id)
@@ -168,9 +168,9 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.platform.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["platform"]).to eq("ios")
@@ -182,9 +182,9 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "android",
         bundle_id: "com.android.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["platform"]).to eq("android")
@@ -196,12 +196,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "windows",
         bundle_id: "com.invalid.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Validation failed")
+      expect(json["error"]["message"]).to eq("Validation failed")
     end
 
     it "should validate bundle_id" do
@@ -210,9 +210,9 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.valid.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["bundle_id"]).to eq("com.valid.app")
@@ -224,12 +224,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "invalid-bundle-format"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Validation failed")
+      expect(json["error"]["message"]).to eq("Validation failed")
     end
 
     it "should allow blank bundle_id" do
@@ -238,9 +238,9 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: ""
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["bundle_id"]).to be_nil
@@ -252,12 +252,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.auto.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json["apns_token"]).not_to be_nil
       expect(json["apns_token"]).to start_with("dev_token_")
     end
@@ -268,12 +268,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.nil.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json["apns_token"]).not_to be_nil
       expect(json["apns_token"]).to start_with("dev_token_")
     end
@@ -284,12 +284,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.noauth.app"
       }
-      
+
       post "/api/v1/devices", params: device_params
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
   end
 
@@ -300,12 +300,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "android",
         bundle_id: "com.legacy.app"
       }
-      
+
       post "/api/v1/devices/register", params: register_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("id", "apns_token", "platform", "bundle_id")
       expect(json["apns_token"]).to eq(register_params[:apns_token])
       expect(json["platform"]).to eq("android")
@@ -320,18 +320,18 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.legacy.old"
       )
-      
+
       register_params = {
         apns_token: existing_token,
         platform: "android",
         bundle_id: "com.legacy.new"
       }
-      
+
       post "/api/v1/devices/register", params: register_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("id", "platform", "bundle_id")
       expect(json["id"]).to eq(existing_device.id)
       expect(json["platform"]).to eq("android")
@@ -345,12 +345,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "android",
         bundle_id: "com.updated.app"
       }
-      
+
       patch "/api/v1/devices/#{device.id}", params: update_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("id", "platform", "bundle_id")
       expect(json["id"]).to eq(device.id)
       expect(json["platform"]).to eq("android")
@@ -364,17 +364,17 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "android",
         bundle_id: "com.other.app"
       )
-      
+
       update_params = {
         platform: "ios",
         bundle_id: "com.hacked.app"
       }
-      
+
       patch "/api/v1/devices/#{other_device.id}", params: update_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Device not found")
     end
 
     it "should not update device without authentication" do
@@ -382,21 +382,21 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "android",
         bundle_id: "com.noauth.app"
       }
-      
+
       patch "/api/v1/devices/#{device.id}", params: update_params
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
   end
 
   describe "DELETE /api/v1/devices/:id" do
     it "should delete device" do
       delete "/api/v1/devices/#{device.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       expect { Device.find(device.id) }.to raise_error(ActiveRecord::RecordNotFound)
     end
 
@@ -407,30 +407,30 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "android",
         bundle_id: "com.other.app"
       )
-      
+
       delete "/api/v1/devices/#{other_device.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Device not found")
     end
 
     it "should not delete device without authentication" do
       delete "/api/v1/devices/#{device.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
   end
 
   describe "POST /api/v1/devices/test_push" do
     it "should send test push notification to device" do
       post "/api/v1/devices/test_push", params: { device_id: device.id }, headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("message", "device_id", "platform")
       expect(json["message"]).to eq("Test push notification sent successfully")
       expect(json["device_id"]).to eq(device.id)
@@ -440,9 +440,9 @@ RSpec.describe Api::V1::DevicesController, type: :request do
     it "should return delivery status" do
       # Mock notification service
       allow(NotificationService).to receive(:send_test_notification).and_return(true)
-      
+
       post "/api/v1/devices/test_push", params: { device_id: device.id }, headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["message"]).to eq("Test push notification sent successfully")
@@ -456,15 +456,15 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.invalid.app"
       )
-      
+
       # Mock notification service to raise error
       allow(NotificationService).to receive(:send_test_notification).and_raise(StandardError.new("Invalid token"))
-      
+
       post "/api/v1/devices/test_push", params: { device_id: invalid_device.id }, headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Failed to send test push")
+      expect(json["error"]["message"]).to eq("Failed to send test push")
     end
 
     it "should not send test push to other user's device" do
@@ -474,51 +474,51 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "android",
         bundle_id: "com.other.app"
       )
-      
+
       post "/api/v1/devices/test_push", params: { device_id: other_device.id }, headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Device not found")
     end
 
     it "should not send test push without authentication" do
       post "/api/v1/devices/test_push", params: { device_id: device.id }
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
 
     it "should handle missing device_id parameter" do
       post "/api/v1/devices/test_push", params: {}, headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Device not found")
     end
 
     it "should handle non-existent device_id" do
       post "/api/v1/devices/test_push", params: { device_id: 99999 }, headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Device not found")
     end
   end
 
   describe "Edge cases" do
     it "should handle malformed JSON" do
-      post "/api/v1/devices", 
+      post "/api/v1/devices",
            params: "invalid json",
            headers: user_headers.merge("Content-Type" => "application/json")
-      
+
       expect(response).to have_http_status(:bad_request)
     end
 
     it "should handle empty request body" do
       post "/api/v1/devices", params: {}, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["apns_token"]).to start_with("dev_token_")
@@ -526,15 +526,15 @@ RSpec.describe Api::V1::DevicesController, type: :request do
 
     it "should handle very long APNs tokens" do
       long_token = "a" * 1000
-      
+
       device_params = {
         apns_token: long_token,
         platform: "ios",
         bundle_id: "com.long.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["apns_token"]).to eq(long_token)
@@ -546,9 +546,9 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.company-name.app_name"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["bundle_id"]).to eq("com.company-name.app_name")
@@ -560,12 +560,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.公司.应用"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Validation failed")
+      expect(json["error"]["message"]).to eq("Validation failed")
     end
 
     it "should handle concurrent device registration" do
@@ -577,11 +577,11 @@ RSpec.describe Api::V1::DevicesController, type: :request do
             platform: "ios",
             bundle_id: "com.concurrent#{i}.app"
           }
-          
+
           post "/api/v1/devices", params: device_params, headers: user_headers
         end
       end
-      
+
       threads.each(&:join)
       # All should succeed with different tokens
       expect(true).to be_truthy
@@ -594,14 +594,14 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.shared.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
       expect(response).to have_http_status(:created)
-      
+
       # Second user tries to register with same token
       post "/api/v1/devices", params: device_params, headers: other_user_headers
       expect(response).to have_http_status(:created)
-      
+
       # Both should succeed as tokens are unique per user
       expect(true).to be_truthy
     end
@@ -614,12 +614,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
           bundle_id: "com.nested.app"
         }
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("apns_token", "platform", "bundle_id")
       expect(json["apns_token"]).to start_with("nested_token_")
       expect(json["platform"]).to eq("android")
@@ -632,12 +632,12 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "1", # String boolean
         bundle_id: "com.boolean.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Validation failed")
+      expect(json["error"]["message"]).to eq("Validation failed")
     end
 
     it "should handle nil platform" do
@@ -646,9 +646,9 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: nil,
         bundle_id: "com.nil.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["platform"]).to eq("ios") # Should default to ios
@@ -660,9 +660,9 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "",
         bundle_id: "com.empty.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["platform"]).to eq("ios") # Should default to ios
@@ -670,18 +670,18 @@ RSpec.describe Api::V1::DevicesController, type: :request do
 
     it "should handle very long bundle_id" do
       long_bundle_id = "com." + "a" * 200 + ".app"
-      
+
       device_params = {
         apns_token: "long_bundle_token_#{SecureRandom.hex(16)}",
         platform: "ios",
         bundle_id: long_bundle_id
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Validation failed")
+      expect(json["error"]["message"]).to eq("Validation failed")
     end
 
     it "should handle whitespace in APNs token" do
@@ -690,9 +690,9 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "com.spaces.app"
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["apns_token"]).to start_with("  token_with_spaces_") # Should preserve spaces
@@ -704,9 +704,9 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         platform: "ios",
         bundle_id: "  com.whitespace.app  "
       }
-      
+
       post "/api/v1/devices", params: device_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["bundle_id"]).to eq("  com.whitespace.app  ") # Should preserve spaces

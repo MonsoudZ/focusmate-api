@@ -5,7 +5,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
   let(:other_user) { create(:user, email: "other_#{SecureRandom.hex(4)}@example.com") }
   let(:list) { create(:list, owner: user, name: "Test List") }
   let(:other_list) { create(:list, owner: other_user, name: "Other List") }
-  
+
   let!(:template) do
     Task.create!(
       list: list,
@@ -22,17 +22,17 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
       strict_mode: false
     )
   end
-  
+
   let(:user_headers) { auth_headers(user) }
   let(:other_user_headers) { auth_headers(other_user) }
 
   describe "GET /api/v1/recurring_templates" do
     it "should get all recurring templates for user" do
       get "/api/v1/recurring_templates", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(template.id)
@@ -49,18 +49,18 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         recurring_template_id: nil,
         recurrence_pattern: "weekly",
         recurrence_interval: 1,
-        recurrence_days: [1, 3, 5], # Monday, Wednesday, Friday
+        recurrence_days: [ 1, 3, 5 ], # Monday, Wednesday, Friday
         recurrence_time: "17:00",
         due_at: 1.week.from_now,
         status: :pending,
         strict_mode: false
       )
-      
+
       get "/api/v1/recurring_templates?list_id=#{list.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(template.id)
@@ -81,12 +81,12 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       get "/api/v1/recurring_templates", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(template.id)
@@ -95,7 +95,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
 
     it "should not get recurring templates without authentication" do
       get "/api/v1/recurring_templates"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -104,12 +104,12 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
     it "should handle empty templates list" do
       new_user = create(:user, email: "new_user_#{SecureRandom.hex(4)}@example.com")
       new_user_headers = auth_headers(new_user)
-      
+
       get "/api/v1/recurring_templates", headers: new_user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(0)
     end
@@ -118,16 +118,16 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
   describe "GET /api/v1/recurring_templates/:id" do
     it "should show template details" do
       get "/api/v1/recurring_templates/#{template.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("title")
       expect(json).to have_key("note")
       expect(json).to have_key("recurrence_pattern")
       expect(json).to have_key("recurrence_interval")
-      
+
       expect(json["id"]).to eq(template.id)
       expect(json["title"]).to eq("Daily Standup")
       expect(json["note"]).to eq("Daily team standup meeting")
@@ -150,9 +150,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       get "/api/v1/recurring_templates/#{other_template.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Recurring template not found")
@@ -160,7 +160,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
 
     it "should not show template without authentication" do
       get "/api/v1/recurring_templates/#{template.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -176,21 +176,21 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_pattern: "weekly",
           recurrence_interval: 1,
           recurrence_time: "14:00",
-          recurrence_days: ["monday", "wednesday", "friday"]
+          recurrence_days: [ "monday", "wednesday", "friday" ]
         }
       }
-      
+
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("title")
       expect(json).to have_key("note")
       expect(json).to have_key("recurrence_pattern")
       expect(json).to have_key("recurrence_interval")
-      
+
       expect(json["title"]).to eq("Weekly Team Meeting")
       expect(json["note"]).to eq("Weekly team sync meeting")
       expect(json["recurrence_pattern"]).to eq("weekly")
@@ -207,9 +207,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_time: "10:00"
         }
       }
-      
+
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
@@ -225,9 +225,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_time: "10:00"
         }
       }
-      
+
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
@@ -243,17 +243,17 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_time: "15:00"
         }
       }
-      
+
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("is_recurring")
-      
+
       expect(json["is_recurring"]).to be_truthy
-      
+
       # Verify in database
       template_task = Task.find(json["id"])
       expect(template_task.is_recurring?).to be_truthy
@@ -269,9 +269,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_time: "10:00"
         }
       }
-      
+
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: other_list.id), headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("List not found")
@@ -287,9 +287,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_time: "10:00"
         }
       }
-      
+
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id)
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -305,17 +305,17 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_time: "10:00"
         }
       }
-      
+
       patch "/api/v1/recurring_templates/#{template.id}", params: update_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("title")
       expect(json).to have_key("note")
       expect(json).to have_key("recurrence_time")
-      
+
       expect(json["title"]).to eq("Updated Daily Standup")
       expect(json["note"]).to eq("Updated daily team standup meeting")
       expect(json["recurrence_time"]).to eq("10:00")
@@ -334,18 +334,18 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       update_params = {
         recurring_template: {
           title: "Updated Template Title",
           note: "Updated template description"
         }
       }
-      
+
       patch "/api/v1/recurring_templates/#{template.id}", params: update_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
-      
+
       # Check that existing instance is not affected
       instance.reload
       expect(instance.title).to eq("Daily Standup Instance")
@@ -365,18 +365,18 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: "pending",
         strict_mode: false
       )
-      
+
       update_params = {
         recurring_template: {
           title: "Updated Template Title",
           note: "Updated template description"
         }
       }
-      
+
       patch "/api/v1/recurring_templates/#{template.id}", params: update_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
-      
+
       # Check that incomplete instance is updated
       incomplete_instance.reload
       expect(incomplete_instance.title).to eq("Updated Template Title")
@@ -398,16 +398,16 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       update_params = {
         recurring_template: {
           title: "Hacked Template",
           note: "This should not be updated"
         }
       }
-      
+
       patch "/api/v1/recurring_templates/#{other_template.id}", params: update_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Recurring template not found")
@@ -420,9 +420,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           note: "This should not be updated"
         }
       }
-      
+
       patch "/api/v1/recurring_templates/#{template.id}", params: update_params
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -432,9 +432,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
   describe "DELETE /api/v1/recurring_templates/:id" do
     it "should delete recurring template" do
       delete "/api/v1/recurring_templates/#{template.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       expect { Task.find(template.id) }.to raise_error(ActiveRecord::RecordNotFound)
     end
 
@@ -451,7 +451,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       instance2 = Task.create!(
         list: list,
         creator: user,
@@ -463,11 +463,11 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       delete "/api/v1/recurring_templates/#{template.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       # All instances should be deleted
       expect { Task.find(instance1.id) }.to raise_error(ActiveRecord::RecordNotFound)
       expect { Task.find(instance2.id) }.to raise_error(ActiveRecord::RecordNotFound)
@@ -488,9 +488,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       delete "/api/v1/recurring_templates/#{other_template.id}", headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Recurring template not found")
@@ -498,7 +498,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
 
     it "should not delete template without authentication" do
       delete "/api/v1/recurring_templates/#{template.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -508,15 +508,15 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
   describe "POST /api/v1/recurring_templates/:id/generate_instance" do
     it "should manually generate instance from template" do
       post "/api/v1/recurring_templates/#{template.id}/generate_instance", headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("title")
       expect(json).to have_key("note")
       expect(json).to have_key("recurring_template_id")
-      
+
       expect(json["title"]).to eq("Daily Standup")
       expect(json["note"]).to eq("Daily team standup meeting")
       expect(json["recurring_template_id"]).to eq(template.id)
@@ -524,15 +524,15 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
 
     it "should calculate next due date based on pattern" do
       post "/api/v1/recurring_templates/#{template.id}/generate_instance", headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("due_at")
-      
+
       expect(json["due_at"]).not_to be_nil
-      
+
       # Verify the instance was created with correct due date
       instance = Task.find(json["id"])
       expect(instance.due_at).not_to be_nil
@@ -540,15 +540,15 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
 
     it "should copy template attributes to instance" do
       post "/api/v1/recurring_templates/#{template.id}/generate_instance", headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("title")
       expect(json).to have_key("note")
       expect(json).to have_key("recurring_template_id")
-      
+
       expect(json["title"]).to eq(template.title)
       expect(json["note"]).to eq(template.note)
       expect(json["recurring_template_id"]).to eq(template.id)
@@ -556,15 +556,15 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
 
     it "should link instance to template (recurring_template_id)" do
       post "/api/v1/recurring_templates/#{template.id}/generate_instance", headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("recurring_template_id")
-      
+
       expect(json["recurring_template_id"]).to eq(template.id)
-      
+
       # Verify in database
       instance = Task.find(json["id"])
       expect(instance.recurring_template_id).to eq(template.id)
@@ -585,9 +585,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       post "/api/v1/recurring_templates/#{other_template.id}/generate_instance", headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Recurring template not found")
@@ -595,7 +595,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
 
     it "should not generate instance without authentication" do
       post "/api/v1/recurring_templates/#{template.id}/generate_instance"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -616,7 +616,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       instance2 = Task.create!(
         list: list,
         creator: user,
@@ -628,15 +628,15 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       get "/api/v1/recurring_templates/#{template.id}/instances", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(2)
-      
+
       instance_ids = json.map { |i| i["id"] }
       expect(instance_ids).to include(instance1.id)
       expect(instance_ids).to include(instance2.id)
@@ -655,7 +655,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       past_instance = Task.create!(
         list: list,
         creator: user,
@@ -667,15 +667,15 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       get "/api/v1/recurring_templates/#{template.id}/instances", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(2)
-      
+
       # Should be ordered by due_at descending (most recent first)
       expect(json.first["id"]).to eq(future_instance.id)
       expect(json.last["id"]).to eq(past_instance.id)
@@ -696,9 +696,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       get "/api/v1/recurring_templates/#{other_template.id}/instances", headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Recurring template not found")
@@ -706,7 +706,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
 
     it "should not get instances without authentication" do
       get "/api/v1/recurring_templates/#{template.id}/instances"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -727,12 +727,12 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       get "/api/v1/recurring_templates/#{new_template.id}/instances", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(0)
     end
@@ -740,16 +740,16 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
 
   describe "Edge cases" do
     it "should handle malformed JSON" do
-      patch "/api/v1/recurring_templates/#{template.id}", 
+      patch "/api/v1/recurring_templates/#{template.id}",
             params: "invalid json",
             headers: user_headers.merge("Content-Type" => "application/json")
-      
+
       expect(response).to have_http_status(:bad_request)
     end
 
     it "should handle empty request body" do
       patch "/api/v1/recurring_templates/#{template.id}", params: {}, headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["id"]).to eq(template.id)
@@ -757,7 +757,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
 
     it "should handle very long template titles" do
       long_title = "A" * 1000
-      
+
       template_params = {
         recurring_template: {
           title: long_title,
@@ -767,9 +767,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_time: "10:00"
         }
       }
-      
+
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
@@ -785,16 +785,16 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_time: "10:00"
         }
       }
-      
+
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("title")
       expect(json).to have_key("note")
-      
+
       expect(json["title"]).to eq("Template with Special Chars: !@#$%^&*()")
       expect(json["note"]).to eq("Template with special characters: éñ中文")
     end
@@ -809,16 +809,16 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_time: "10:00"
         }
       }
-      
+
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      
+
       expect(json).to have_key("id")
       expect(json).to have_key("title")
       expect(json).to have_key("note")
-      
+
       expect(json["title"]).to eq("Unicode Template: 🚀📱💻")
       expect(json["note"]).to eq("Template with emojis: 🎉🎊🎈")
     end
@@ -836,11 +836,11 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
               recurrence_time: "10:00"
             }
           }
-          
+
           post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
         end
       end
-      
+
       threads.each(&:join)
       # All should succeed with different titles
       expect(true).to be_truthy
@@ -853,15 +853,15 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           post "/api/v1/recurring_templates/#{template.id}/generate_instance", headers: user_headers
         end
       end
-      
+
       threads.each(&:join)
       # All should succeed
       expect(true).to be_truthy
     end
 
     it "should handle invalid recurrence patterns" do
-      invalid_patterns = ["invalid", "daily_weekly", "monthly_daily", ""]
-      
+      invalid_patterns = [ "invalid", "daily_weekly", "monthly_daily", "" ]
+
       invalid_patterns.each do |pattern|
         template_params = {
           recurring_template: {
@@ -872,9 +872,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
             recurrence_time: "10:00"
           }
         }
-        
+
         post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
-        
+
         expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to eq("Validation failed")
@@ -882,8 +882,8 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
     end
 
     it "should handle invalid recurrence intervals" do
-      invalid_intervals = [0, -1, -5, "invalid", ""]
-      
+      invalid_intervals = [ 0, -1, -5, "invalid", "" ]
+
       invalid_intervals.each do |interval|
         template_params = {
           recurring_template: {
@@ -894,9 +894,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
             recurrence_time: "10:00"
           }
         }
-        
+
         post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
-        
+
         expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to eq("Validation failed")
@@ -904,8 +904,8 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
     end
 
     it "should handle invalid recurrence times" do
-      invalid_times = ["25:00", "12:60", "invalid", "24:00"]
-      
+      invalid_times = [ "25:00", "12:60", "invalid", "24:00" ]
+
       invalid_times.each do |time|
         template_params = {
           recurring_template: {
@@ -916,9 +916,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
             recurrence_time: time
           }
         }
-        
+
         post "/api/v1/recurring_templates", params: template_params.merge(list_id: list.id), headers: user_headers
-        
+
         expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to eq("Validation failed")
@@ -935,9 +935,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_time: "10:00"
         }
       }
-      
+
       post "/api/v1/recurring_templates", params: template_params, headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("List not found")
@@ -953,9 +953,9 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
           recurrence_time: "10:00"
         }
       }
-      
+
       post "/api/v1/recurring_templates", params: template_params.merge(list_id: 99999), headers: user_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("List not found")

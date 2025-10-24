@@ -61,7 +61,7 @@ Rails.application.routes.draw do
       # ===== ENHANCED LIST ROUTES =====
       resources :lists do
         collection do
-          get :validate_access, path: 'validate/:id'  # Check if user can access a specific list
+          get :validate_access, path: "validate/:id"  # Check if user can access a specific list
         end
         member do
           patch :unshare

@@ -50,7 +50,7 @@ class List < ApplicationRecord
   # Scopes that the spec calls
   scope :owned_by,      ->(user) { where(owner: user) }
   scope :accessible_by, ->(user) { left_joins(:memberships).where(memberships: { user: user }).or(where(owner: user)) }
-  scope :modified_since,->(ts)   { where("updated_at > ? OR deleted_at > ?", ts, ts) }
+  scope :modified_since, ->(ts)   { where("updated_at > ? OR deleted_at > ?", ts, ts) }
 
   # YES, these names collide with Ruby visibility helpers, but defining them explicitly works in Rails
   def self.public
@@ -171,7 +171,7 @@ class List < ApplicationRecord
     return false if deleted?
     return true  if owner_id_or_user_id == user.id
     # must allow accepted shares
-    list_shares.where(user_id: user.id, status: 'accepted').exists?
+    list_shares.where(user_id: user.id, status: "accepted").exists?
   end
 
   # Coaching helpers expected by spec

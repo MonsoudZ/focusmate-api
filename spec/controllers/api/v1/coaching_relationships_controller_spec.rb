@@ -5,7 +5,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
   let(:client) { create(:user, role: "client", email: "client_#{SecureRandom.hex(4)}@example.com") }
   let(:other_coach) { create(:user, role: "coach", email: "other_coach_#{SecureRandom.hex(4)}@example.com") }
   let(:other_client) { create(:user, role: "client", email: "other_client_#{SecureRandom.hex(4)}@example.com") }
-  
+
   let(:coaching_relationship) do
     CoachingRelationship.create!(
       coach: coach,
@@ -14,7 +14,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
       status: "active"
     )
   end
-  
+
   let(:coach_headers) { auth_headers(coach) }
   let(:client_headers) { auth_headers(client) }
 
@@ -22,10 +22,10 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
     it "should get all coaching relationships for current user" do
       coaching_relationship # Create the relationship
       get "/api/v1/coaching_relationships", headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(coaching_relationship.id)
@@ -40,15 +40,15 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invited_by: "coach",
         status: "active"
       )
-      
+
       get "/api/v1/coaching_relationships", headers: client_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(2)
-      
+
       relationship_ids = json.map { |r| r["id"] }
       expect(relationship_ids).to include(coaching_relationship.id)
       expect(relationship_ids).to include(other_relationship.id)
@@ -61,12 +61,12 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invited_by: "coach",
         status: "pending"
       )
-      
+
       get "/api/v1/coaching_relationships?status=pending", headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(pending_relationship.id)
@@ -75,10 +75,10 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
     it "should filter by status active" do
       coaching_relationship # Create the relationship from let block
       get "/api/v1/coaching_relationships?status=active", headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(coaching_relationship.id)
@@ -91,12 +91,12 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invited_by: "coach",
         status: "inactive"
       )
-      
+
       get "/api/v1/coaching_relationships?status=inactive", headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to be_a(Array)
       expect(json.length).to eq(1)
       expect(json.first["id"]).to eq(inactive_relationship.id)
@@ -104,7 +104,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
     it "should not get coaching relationships without authentication" do
       get "/api/v1/coaching_relationships"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -114,10 +114,10 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
   describe "GET /api/v1/coaching_relationships/:id" do
     it "should show relationship details" do
       get "/api/v1/coaching_relationships/#{coaching_relationship.id}", headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("id", "coach", "client", "status")
       expect(json["id"]).to eq(coaching_relationship.id)
       expect(json["coach"]["id"]).to eq(coach.id)
@@ -127,7 +127,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
     it "should return 404 if not participant in relationship" do
       get "/api/v1/coaching_relationships/#{coaching_relationship.id}", headers: auth_headers(other_client)
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Coaching relationship not found")
@@ -135,7 +135,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
     it "should not show relationship without authentication" do
       get "/api/v1/coaching_relationships/#{coaching_relationship.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -148,12 +148,12 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invite_params = {
           client_email: other_client.email
         }
-        
+
         post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
-        
+
         expect(response).to have_http_status(:created)
         json = JSON.parse(response.body)
-        
+
         expect(json).to include("id", "coach", "client", "status", "invited_by")
         expect(json["coach"]["id"]).to eq(coach.id)
         expect(json["client"]["id"]).to eq(other_client.id)
@@ -165,12 +165,12 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invite_params = {
           client_email: other_client.email
         }
-        
+
         # Mock notification service
         allow(NotificationService).to receive(:coaching_invitation_sent)
-        
+
         post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
-        
+
         expect(response).to have_http_status(:created)
         expect(NotificationService).to have_received(:coaching_invitation_sent)
       end
@@ -180,9 +180,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invite_params = {
           client_email: client.email
         }
-        
+
         post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
-        
+
         expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to eq("Relationship already exists")
@@ -192,9 +192,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invite_params = {
           client_email: coach.email
         }
-        
+
         post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
-        
+
         expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to eq("You cannot invite yourself")
@@ -204,9 +204,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invite_params = {
           client_email: "nonexistent@example.com"
         }
-        
+
         post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
-        
+
         expect(response).to have_http_status(:not_found)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to eq("Client not found with that email")
@@ -218,12 +218,12 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invite_params = {
           coach_email: other_coach.email
         }
-        
+
         post "/api/v1/coaching_relationships", params: invite_params, headers: client_headers
-        
+
         expect(response).to have_http_status(:created)
         json = JSON.parse(response.body)
-        
+
         expect(json).to include("id", "coach", "client", "status", "invited_by")
         expect(json["coach"]["id"]).to eq(other_coach.id)
         expect(json["client"]["id"]).to eq(client.id)
@@ -235,9 +235,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invite_params = {
           coach_email: "nonexistent@example.com"
         }
-        
+
         post "/api/v1/coaching_relationships", params: invite_params, headers: client_headers
-        
+
         expect(response).to have_http_status(:not_found)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to eq("Coach not found with that email")
@@ -246,7 +246,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
     it "should return error if no email provided" do
       post "/api/v1/coaching_relationships", params: {}, headers: coach_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Must provide coach_email or client_email")
@@ -256,9 +256,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
       invite_params = {
         client_email: other_client.email
       }
-      
+
       post "/api/v1/coaching_relationships", params: invite_params
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -277,14 +277,14 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
     it "should accept pending invitation" do
       patch "/api/v1/coaching_relationships/#{pending_relationship.id}/accept", headers: auth_headers(other_client)
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("id", "status", "accepted_at")
       expect(json["status"]).to eq("active")
       expect(json["accepted_at"]).not_to be_nil
-      
+
       pending_relationship.reload
       expect(pending_relationship.status).to eq("active")
       expect(pending_relationship.accepted_at).not_to be_nil
@@ -292,25 +292,25 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
     it "should set status to active" do
       patch "/api/v1/coaching_relationships/#{pending_relationship.id}/accept", headers: auth_headers(other_client)
-      
+
       expect(response).to have_http_status(:success)
-      
+
       pending_relationship.reload
       expect(pending_relationship.status).to eq("active")
     end
 
     it "should set accepted_at timestamp" do
       patch "/api/v1/coaching_relationships/#{pending_relationship.id}/accept", headers: auth_headers(other_client)
-      
+
       expect(response).to have_http_status(:success)
-      
+
       pending_relationship.reload
       expect(pending_relationship.accepted_at).not_to be_nil
     end
 
     it "should return 404 if not the invitee" do
       patch "/api/v1/coaching_relationships/#{pending_relationship.id}/accept", headers: coach_headers
-      
+
       expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("You cannot accept this invitation")
@@ -318,7 +318,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
     it "should return error if already accepted" do
       patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/accept", headers: client_headers
-      
+
       expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("You cannot accept this invitation")
@@ -327,9 +327,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
     it "should send notification when invitation is accepted" do
       # Mock notification service
       allow(NotificationService).to receive(:coaching_invitation_accepted)
-      
+
       patch "/api/v1/coaching_relationships/#{pending_relationship.id}/accept", headers: auth_headers(other_client)
-      
+
       expect(response).to have_http_status(:success)
       expect(NotificationService).to have_received(:coaching_invitation_accepted).with(pending_relationship)
     end
@@ -347,25 +347,25 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
     it "should decline pending invitation" do
       patch "/api/v1/coaching_relationships/#{pending_relationship.id}/decline", headers: auth_headers(other_client)
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       pending_relationship.reload
       expect(pending_relationship.status).to eq("declined")
     end
 
     it "should set status to declined" do
       patch "/api/v1/coaching_relationships/#{pending_relationship.id}/decline", headers: auth_headers(other_client)
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       pending_relationship.reload
       expect(pending_relationship.status).to eq("declined")
     end
 
     it "should return 404 if not the invitee for decline" do
       patch "/api/v1/coaching_relationships/#{pending_relationship.id}/decline", headers: coach_headers
-      
+
       expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("You cannot decline this invitation")
@@ -374,9 +374,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
     it "should send notification when invitation is declined" do
       # Mock notification service
       allow(NotificationService).to receive(:coaching_invitation_declined)
-      
+
       patch "/api/v1/coaching_relationships/#{pending_relationship.id}/decline", headers: auth_headers(other_client)
-      
+
       expect(response).to have_http_status(:no_content)
       expect(NotificationService).to have_received(:coaching_invitation_declined).with(pending_relationship)
     end
@@ -392,14 +392,14 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           daily_summary_time: "09:00"
         }
       }
-      
-      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences", 
-            params: preference_params, 
+
+      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences",
+            params: preference_params,
             headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("id", "notify_on_completion", "notify_on_missed_deadline", "send_daily_summary", "daily_summary_time")
       expect(json["notify_on_completion"]).to be_truthy
       expect(json["notify_on_missed_deadline"]).to be_falsy
@@ -413,17 +413,17 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           daily_summary_time: "18:30"
         }
       }
-      
-      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences", 
-            params: preference_params, 
+
+      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences",
+            params: preference_params,
             headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("id", "daily_summary_time")
       expect(json["daily_summary_time"]).to eq("18:30")
-      
+
       coaching_relationship.reload
       expect(coaching_relationship.daily_summary_time.strftime("%H:%M")).to eq("18:30")
     end
@@ -434,11 +434,11 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           notify_on_completion: true
         }
       }
-      
-      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences", 
-            params: preference_params, 
+
+      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences",
+            params: preference_params,
             headers: client_headers
-      
+
       expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Only coaches can update preferences")
@@ -450,10 +450,10 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           notify_on_completion: true
         }
       }
-      
-      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences", 
+
+      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences",
             params: preference_params
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -465,11 +465,11 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           daily_summary_time: "invalid_time"
         }
       }
-      
-      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences", 
-            params: preference_params, 
+
+      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences",
+            params: preference_params,
             headers: coach_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
@@ -479,9 +479,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
   describe "DELETE /api/v1/coaching_relationships/:id" do
     it "should delete (end) coaching relationship" do
       delete "/api/v1/coaching_relationships/#{coaching_relationship.id}", headers: coach_headers
-      
+
       expect(response).to have_http_status(:no_content)
-      
+
       expect { CoachingRelationship.find(coaching_relationship.id) }.to raise_error(ActiveRecord::RecordNotFound)
     end
 
@@ -489,7 +489,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
       # Test coach ending relationship
       delete "/api/v1/coaching_relationships/#{coaching_relationship.id}", headers: coach_headers
       expect(response).to have_http_status(:no_content)
-      
+
       # Recreate relationship for client test
       new_relationship = CoachingRelationship.create!(
         coach: coach,
@@ -497,7 +497,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invited_by: "coach",
         status: "active"
       )
-      
+
       # Test client ending relationship
       delete "/api/v1/coaching_relationships/#{new_relationship.id}", headers: client_headers
       expect(response).to have_http_status(:no_content)
@@ -508,15 +508,15 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
       allow(NotificationService).to receive(:coaching_invitation_sent).and_return(nil)
       allow(NotificationService).to receive(:coaching_invitation_accepted).and_return(nil)
       allow(NotificationService).to receive(:coaching_invitation_declined).and_return(nil)
-      
+
       delete "/api/v1/coaching_relationships/#{coaching_relationship.id}", headers: coach_headers
-      
+
       expect(response).to have_http_status(:no_content)
     end
 
     it "should not allow non-participants to delete relationship" do
       delete "/api/v1/coaching_relationships/#{coaching_relationship.id}", headers: auth_headers(other_client)
-      
+
       expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Unauthorized")
@@ -524,7 +524,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
     it "should not delete coaching relationship without authentication" do
       delete "/api/v1/coaching_relationships/#{coaching_relationship.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Authorization token required")
@@ -533,16 +533,16 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
   describe "Edge cases" do
     it "should handle malformed JSON" do
-      post "/api/v1/coaching_relationships", 
+      post "/api/v1/coaching_relationships",
            params: "invalid json",
            headers: coach_headers.merge("Content-Type" => "application/json")
-      
+
       expect(response).to have_http_status(:bad_request)
     end
 
     it "should handle empty request body" do
       post "/api/v1/coaching_relationships", params: {}, headers: coach_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Must provide coach_email or client_email")
@@ -552,9 +552,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
       invite_params = {
         client_email: other_client.email.upcase
       }
-      
+
       post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["client"]["id"]).to eq(other_client.id)
@@ -564,9 +564,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
       invite_params = {
         client_email: " #{other_client.email} "
       }
-      
+
       post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["client"]["id"]).to eq(other_client.id)
@@ -574,13 +574,13 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
     it "should handle very long email addresses" do
       long_email = "a" * 200 + "@example.com"
-      
+
       invite_params = {
         client_email: long_email
       }
-      
+
       post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Client not found with that email")
@@ -590,9 +590,9 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
       invite_params = {
         client_email: "user+tag@example.com"
       }
-      
+
       post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
-      
+
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Client not found with that email")
@@ -605,11 +605,11 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           invite_params = {
             client_email: "concurrent#{i}@example.com"
           }
-          
+
           post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
         end
       end
-      
+
       threads.each(&:join)
       # All should succeed with different emails
       expect(true).to be_truthy
@@ -622,15 +622,15 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
         invited_by: "coach",
         status: "pending"
       )
-      
+
       threads = []
       3.times do
         threads << Thread.new do
-          patch "/api/v1/coaching_relationships/#{pending_relationship.id}/accept", 
+          patch "/api/v1/coaching_relationships/#{pending_relationship.id}/accept",
                 headers: auth_headers(other_client)
         end
       end
-      
+
       threads.each(&:join)
       # Only one should succeed
       expect(true).to be_truthy
@@ -643,11 +643,11 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           timezone: "America/New_York"
         }
       }
-      
-      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences", 
-            params: preference_params, 
+
+      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences",
+            params: preference_params,
             headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["daily_summary_time"]).to eq("09:00")
@@ -659,11 +659,11 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           daily_summary_time: "25:00" # Invalid time
         }
       }
-      
-      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences", 
-            params: preference_params, 
+
+      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences",
+            params: preference_params,
             headers: coach_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["message"]).to eq("Validation failed")
@@ -675,11 +675,11 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           daily_summary_time: ""
         }
       }
-      
-      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences", 
-            params: preference_params, 
+
+      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences",
+            params: preference_params,
             headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["daily_summary_time"]).to be_nil
@@ -691,11 +691,11 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           daily_summary_time: nil
         }
       }
-      
-      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences", 
-            params: preference_params, 
+
+      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences",
+            params: preference_params,
             headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["daily_summary_time"]).to be_nil
@@ -709,14 +709,14 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           send_daily_summary: "1"
         }
       }
-      
-      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences", 
-            params: preference_params, 
+
+      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences",
+            params: preference_params,
             headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json["notify_on_completion"]).to be_truthy
       expect(json["notify_on_missed_deadline"]).to be_falsy
       expect(json["send_daily_summary"]).to be_truthy
@@ -730,14 +730,14 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           send_daily_summary: "on"
         }
       }
-      
-      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences", 
-            params: preference_params, 
+
+      patch "/api/v1/coaching_relationships/#{coaching_relationship.id}/update_preferences",
+            params: preference_params,
             headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json["notify_on_completion"]).to be_truthy
       expect(json["notify_on_missed_deadline"]).to be_falsy
       expect(json["send_daily_summary"]).to be_truthy

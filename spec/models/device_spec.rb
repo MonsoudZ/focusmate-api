@@ -20,7 +20,7 @@ RSpec.describe Device, type: :model do
 
     it 'validates unique apns_token' do
       device.save!
-      
+
       duplicate_device = build(:device, user: user, apns_token: device.apns_token, platform: "ios", bundle_id: "com.focusmate.app")
       expect(duplicate_device).not_to be_valid
       expect(duplicate_device.errors[:apns_token]).to include("has already been taken")
@@ -96,7 +96,7 @@ RSpec.describe Device, type: :model do
     it 'has ios scope' do
       ios_device = create(:device, user: user, platform: "ios")
       android_device = create(:device, user: user, platform: "android")
-      
+
       expect(Device.ios).to include(ios_device)
       expect(Device.ios).not_to include(android_device)
     end
@@ -104,7 +104,7 @@ RSpec.describe Device, type: :model do
     it 'has android scope' do
       ios_device = create(:device, user: user, platform: "ios")
       android_device = create(:device, user: user, platform: "android")
-      
+
       expect(Device.android).to include(android_device)
       expect(Device.android).not_to include(ios_device)
     end
@@ -112,7 +112,7 @@ RSpec.describe Device, type: :model do
     it 'has active scope' do
       active_device = create(:device, user: user, active: true)
       inactive_device = create(:device, user: user, active: false)
-      
+
       expect(Device.active).to include(active_device)
       expect(Device.active).not_to include(inactive_device)
     end
@@ -120,7 +120,7 @@ RSpec.describe Device, type: :model do
     it 'has inactive scope' do
       active_device = create(:device, user: user, active: true)
       inactive_device = create(:device, user: user, active: false)
-      
+
       expect(Device.inactive).to include(inactive_device)
       expect(Device.inactive).not_to include(active_device)
     end
@@ -130,7 +130,7 @@ RSpec.describe Device, type: :model do
     it 'checks if device is ios' do
       ios_device = create(:device, user: user, platform: "ios")
       android_device = create(:device, user: user, platform: "android")
-      
+
       expect(ios_device.ios?).to be true
       expect(android_device.ios?).to be false
     end
@@ -138,7 +138,7 @@ RSpec.describe Device, type: :model do
     it 'checks if device is android' do
       ios_device = create(:device, user: user, platform: "ios")
       android_device = create(:device, user: user, platform: "android")
-      
+
       expect(android_device.android?).to be true
       expect(ios_device.android?).to be false
     end
@@ -146,7 +146,7 @@ RSpec.describe Device, type: :model do
     it 'checks if device is active' do
       active_device = create(:device, user: user, active: true)
       inactive_device = create(:device, user: user, active: false)
-      
+
       expect(active_device.active?).to be true
       expect(inactive_device.active?).to be false
     end
@@ -167,7 +167,7 @@ RSpec.describe Device, type: :model do
       device.device_name = "iPhone 12"
       device.os_version = "15.0"
       device.app_version = "1.0.0"
-      
+
       summary = device.summary
       expect(summary).to include(:id, :platform, :device_name, :os_version, :app_version, :active)
     end
@@ -175,7 +175,7 @@ RSpec.describe Device, type: :model do
     it 'returns push token' do
       ios_device = create(:device, user: user, platform: "ios", apns_token: "ios_token")
       android_device = create(:device, user: user, platform: "android", fcm_token: "android_token")
-      
+
       expect(ios_device.push_token).to eq("ios_token")
       expect(android_device.push_token).to eq("android_token")
     end
@@ -273,10 +273,10 @@ RSpec.describe Device, type: :model do
     it 'validates apns_token format for ios' do
       valid_apns_token = "a" * 64
       invalid_apns_token = "invalid_token"
-      
+
       ios_device = build(:device, user: user, platform: "ios", apns_token: valid_apns_token)
       expect(ios_device).to be_valid
-      
+
       ios_device.apns_token = invalid_apns_token
       expect(ios_device).not_to be_valid
     end
@@ -284,10 +284,10 @@ RSpec.describe Device, type: :model do
     it 'validates fcm_token format for android' do
       valid_fcm_token = "a" * 163
       invalid_fcm_token = "invalid_token"
-      
+
       android_device = build(:device, user: user, platform: "android", fcm_token: valid_fcm_token)
       expect(android_device).to be_valid
-      
+
       android_device.fcm_token = invalid_fcm_token
       expect(android_device).not_to be_valid
     end
@@ -308,7 +308,7 @@ RSpec.describe Device, type: :model do
     it 'checks if device is online' do
       device.last_seen_at = 1.minute.ago
       expect(device.online?).to be true
-      
+
       device.last_seen_at = 1.hour.ago
       expect(device.online?).to be false
     end
@@ -322,10 +322,10 @@ RSpec.describe Device, type: :model do
       device.active = true
       device.last_seen_at = 1.minute.ago
       expect(device.status).to eq("online")
-      
+
       device.active = false
       expect(device.status).to eq("offline")
-      
+
       device.active = true
       device.last_seen_at = 1.hour.ago
       expect(device.status).to eq("idle")

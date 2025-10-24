@@ -75,7 +75,7 @@ RSpec.describe TaskEvent, type: :model do
       other_task = create(:task, list: list, creator: user)
       event1 = create(:task_event, task: task, user: user, kind: "created")
       event2 = create(:task_event, task: other_task, user: user, kind: "created")
-      
+
       expect(TaskEvent.for_task(task)).to include(event1)
       expect(TaskEvent.for_task(task)).not_to include(event2)
     end
@@ -84,7 +84,7 @@ RSpec.describe TaskEvent, type: :model do
       other_user = create(:user)
       event1 = create(:task_event, task: task, user: user, kind: "created")
       event2 = create(:task_event, task: task, user: other_user, kind: "created")
-      
+
       expect(TaskEvent.for_user(user)).to include(event1)
       expect(TaskEvent.for_user(user)).not_to include(event2)
     end
@@ -92,7 +92,7 @@ RSpec.describe TaskEvent, type: :model do
     it 'has recent scope' do
       recent_event = create(:task_event, task: task, user: user, kind: "created", occurred_at: 1.hour.ago)
       old_event = create(:task_event, task: task, user: user, kind: "created", occurred_at: 1.week.ago)
-      
+
       expect(TaskEvent.recent).to include(recent_event)
       expect(TaskEvent.recent).not_to include(old_event)
     end
@@ -100,7 +100,7 @@ RSpec.describe TaskEvent, type: :model do
     it 'has by_kind scope' do
       created_event = create(:task_event, task: task, user: user, kind: "created")
       completed_event = create(:task_event, task: task, user: user, kind: "completed")
-      
+
       expect(TaskEvent.by_kind("created")).to include(created_event)
       expect(TaskEvent.by_kind("created")).not_to include(completed_event)
     end
@@ -128,7 +128,7 @@ RSpec.describe TaskEvent, type: :model do
     it 'checks if event is recent' do
       task_event.occurred_at = 30.minutes.ago
       expect(task_event.recent?).to be true
-      
+
       task_event.occurred_at = 2.hours.ago
       expect(task_event.recent?).to be false
     end
@@ -136,10 +136,10 @@ RSpec.describe TaskEvent, type: :model do
     it 'returns priority level' do
       task_event.kind = "overdue"
       expect(task_event.priority).to eq("high")
-      
+
       task_event.kind = "created"
       expect(task_event.priority).to eq("medium")
-      
+
       task_event.kind = "viewed"
       expect(task_event.priority).to eq("low")
     end
@@ -147,10 +147,10 @@ RSpec.describe TaskEvent, type: :model do
     it 'returns event type' do
       task_event.kind = "completed"
       expect(task_event.event_type).to eq("completion")
-      
+
       task_event.kind = "created"
       expect(task_event.event_type).to eq("creation")
-      
+
       task_event.kind = "overdue"
       expect(task_event.event_type).to eq("overdue")
     end
@@ -158,10 +158,10 @@ RSpec.describe TaskEvent, type: :model do
     it 'checks if event is actionable' do
       task_event.kind = "overdue"
       expect(task_event.actionable?).to be true
-      
+
       task_event.kind = "completed"
       expect(task_event.actionable?).to be true
-      
+
       task_event.kind = "viewed"
       expect(task_event.actionable?).to be false
     end
@@ -176,7 +176,7 @@ RSpec.describe TaskEvent, type: :model do
       task_event.kind = "completed"
       task_event.reason = "Task completed successfully"
       task_event.metadata = { "duration" => 30 }
-      
+
       report = task_event.generate_report
       expect(report).to include(:event_type, :description, :occurred_at, :duration)
     end
@@ -263,7 +263,7 @@ RSpec.describe TaskEvent, type: :model do
     it 'orders events by occurred_at' do
       event1 = create(:task_event, task: task, user: user, kind: "created", occurred_at: 1.hour.ago)
       event2 = create(:task_event, task: task, user: user, kind: "completed", occurred_at: 30.minutes.ago)
-      
+
       # Filter out the auto-created event from Task#after_create
       timeline = TaskEvent.for_task(task).where.not(id: task.task_events.where(kind: "created").first.id).order(:occurred_at)
       expect(timeline.first).to eq(event1)
@@ -273,7 +273,7 @@ RSpec.describe TaskEvent, type: :model do
     it 'returns recent events for task' do
       recent_event = create(:task_event, task: task, user: user, kind: "created", occurred_at: 1.hour.ago)
       old_event = create(:task_event, task: task, user: user, kind: "created", occurred_at: 1.week.ago)
-      
+
       recent_events = TaskEvent.for_task(task).recent
       expect(recent_events).to include(recent_event)
       expect(recent_events).not_to include(old_event)
@@ -285,10 +285,10 @@ RSpec.describe TaskEvent, type: :model do
       complex_metadata = {
         "duration" => 30,
         "notes" => "Quick task",
-        "tags" => ["urgent", "important"],
+        "tags" => [ "urgent", "important" ],
         "location" => { "lat" => 40.7128, "lng" => -74.0060 }
       }
-      
+
       task_event.metadata = complex_metadata
       expect(task_event).to be_valid
       expect(task_event.metadata).to eq(complex_metadata)

@@ -19,7 +19,7 @@ class NotificationLog < ApplicationRecord
   scope :delivered,    -> { where(delivered: true) }
   scope :undelivered,  -> { where(delivered: false) }
   scope :by_type,      ->(type) { where(notification_type: type) }
-  scope :recent,       -> { where('created_at > ?', 7.days.ago).order(created_at: :desc) }
+  scope :recent,       -> { where("created_at > ?", 7.days.ago).order(created_at: :desc) }
   scope :for_user,     ->(u) { where(user: u) }
   scope :for_task,     ->(t) { where(task: t) }
 
@@ -29,7 +29,7 @@ class NotificationLog < ApplicationRecord
   # --- Validations ---
   validates :notification_type, presence: true, inclusion: { in: NOTIFICATION_TYPES }
   validates :message,           presence: true, length: { maximum: 1000 }
-  validates :delivered,         inclusion: { in: [true, false], message: "must be a boolean value" }
+  validates :delivered,         inclusion: { in: [ true, false ], message: "must be a boolean value" }
   validate  :delivered_must_be_boolean
   validates :delivery_method,   inclusion: { in: DELIVERY_METHODS }, allow_nil: true
   validate  :metadata_is_hash
@@ -53,7 +53,7 @@ class NotificationLog < ApplicationRecord
   def delivery_method=(val)
     super(val)
     self.metadata ||= {}
-    self.metadata['channel'] = val if val.present?
+    self.metadata["channel"] = val if val.present?
   end
 
   # Track original delivered value for validation
@@ -65,7 +65,7 @@ class NotificationLog < ApplicationRecord
   # --- JSON helpers ---
   def metadata_is_hash
     return if metadata.nil?
-    errors.add(:metadata, 'is not a valid JSON') unless metadata.is_a?(Hash)
+    errors.add(:metadata, "is not a valid JSON") unless metadata.is_a?(Hash)
   end
 
   def delivered_must_be_boolean
@@ -78,12 +78,12 @@ class NotificationLog < ApplicationRecord
 
   # --- Derived flags/summary ---
   def read?
-    metadata['read'] == true
+    metadata["read"] == true
   end
 
   def mark_read!
     self.metadata ||= {}
-    self.metadata['read'] = true
+    self.metadata["read"] = true
     save!
   end
 
@@ -98,25 +98,25 @@ class NotificationLog < ApplicationRecord
 
   def priority
     case notification_type
-    when 'task_overdue', 'task_escalated', 'urgent_alert'
-      'high'
-    when 'task_due_soon', 'coaching_message', 'task_reminder'
-      'medium'
+    when "task_overdue", "task_escalated", "urgent_alert"
+      "high"
+    when "task_due_soon", "coaching_message", "task_reminder"
+      "medium"
     else
-      'low'
+      "low"
     end
   end
 
   def category
     case notification_type
     when /\Atask_/
-      'task'
+      "task"
     when /\Acoaching_/
-      'coaching'
-    when 'system_announcement'
-      'system'
+      "coaching"
+    when "system_announcement"
+      "system"
     else
-      'general'
+      "general"
     end
   end
 
@@ -171,7 +171,7 @@ class NotificationLog < ApplicationRecord
       delivered: delivered,
       priority: priority,
       category: category,
-      channel: delivery_method || metadata['channel'] || 'n/a',
+      channel: delivery_method || metadata["channel"] || "n/a",
       created_at: created_at&.iso8601,
       user_id: user_id,
       task_id: task_id

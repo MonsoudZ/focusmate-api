@@ -6,13 +6,13 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
   let(:coach) { create(:user, role: "coach") }
   let(:client) { create(:user, role: "client") }
   let(:other_coach) { create(:user, role: "coach") }
-  
+
   let(:coaching_relationship) { create(:coaching_relationship, coach: coach, client: client, invited_by: coach, status: :active) }
   let(:other_relationship) { create(:coaching_relationship, coach: other_coach, client: client, invited_by: other_coach, status: :active) }
-  
+
   let(:list) { create(:list, owner: client) }
   let(:task) { create(:task, list: list, creator: client) }
-  
+
   let(:restriction) { build(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship) }
 
   describe 'validations' do
@@ -40,7 +40,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
 
     it 'validates unique task per coaching_relationship' do
       restriction.save!
-      
+
       duplicate_restriction = build(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship)
       expect(duplicate_restriction).not_to be_valid
       expect(duplicate_restriction.errors[:task]).to include("has already been taken")
@@ -75,7 +75,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
       other_task = create(:task, list: list, creator: client)
       task_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship)
       other_restriction = create(:item_visibility_restriction, task: other_task, coaching_relationship: coaching_relationship)
-      
+
       expect(ItemVisibilityRestriction.for_task(task)).to include(task_restriction)
       expect(ItemVisibilityRestriction.for_task(task)).not_to include(other_restriction)
     end
@@ -83,7 +83,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
     it 'has for_coaching_relationship scope' do
       relationship_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship)
       other_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: other_relationship)
-      
+
       expect(ItemVisibilityRestriction.for_coaching_relationship(coaching_relationship)).to include(relationship_restriction)
       expect(ItemVisibilityRestriction.for_coaching_relationship(coaching_relationship)).not_to include(other_restriction)
     end
@@ -91,7 +91,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
     it 'has active scope' do
       active_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship, active: true)
       inactive_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: other_relationship, active: false)
-      
+
       expect(ItemVisibilityRestriction.active).to include(active_restriction)
       expect(ItemVisibilityRestriction.active).not_to include(inactive_restriction)
     end
@@ -99,7 +99,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
     it 'has inactive scope' do
       active_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship, active: true)
       inactive_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: other_relationship, active: false)
-      
+
       expect(ItemVisibilityRestriction.inactive).to include(inactive_restriction)
       expect(ItemVisibilityRestriction.inactive).not_to include(active_restriction)
     end
@@ -109,7 +109,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
     it 'checks if restriction is active' do
       active_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship, active: true)
       inactive_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: other_relationship, active: false)
-      
+
       expect(active_restriction.active?).to be true
       expect(inactive_restriction.active?).to be false
     end
@@ -117,7 +117,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
     it 'checks if restriction is inactive' do
       active_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship, active: true)
       inactive_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: other_relationship, active: false)
-      
+
       expect(inactive_restriction.inactive?).to be true
       expect(active_restriction.inactive?).to be false
     end
@@ -154,7 +154,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
     it 'checks if restriction is recent' do
       restriction.created_at = 30.minutes.ago
       expect(restriction.recent?).to be true
-      
+
       restriction.created_at = 2.hours.ago
       expect(restriction.recent?).to be false
     end
@@ -162,7 +162,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
     it 'returns priority level' do
       restriction.active = true
       expect(restriction.priority).to eq("high")
-      
+
       restriction.active = false
       expect(restriction.priority).to eq("low")
     end
@@ -174,7 +174,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
     it 'checks if restriction is actionable' do
       restriction.active = true
       expect(restriction.actionable?).to be true
-      
+
       restriction.active = false
       expect(restriction.actionable?).to be false
     end
@@ -256,7 +256,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
       restriction.active = true
       restriction.toggle!
       expect(restriction.active).to be false
-      
+
       restriction.toggle!
       expect(restriction.active).to be true
     end
@@ -295,7 +295,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
     it 'manages multiple restrictions for same task' do
       restriction1 = create(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship)
       restriction2 = create(:item_visibility_restriction, task: task, coaching_relationship: other_relationship)
-      
+
       expect(ItemVisibilityRestriction.for_task(task)).to include(restriction1, restriction2)
     end
 
@@ -303,14 +303,14 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
       other_task = create(:task, list: list, creator: client)
       restriction1 = create(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship)
       restriction2 = create(:item_visibility_restriction, task: other_task, coaching_relationship: coaching_relationship)
-      
+
       expect(ItemVisibilityRestriction.for_coaching_relationship(coaching_relationship)).to include(restriction1, restriction2)
     end
 
     it 'filters active restrictions' do
       active_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship, active: true)
       inactive_restriction = create(:item_visibility_restriction, task: task, coaching_relationship: other_relationship, active: false)
-      
+
       active_restrictions = ItemVisibilityRestriction.active
       expect(active_restrictions).to include(active_restriction)
       expect(active_restrictions).not_to include(inactive_restriction)
@@ -329,7 +329,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
     it 'returns restriction level' do
       restriction.active = true
       expect(restriction.level).to eq("high")
-      
+
       restriction.active = false
       expect(restriction.level).to eq("low")
     end

@@ -6,16 +6,16 @@ RSpec.describe TaskPolicy, type: :policy do
   let(:user) { create(:user, email: "task_policy_user@example.com") }
   let(:list) { create(:list, owner: user) }
   let(:task) { create(:task, list: list) }
-  
+
   # Create another user for testing permissions
   let(:other_user) { create(:user, email: "task_policy_other@example.com") }
-  
+
   # Create a coach user
   let(:coach) { create(:user, email: "task_policy_coach@example.com", role: "coach") }
-  
+
   # Create a client user
   let(:client) { create(:user, email: "task_policy_client@example.com") }
-  
+
   # Create coaching relationship
   let(:coaching_relationship) do
     create(:coaching_relationship,
@@ -24,11 +24,11 @@ RSpec.describe TaskPolicy, type: :policy do
            status: :active,
            invited_by: coach)
   end
-  
+
   # Create shared list for coach
   let(:shared_list) { create(:list, owner: client) }
   let(:shared_task) { create(:task, list: shared_list, creator: client) }
-  
+
   before do
     # Share list with coach
     shared_list.share_with!(coach, {
@@ -37,7 +37,7 @@ RSpec.describe TaskPolicy, type: :policy do
       can_add_items: true,
       can_delete_items: true
     })
-    
+
     # Create membership for the coach in the shared list using existing coaching relationship
     create(:membership,
            user: coach,
@@ -293,7 +293,7 @@ RSpec.describe TaskPolicy, type: :policy do
         status: :pending,
         strict_mode: false
       )
-      
+
       policy = described_class.new(user, new_task)
       expect(policy.create?).to be true
     end
@@ -306,7 +306,7 @@ RSpec.describe TaskPolicy, type: :policy do
         can_add_items: true,
         can_delete_items: false
       })
-      
+
       new_task = Task.new(
         list: list,
         creator: shared_user,
@@ -315,7 +315,7 @@ RSpec.describe TaskPolicy, type: :policy do
         status: :pending,
         strict_mode: false
       )
-      
+
       policy = described_class.new(shared_user, new_task)
       expect(policy.create?).to be true
     end
@@ -328,7 +328,7 @@ RSpec.describe TaskPolicy, type: :policy do
         can_add_items: false,
         can_delete_items: false
       })
-      
+
       new_task = Task.new(
         list: list,
         creator: shared_user,
@@ -337,7 +337,7 @@ RSpec.describe TaskPolicy, type: :policy do
         status: :pending,
         strict_mode: false
       )
-      
+
       policy = described_class.new(shared_user, new_task)
       expect(policy.create?).to be false
     end
@@ -352,7 +352,7 @@ RSpec.describe TaskPolicy, type: :policy do
         status: :pending,
         strict_mode: false
       )
-      
+
       policy = described_class.new(user, new_task)
       expect(policy.create?).to be false
     end
@@ -376,9 +376,9 @@ RSpec.describe TaskPolicy, type: :policy do
         can_add_items: true,
         can_delete_items: false
       })
-      
+
       other_task = create(:task, list: list, creator: other_user)
-      
+
       policy = described_class.new(user, other_task)
       expect(policy.change_visibility?).to be true
     end
@@ -391,7 +391,7 @@ RSpec.describe TaskPolicy, type: :policy do
         can_add_items: true,
         can_delete_items: true
       })
-      
+
       policy = described_class.new(shared_user, task)
       expect(policy.change_visibility?).to be false
     end
@@ -408,7 +408,7 @@ RSpec.describe TaskPolicy, type: :policy do
              creator: user,
              visibility: :visible_to_all)
     end
-    
+
     let(:hidden_task) do
       create(:task,
              list: list,
@@ -419,12 +419,12 @@ RSpec.describe TaskPolicy, type: :policy do
     it 'returns tasks visible to user' do
       visible_task
       hidden_task
-      
+
       # Test scope for owner
       scope = described_class::Scope.new(user, Task.all).resolve
       expect(scope).to include(visible_task)
       expect(scope).to include(hidden_task)
-      
+
       # Test scope for other user (should only see visible tasks)
       list.share_with!(other_user, {
         can_view: true,
@@ -432,7 +432,7 @@ RSpec.describe TaskPolicy, type: :policy do
         can_add_items: false,
         can_delete_items: false
       })
-      
+
       scope = described_class::Scope.new(other_user, Task.all).resolve
       expect(scope).to include(visible_task)
       expect(scope).not_to include(hidden_task)
@@ -441,10 +441,10 @@ RSpec.describe TaskPolicy, type: :policy do
     it 'filters tasks based on list access' do
       # Force creation of user's task before resolving scope
       task
-      
+
       other_list = create(:list, owner: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
-      
+
       # Test scope for user (should only see tasks in their accessible lists)
       scope = described_class::Scope.new(user, Task.all).resolve
       expect(scope).to include(task)
@@ -521,7 +521,7 @@ RSpec.describe TaskPolicy, type: :policy do
         can_add_items: true,
         can_delete_items: true
       })
-      
+
       policy = described_class.new(full_user, task)
       expect(policy.show?).to be true
       expect(policy.update?).to be true
@@ -540,7 +540,7 @@ RSpec.describe TaskPolicy, type: :policy do
         can_add_items: false,
         can_delete_items: false
       })
-      
+
       policy = described_class.new(viewer, task)
       expect(policy.show?).to be true # Can view
       expect(policy.update?).to be false # Cannot update
@@ -552,7 +552,7 @@ RSpec.describe TaskPolicy, type: :policy do
 
     it 'does not allow user without list access to perform any actions' do
       no_access_user = create(:user, email: "no_access@example.com")
-      
+
       policy = described_class.new(no_access_user, task)
       expect(policy.show?).to be false
       expect(policy.update?).to be false
@@ -570,11 +570,11 @@ RSpec.describe TaskPolicy, type: :policy do
   describe 'task visibility levels' do
     it 'allows all users to see visible_to_all tasks' do
       task.update!(visibility: :visible_to_all)
-      
+
       # Owner can see it
       policy = described_class.new(user, task)
       expect(policy.show?).to be true
-      
+
       # Shared user can see it
       shared_user = create(:user, email: "shared_visible@example.com")
       list.share_with!(shared_user, { can_view: true })
@@ -584,11 +584,11 @@ RSpec.describe TaskPolicy, type: :policy do
 
     it 'does not allow coaches to see hidden_from_coaches tasks' do
       task.update!(visibility: :hidden_from_coaches)
-      
+
       # Owner can see it
       policy = described_class.new(user, task)
       expect(policy.show?).to be true
-      
+
       # Coach cannot see it
       policy = described_class.new(coach, task)
       expect(policy.show?).to be false
@@ -596,11 +596,11 @@ RSpec.describe TaskPolicy, type: :policy do
 
     it 'only allows creator and list owner to see private_task tasks' do
       task.update!(visibility: :private_task)
-      
+
       # Owner can see it
       policy = described_class.new(user, task)
       expect(policy.show?).to be true
-      
+
       # Other users cannot see it
       policy = described_class.new(other_user, task)
       expect(policy.show?).to be false
@@ -622,27 +622,27 @@ RSpec.describe TaskPolicy, type: :policy do
         status: :pending,
         strict_mode: false
       )
-      
+
       policy = described_class.new(user, new_task)
-      
+
       # 2. User can create the task
       expect(policy.create?).to be true
-      
+
       # 3. User can view the task
       expect(policy.show?).to be true
-      
+
       # 4. User can update the task
       expect(policy.update?).to be true
-      
+
       # 5. User can complete the task
       expect(policy.complete?).to be true
-      
+
       # 6. User can reassign the task
       expect(policy.reassign?).to be true
-      
+
       # 7. User can change visibility
       expect(policy.change_visibility?).to be true
-      
+
       # 8. User can delete the task
       expect(policy.destroy?).to be true
     end
@@ -656,7 +656,7 @@ RSpec.describe TaskPolicy, type: :policy do
         can_add_items: true,
         can_delete_items: false
       })
-      
+
       # 1. Shared user can create tasks
       new_task = Task.new(
         list: list,
@@ -666,27 +666,27 @@ RSpec.describe TaskPolicy, type: :policy do
         status: :pending,
         strict_mode: false
       )
-      
+
       policy = described_class.new(shared_user, new_task)
-      
+
       # 2. Shared user can create the task
       expect(policy.create?).to be true
-      
+
       # 3. Shared user can view the task
       expect(policy.show?).to be true
-      
+
       # 4. Shared user can update the task
       expect(policy.update?).to be true
-      
+
       # 5. Shared user can complete the task
       expect(policy.complete?).to be true
-      
+
       # 6. Shared user can reassign the task
       expect(policy.reassign?).to be true
-      
+
       # 7. Shared user can change visibility (is creator)
       expect(policy.change_visibility?).to be true
-      
+
       # 8. Shared user cannot delete the task (no delete permission)
       expect(policy.destroy?).to be false
     end

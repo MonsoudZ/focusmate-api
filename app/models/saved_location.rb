@@ -73,7 +73,7 @@ class SavedLocation < ApplicationRecord
   # Instance helpers
   # --------------------
   def coordinates
-    [latitude, longitude]
+    [ latitude, longitude ]
   end
 
   def contains?(lat, lng)
@@ -87,18 +87,18 @@ class SavedLocation < ApplicationRecord
   # Format coords to 4 dp to match spec expectation like "-74.0060"
   def formatted_address
     return address if address.present?
-    "%s (%0.4f, %0.4f)" % [name, latitude, longitude]
+    "%s (%0.4f, %0.4f)" % [ name, latitude, longitude ]
   end
 
   def user_at_location?(user)
     return false unless user
-    
+
     # Check if user has direct latitude/longitude attributes
-    if user.respond_to?(:latitude) && user.respond_to?(:longitude) && 
+    if user.respond_to?(:latitude) && user.respond_to?(:longitude) &&
        user.latitude.present? && user.longitude.present?
       return contains?(user.latitude.to_f, user.longitude.to_f)
     end
-    
+
     # Fallback to current_location if available
     loc = user.current_location
     return false unless loc&.respond_to?(:latitude) && loc&.respond_to?(:longitude)

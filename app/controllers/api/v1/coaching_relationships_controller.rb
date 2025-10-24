@@ -3,7 +3,7 @@ module Api
   module V1
     class CoachingRelationshipsController < ApplicationController
       before_action :require_auth!
-      before_action :set_relationship, only: [:show, :destroy, :accept, :decline, :update_preferences]
+      before_action :set_relationship, only: [ :show, :destroy, :accept, :decline, :update_preferences ]
 
       # GET /api/v1/coaching_relationships
       def index
@@ -105,7 +105,7 @@ module Api
         if src.key?(:daily_summary_time)
           if src[:daily_summary_time].present?
             hhmm = parse_hhmm(src[:daily_summary_time])
-            return render json: { error: { message: "Validation failed", details: { daily_summary_time: ["must be in HH:MM format"] } } }, status: :unprocessable_entity unless hhmm
+            return render json: { error: { message: "Validation failed", details: { daily_summary_time: [ "must be in HH:MM format" ] } } }, status: :unprocessable_entity unless hhmm
             changes[:daily_summary_time] = hhmm
           else
             # allow clearing with empty string / nil
@@ -122,7 +122,7 @@ module Api
             if @relationship.respond_to?(setter)
               if k == :daily_summary_time && v.present?
                 # Convert string time to Time object for database storage
-                time_parts = v.split(':')
+                time_parts = v.split(":")
                 time_obj = Time.zone.parse("#{time_parts[0]}:#{time_parts[1]}")
                 @relationship.public_send(setter, time_obj)
               else

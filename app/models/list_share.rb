@@ -5,7 +5,7 @@ class ListShare < ApplicationRecord
   # Enums
   enum :role, { viewer: 0, editor: 1, admin: 2 }
   enum :status, { pending: "pending", accepted: "accepted", declined: "declined" }
-  
+
   # Virtual attribute for factories
   attr_accessor :invited_by
 

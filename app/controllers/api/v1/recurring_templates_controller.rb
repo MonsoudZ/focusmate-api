@@ -2,7 +2,7 @@ module Api
   module V1
     class RecurringTemplatesController < ApplicationController
       before_action :require_auth!                # ensure 401 happens first
-      before_action :set_template, only: [:show, :update, :destroy, :generate_instance, :instances]
+      before_action :set_template, only: [ :show, :update, :destroy, :generate_instance, :instances ]
 
       # GET /api/v1/recurring_templates
       def index
@@ -47,7 +47,7 @@ module Api
         if attrs.key?(:recurrence_days)
           days = Array(attrs[:recurrence_days])
           # Convert day names to numbers if needed
-          day_map = { 'sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3, 'thursday' => 4, 'friday' => 5, 'saturday' => 6 }
+          day_map = { "sunday" => 0, "monday" => 1, "tuesday" => 2, "wednesday" => 3, "thursday" => 4, "friday" => 5, "saturday" => 6 }
           attrs[:recurrence_days] = days.map { |day| day_map[day.to_s.downcase] || day.to_i }
         end
 
@@ -58,7 +58,7 @@ module Api
             return render json: {
               error: {
                 message: "Validation failed",
-                details: { recurrence_time: ["must be in HH:MM format"] }
+                details: { recurrence_time: [ "must be in HH:MM format" ] }
               }
             }, status: :unprocessable_entity
           end

@@ -11,20 +11,20 @@ RSpec.describe Api::V1::ListsController, type: :request do
     it 'should get all lists owned by user' do
       # Ensure the base list is created first
       list # This forces the let(:list) to be evaluated
-      
+
       # Create additional lists for the user
       list2 = create(:list, owner: user, name: "Second List")
       list3 = create(:list, owner: user, name: "Third List")
-      
+
       get "/api/v1/lists", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to have_key("lists")
       expect(json).to have_key("tombstones")
       expect(json["lists"]).to be_a(Array)
       expect(json["tombstones"]).to be_a(Array)
-      
+
       list_ids = json["lists"].map { |l| l["id"] }
       expect(list_ids).to include(list.id)
       expect(list_ids).to include(list2.id)
@@ -34,19 +34,19 @@ RSpec.describe Api::V1::ListsController, type: :request do
     it 'should get lists shared with user' do
       # Ensure the base list is created first
       list # This forces the let(:list) to be evaluated
-      
+
       other_user = create(:user, email: "other@example.com")
       shared_list = create(:list, owner: other_user, name: "Shared List")
-      
+
       # Share list with current user
       create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner")
-      
+
       get "/api/v1/lists", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to have_key("lists")
-      
+
       list_ids = json["lists"].map { |l| l["id"] }
       expect(list_ids).to include(list.id) # Owned list
       expect(list_ids).to include(shared_list.id) # Shared list
@@ -54,16 +54,16 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not get lists without authentication' do
       get "/api/v1/lists"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'should handle empty lists' do
       # Delete all lists for user
       List.where(owner: user).destroy_all
-      
+
       get "/api/v1/lists", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["lists"]).to be_empty
@@ -73,7 +73,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
   describe 'GET /api/v1/lists/:id' do
     it 'should show list' do
       get "/api/v1/lists/#{list.id}", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["id"]).to eq(list.id)
@@ -82,16 +82,16 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not show list without authentication' do
       get "/api/v1/lists/#{list.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'should not show list from other user' do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
-      
+
       get "/api/v1/lists/#{other_list.id}", headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
 
@@ -99,9 +99,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
       other_user = create(:user)
       shared_list = create(:list, owner: other_user)
       create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner")
-      
+
       get "/api/v1/lists/#{shared_list.id}", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["id"]).to eq(shared_list.id)
@@ -115,9 +115,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
         description: "A new list",
         visibility: "private"
       }
-      
+
       post "/api/v1/lists", params: list_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["name"]).to eq("New List")
@@ -130,9 +130,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
         name: "New List",
         description: "A new list"
       }
-      
+
       post "/api/v1/lists", params: list_params
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
@@ -140,9 +140,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
       list_params = {
         description: "A list without name"
       }
-      
+
       post "/api/v1/lists", params: list_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to have_key("name")
@@ -152,9 +152,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
       list_params = {
         name: "New List"
       }
-      
+
       post "/api/v1/lists", params: list_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["visibility"]).to eq("private")
@@ -167,9 +167,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
         name: "Updated List",
         description: "Updated description"
       }
-      
+
       patch "/api/v1/lists/#{list.id}", params: update_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["name"]).to eq("Updated List")
@@ -180,22 +180,22 @@ RSpec.describe Api::V1::ListsController, type: :request do
       update_params = {
         name: "Updated List"
       }
-      
+
       patch "/api/v1/lists/#{list.id}", params: update_params
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'should not update list from other user' do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
-      
+
       update_params = {
         name: "Updated List"
       }
-      
+
       patch "/api/v1/lists/#{other_list.id}", params: update_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
 
@@ -203,13 +203,13 @@ RSpec.describe Api::V1::ListsController, type: :request do
       other_user = create(:user)
       shared_list = create(:list, owner: other_user)
       create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner", can_edit: true)
-      
+
       update_params = {
         name: "Updated Shared List"
       }
-      
+
       patch "/api/v1/lists/#{shared_list.id}", params: update_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json["name"]).to eq("Updated Shared List")
@@ -219,23 +219,23 @@ RSpec.describe Api::V1::ListsController, type: :request do
   describe 'DELETE /api/v1/lists/:id' do
     it 'should delete list' do
       delete "/api/v1/lists/#{list.id}", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       expect(List.find_by(id: list.id)).to be_nil
     end
 
     it 'should not delete list without authentication' do
       delete "/api/v1/lists/#{list.id}"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'should not delete list from other user' do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
-      
+
       delete "/api/v1/lists/#{other_list.id}", headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
 
@@ -243,9 +243,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
       other_user = create(:user)
       shared_list = create(:list, owner: other_user)
       create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner")
-      
+
       delete "/api/v1/lists/#{shared_list.id}", headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
   end
@@ -253,7 +253,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
   describe 'POST /api/v1/lists/:id/share' do
     it 'should share list with user' do
       other_user = create(:user, email: "shared@example.com")
-      
+
       share_params = {
         email: other_user.email,
         can_view: true,
@@ -261,9 +261,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
         can_add_items: true,
         can_delete_items: false
       }
-      
+
       post "/api/v1/lists/#{list.id}/share", params: share_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json["user_id"]).to eq(other_user.id)
@@ -278,36 +278,36 @@ RSpec.describe Api::V1::ListsController, type: :request do
         email: "shared@example.com",
         can_view: true
       }
-      
+
       post "/api/v1/lists/#{list.id}/share", params: share_params
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'should not share list from other user' do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
-      
+
       share_params = {
         email: "shared@example.com",
         can_view: true
       }
-      
+
       post "/api/v1/lists/#{other_list.id}/share", params: share_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
 
     it 'should validate required fields' do
       # Ensure the base list is created first
       list # This forces the let(:list) to be evaluated
-      
+
       share_params = {
         can_view: true
       }
-      
+
       post "/api/v1/lists/#{list.id}/share", params: share_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["errors"]).to have_key("email")
@@ -318,29 +318,29 @@ RSpec.describe Api::V1::ListsController, type: :request do
     it 'should unshare list with user' do
       # Ensure the base list is created first
       list # This forces the let(:list) to be evaluated
-      
+
       other_user = create(:user, email: "shared@example.com")
       create(:list_share, list: list, user: other_user, status: "accepted", invited_by: "owner")
-      
+
       unshare_params = {
         user_id: other_user.id
       }
-      
+
       patch "/api/v1/lists/#{list.id}/unshare", params: unshare_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       expect(ListShare.find_by(list: list, user: other_user)).to be_nil
     end
 
     it 'should not unshare list without authentication' do
       other_user = create(:user)
-      
+
       unshare_params = {
         user_id: other_user.id
       }
-      
+
       patch "/api/v1/lists/#{list.id}/unshare", params: unshare_params
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
@@ -348,13 +348,13 @@ RSpec.describe Api::V1::ListsController, type: :request do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
       create(:list_share, list: other_list, user: user, status: "accepted", invited_by: "owner")
-      
+
       unshare_params = {
         user_id: user.id
       }
-      
+
       patch "/api/v1/lists/#{other_list.id}/unshare", params: unshare_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
   end
@@ -363,12 +363,12 @@ RSpec.describe Api::V1::ListsController, type: :request do
     it 'should get list members' do
       # Ensure the base list is created first
       list # This forces the let(:list) to be evaluated
-      
+
       other_user = create(:user, email: "member@example.com")
       create(:list_share, list: list, user: other_user, status: "accepted", invited_by: "owner")
-      
+
       get "/api/v1/lists/#{list.id}/members", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to have_key("members")
@@ -377,16 +377,16 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not get members without authentication' do
       get "/api/v1/lists/#{list.id}/members"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'should not get members from other user\'s list' do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
-      
+
       get "/api/v1/lists/#{other_list.id}/members", headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
   end
@@ -395,9 +395,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
     it 'should get tasks for list' do
       create(:task, list: list, creator: user)
       create(:task, list: list, creator: user)
-      
+
       get "/api/v1/lists/#{list.id}/tasks", headers: auth_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to have_key("tasks")
@@ -407,34 +407,34 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not get tasks without authentication' do
       get "/api/v1/lists/#{list.id}/tasks"
-      
+
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'should not get tasks from other user\'s list' do
       other_user = create(:user)
       other_list = create(:list, owner: other_user)
-      
+
       get "/api/v1/lists/#{other_list.id}/tasks", headers: auth_headers
-      
+
       expect(response).to have_http_status(:forbidden)
     end
   end
 
   describe 'error handling' do
     it 'should handle malformed JSON' do
-      post "/api/v1/lists", 
-           params: "invalid json", 
+      post "/api/v1/lists",
+           params: "invalid json",
            headers: auth_headers.merge("Content-Type" => "application/json")
-      
+
       expect(response).to have_http_status(:bad_request)
     end
 
     it 'should handle empty request body' do
-      post "/api/v1/lists", 
-           params: "", 
+      post "/api/v1/lists",
+           params: "",
            headers: auth_headers.merge("Content-Type" => "application/json")
-      
+
       expect(response).to have_http_status(:bad_request)
     end
 
@@ -443,9 +443,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
       list_params = {
         name: long_name
       }
-      
+
       post "/api/v1/lists", params: list_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:unprocessable_content)
     end
 
@@ -454,9 +454,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
       list_params = {
         name: special_name
       }
-      
+
       post "/api/v1/lists", params: list_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:created)
     end
 
@@ -465,9 +465,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
       list_params = {
         name: unicode_name
       }
-      
+
       post "/api/v1/lists", params: list_params, headers: auth_headers
-      
+
       expect(response).to have_http_status(:created)
     end
   end

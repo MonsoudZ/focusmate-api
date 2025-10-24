@@ -35,8 +35,8 @@ class UserLocation < ApplicationRecord
 
   # ----- Scopes -----
   scope :for_user,  ->(u) { where(user_id: u.is_a?(User) ? u.id : u) }
-  scope :recent,    -> { where('recorded_at >= ?', RECENT_WINDOW.ago) }
-  scope :accurate,  -> { where('accuracy IS NOT NULL AND accuracy <= ?', ACCURACY_THRESHOLDS[:medium]) }
+  scope :recent,    -> { where("recorded_at >= ?", RECENT_WINDOW.ago) }
+  scope :accurate,  -> { where("accuracy IS NOT NULL AND accuracy <= ?", ACCURACY_THRESHOLDS[:medium]) }
   scope :by_source, ->(s) { where(source: s) }
 
   # (keep your PostGIS scope if you want; the spec doesn't use it)
@@ -45,7 +45,7 @@ class UserLocation < ApplicationRecord
   }
 
   # ----- Methods the spec expects -----
-  def coordinates = [latitude, longitude]
+  def coordinates = [ latitude, longitude ]
 
   # distance to another UserLocation
   def distance_to(other)

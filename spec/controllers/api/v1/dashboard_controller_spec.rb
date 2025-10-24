@@ -4,11 +4,11 @@ RSpec.describe Api::V1::DashboardController, type: :request do
   let(:user) { create(:user, email: "user_#{SecureRandom.hex(4)}@example.com") }
   let(:coach) { create(:user, email: "coach_#{SecureRandom.hex(4)}@example.com", role: "coach") }
   let(:other_user) { create(:user, email: "other_#{SecureRandom.hex(4)}@example.com") }
-  
+
   let(:user_headers) { auth_headers(user) }
   let(:coach_headers) { auth_headers(coach) }
   let(:other_user_headers) { auth_headers(other_user) }
-  
+
   let(:relationship) do
     CoachingRelationship.create!(
       coach: coach,
@@ -17,17 +17,17 @@ RSpec.describe Api::V1::DashboardController, type: :request do
       invited_by: coach
     )
   end
-  
+
   let(:list) { create(:list, owner: user, name: "Test List") }
   let(:coach_list) { create(:list, owner: coach, name: "Coach List") }
 
   describe "GET /api/v1/dashboard" do
     it "should get dashboard summary for user" do
       get "/api/v1/dashboard", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("blocking_tasks_count", "overdue_tasks_count", "awaiting_explanation_count", "coaches_count", "completion_rate_this_week", "recent_activity", "upcoming_deadlines")
       expect(json["blocking_tasks_count"]).to eq(0)
       expect(json["overdue_tasks_count"]).to eq(0)
@@ -49,12 +49,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("upcoming_deadlines")
       expect(json["upcoming_deadlines"].length).to eq(1)
       expect(json["upcoming_deadlines"].first["title"]).to eq("Today's Task")
@@ -71,12 +71,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("overdue_tasks_count")
       expect(json["overdue_tasks_count"]).to eq(1)
     end
@@ -93,22 +93,22 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         requires_explanation_if_missed: true,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("awaiting_explanation_count")
       expect(json["awaiting_explanation_count"]).to eq(1)
     end
 
     it "should include coaching relationships summary" do
       get "/api/v1/dashboard", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("coaches_count")
       expect(json["coaches_count"]).to eq(1)
     end
@@ -122,22 +122,22 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         delivered: true,
         delivered_at: Time.current
       )
-      
+
       get "/api/v1/dashboard", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       # Recent activity should include task events
       expect(json["recent_activity"]).to be_a(Array)
     end
 
     it "should get coach dashboard for coach user" do
       get "/api/v1/dashboard", headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("clients_count", "total_overdue_tasks", "pending_explanations", "active_relationships", "recent_client_activity")
       expect(json["clients_count"]).to eq(1)
       expect(json["total_overdue_tasks"]).to eq(0)
@@ -148,22 +148,22 @@ RSpec.describe Api::V1::DashboardController, type: :request do
 
     it "should not get dashboard without authentication" do
       get "/api/v1/dashboard"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
 
     it "should handle empty dashboard gracefully" do
       # Create user with no tasks
       empty_user = create(:user, email: "empty_#{SecureRandom.hex(4)}@example.com")
       empty_headers = auth_headers(empty_user)
-      
+
       get "/api/v1/dashboard", headers: empty_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("blocking_tasks_count", "overdue_tasks_count", "awaiting_explanation_count", "coaches_count", "completion_rate_this_week")
       expect(json["blocking_tasks_count"]).to eq(0)
       expect(json["overdue_tasks_count"]).to eq(0)
@@ -176,12 +176,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
       # Create coach with no clients
       empty_coach = create(:user, email: "empty_coach_#{SecureRandom.hex(4)}@example.com", role: "coach")
       empty_coach_headers = auth_headers(empty_coach)
-      
+
       get "/api/v1/dashboard", headers: empty_coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("clients_count", "total_overdue_tasks", "pending_explanations", "active_relationships")
       expect(json["clients_count"]).to eq(0)
       expect(json["total_overdue_tasks"]).to eq(0)
@@ -199,7 +199,7 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         due_at: 1.day.ago,
         strict_mode: false
       )
-      
+
       # Create escalation record
       ItemEscalation.create!(
         task: task,
@@ -207,12 +207,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         blocking_app: true,
         notification_count: 3
       )
-      
+
       get "/api/v1/dashboard", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("blocking_tasks_count")
       expect(json["blocking_tasks_count"]).to eq(1)
     end
@@ -228,7 +228,7 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       Task.create!(
         list: list,
         creator: user,
@@ -238,15 +238,15 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         status: :pending,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("upcoming_deadlines")
       expect(json["upcoming_deadlines"].length).to eq(2)
-      
+
       # Check structure of upcoming deadlines
       deadline = json["upcoming_deadlines"].first
       expect(deadline).to have_key("id")
@@ -254,7 +254,7 @@ RSpec.describe Api::V1::DashboardController, type: :request do
       expect(deadline).to have_key("due_at")
       expect(deadline).to have_key("list_name")
       expect(deadline).to have_key("days_until_due")
-      
+
       expect(deadline["title"]).to eq("Due Tomorrow")
       expect(deadline["days_until_due"]).to be_a(Numeric)
     end
@@ -269,17 +269,17 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         due_at: 1.day.from_now,
         strict_mode: false
       )
-      
+
       # Complete the task to create a task event
       task.update!(status: :done, completed_at: Time.current)
-      
+
       get "/api/v1/dashboard", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json["recent_activity"]).to be_a(Array)
-      
+
       if json["recent_activity"].any?
         activity = json["recent_activity"].first
         expect(activity).to have_key("id")
@@ -299,14 +299,14 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         due_at: 1.day.from_now,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard", headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json["recent_client_activity"]).to be_a(Array)
-      
+
       if json["recent_client_activity"].any?
         activity = json["recent_client_activity"].first
         expect(activity).to have_key("id")
@@ -321,27 +321,27 @@ RSpec.describe Api::V1::DashboardController, type: :request do
       # First request
       get "/api/v1/dashboard", headers: user_headers
       expect(response).to have_http_status(:success)
-      
+
       # Second request should use cache
       get "/api/v1/dashboard", headers: user_headers
       expect(response).to have_http_status(:success)
-      
+
       json = JSON.parse(response.body)
       expect(json).to include("blocking_tasks_count")
       expect(json["blocking_tasks_count"]).to be_a(Integer)
     end
 
     it "should handle malformed JSON gracefully" do
-      get "/api/v1/dashboard", 
+      get "/api/v1/dashboard",
           params: "invalid json",
           headers: user_headers.merge("Content-Type" => "application/json")
-      
+
       expect(response).to have_http_status(:success)
     end
 
     it "should handle empty request body" do
       get "/api/v1/dashboard", params: {}, headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to include("blocking_tasks_count")
@@ -355,7 +355,7 @@ RSpec.describe Api::V1::DashboardController, type: :request do
           get "/api/v1/dashboard", headers: user_headers
         end
       end
-      
+
       threads.each(&:join)
       # All should succeed
       expect(true).to be_truthy
@@ -370,12 +370,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         due_at: 1.day.from_now,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       if json["upcoming_deadlines"].any?
         expect(json["upcoming_deadlines"].first["title"]).to eq("Task with special chars: !@#$%^&*()")
       end
@@ -390,12 +390,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         due_at: 1.day.from_now,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       if json["upcoming_deadlines"].any?
         expect(json["upcoming_deadlines"].first["title"]).to eq("Task with unicode: 🚀📱💻")
       end
@@ -405,10 +405,10 @@ RSpec.describe Api::V1::DashboardController, type: :request do
   describe "GET /api/v1/dashboard/stats" do
     it "should get dashboard stats" do
       get "/api/v1/dashboard/stats", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("total_tasks", "completed_tasks", "overdue_tasks", "completion_rate", "average_completion_time", "tasks_by_priority")
       expect(json["total_tasks"]).to be_a(Integer)
       expect(json["completed_tasks"]).to be_a(Integer)
@@ -430,7 +430,7 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         completed_at: 1.day.ago,
         strict_mode: false
       )
-      
+
       Task.create!(
         list: list,
         creator: user,
@@ -439,12 +439,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         due_at: 1.day.from_now,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard/stats", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("completion_rate")
       expect(json["completion_rate"]).to eq(50.0)
     end
@@ -461,7 +461,7 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         completed_at: 1.day.ago,
         strict_mode: false
       )
-      
+
       Task.create!(
         list: list,
         creator: user,
@@ -472,12 +472,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         completed_at: Time.current,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard/stats", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("average_completion_time")
       expect(json["average_completion_time"]).to be_a(Numeric)
     end
@@ -494,7 +494,7 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         completed_at: 1.day.ago,
         strict_mode: false
       )
-      
+
       Task.create!(
         list: list,
         creator: user,
@@ -503,12 +503,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         due_at: 1.day.from_now,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard/stats", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("tasks_by_priority")
       expect(json["tasks_by_priority"]).to be_a(Hash)
       expect(json["tasks_by_priority"]).to have_key("urgent")
@@ -531,22 +531,22 @@ RSpec.describe Api::V1::DashboardController, type: :request do
           strict_mode: false
         )
       end
-      
+
       get "/api/v1/dashboard/stats", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("completion_rate")
       expect(json["completion_rate"]).to be_a(Numeric)
     end
 
     it "should get coach stats for coach user" do
       get "/api/v1/dashboard/stats", headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("total_clients", "active_clients", "total_tasks_across_clients", "completed_tasks_across_clients", "average_client_completion_rate", "client_performance_summary")
       expect(json["total_clients"]).to eq(1)
       expect(json["active_clients"]).to eq(1)
@@ -558,10 +558,10 @@ RSpec.describe Api::V1::DashboardController, type: :request do
 
     it "should not get stats without authentication" do
       get "/api/v1/dashboard/stats"
-      
+
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"].to eq("Authorization token required")
+      expect(json["error"]["message"]).to eq("Authorization token required")
     end
 
     it "should calculate completion rate correctly" do
@@ -576,7 +576,7 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         completed_at: 1.day.ago,
         strict_mode: false
       )
-      
+
       Task.create!(
         list: list,
         creator: user,
@@ -587,7 +587,7 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         completed_at: 1.day.ago,
         strict_mode: false
       )
-      
+
       Task.create!(
         list: list,
         creator: user,
@@ -596,12 +596,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         due_at: 1.day.from_now,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard/stats", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("completion_rate")
       expect(json["completion_rate"]).to eq(66.7)
     end
@@ -616,12 +616,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         due_at: 1.day.from_now,  # Still need due_at for validation
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard/stats", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("total_tasks", "completed_tasks")
       expect(json["total_tasks"]).to eq(1)
       expect(json["completed_tasks"]).to eq(0)
@@ -629,10 +629,10 @@ RSpec.describe Api::V1::DashboardController, type: :request do
 
     it "should handle edge case with zero tasks" do
       get "/api/v1/dashboard/stats", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("completion_rate", "average_completion_time")
       expect(json["completion_rate"]).to eq(0)
       expect(json["average_completion_time"]).to eq(0)
@@ -647,10 +647,10 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         status: "active",
         invited_by: coach
       )
-      
+
       # Create tasks for both clients
       list2 = create(:list, owner: client2, name: "Client 2 List")
-      
+
       Task.create!(
         list: list,
         creator: user,
@@ -659,7 +659,7 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         due_at: 1.day.from_now,
         strict_mode: false
       )
-      
+
       Task.create!(
         list: list2,
         creator: client2,
@@ -668,12 +668,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
         due_at: 1.day.from_now,
         strict_mode: false
       )
-      
+
       get "/api/v1/dashboard/stats", headers: coach_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("total_clients", "client_performance_summary")
       expect(json["total_clients"]).to eq(2)
       expect(json["client_performance_summary"].length).to eq(2)
@@ -691,12 +691,12 @@ RSpec.describe Api::V1::DashboardController, type: :request do
           strict_mode: false
         )
       end
-      
+
       get "/api/v1/dashboard/stats", headers: user_headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      
+
       expect(json).to include("total_tasks")
       expect(json["total_tasks"]).to eq(100)
     end

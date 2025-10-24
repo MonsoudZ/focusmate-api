@@ -63,42 +63,42 @@ RSpec.describe Task, type: :model do
     end
 
     it 'validates recurrence_interval for daily pattern' do
-      task = build(:task, 
-                   recurrence_pattern: "daily", 
-                   recurrence_interval: 0, 
-                   due_at: 1.hour.from_now, 
-                   list: list, 
+      task = build(:task,
+                   recurrence_pattern: "daily",
+                   recurrence_interval: 0,
+                   due_at: 1.hour.from_now,
+                   list: list,
                    creator: user)
       expect(task).not_to be_valid
       expect(task.errors[:recurrence_interval]).to include("must be greater than 0")
     end
 
     it 'validates recurrence_time for daily pattern' do
-      task = build(:task, 
-                   recurrence_pattern: "daily", 
-                   recurrence_time: nil, 
-                   due_at: 1.hour.from_now, 
-                   list: list, 
+      task = build(:task,
+                   recurrence_pattern: "daily",
+                   recurrence_time: nil,
+                   due_at: 1.hour.from_now,
+                   list: list,
                    creator: user)
       expect(task).not_to be_valid
       expect(task.errors[:recurrence_time]).to include("is required for daily recurring tasks")
     end
 
     it 'validates location_radius_meters bounds' do
-      task = build(:task, 
-                   location_radius_meters: 0, 
-                   due_at: 1.hour.from_now, 
-                   list: list, 
+      task = build(:task,
+                   location_radius_meters: 0,
+                   due_at: 1.hour.from_now,
+                   list: list,
                    creator: user)
       expect(task).not_to be_valid
       expect(task.errors[:location_radius_meters]).to include("must be greater than 0")
     end
 
     it 'validates notification_interval_minutes bounds' do
-      task = build(:task, 
-                   notification_interval_minutes: 0, 
-                   due_at: 1.hour.from_now, 
-                   list: list, 
+      task = build(:task,
+                   notification_interval_minutes: 0,
+                   due_at: 1.hour.from_now,
+                   list: list,
                    creator: user)
       expect(task).not_to be_valid
       expect(task.errors[:notification_interval_minutes]).to include("must be greater than 0")
@@ -277,7 +277,7 @@ RSpec.describe Task, type: :model do
       other_user = create(:user)
       visible_task = create(:task, list: list, creator: user, visibility: :visible_to_all)
       private_task = create(:task, list: list, creator: user, visibility: :private_task)
-      
+
       expect(visible_task.visible_to?(user)).to be true
       expect(visible_task.visible_to?(other_user)).to be true
       expect(private_task.visible_to?(user)).to be true
@@ -285,17 +285,17 @@ RSpec.describe Task, type: :model do
     end
 
     it 'checks if user is within geofence' do
-      location_task = create(:task, 
-                             list: list, 
-                             creator: user, 
+      location_task = create(:task,
+                             list: list,
+                             creator: user,
                              location_based: true,
                              location_latitude: 40.7128,
                              location_longitude: -74.0060,
                              location_radius_meters: 100)
-      
+
       user.update!(latitude: 40.7128, longitude: -74.0060)
       expect(location_task.user_within_geofence?(user)).to be true
-      
+
       user.update!(latitude: 40.8000, longitude: -74.0000)
       expect(location_task.user_within_geofence?(user)).to be false
     end
@@ -303,7 +303,7 @@ RSpec.describe Task, type: :model do
     it 'calculates age in hours' do
       old_task = create(:task, list: list, creator: user, created_at: 2.hours.ago)
       new_task = create(:task, list: list, creator: user, created_at: 30.minutes.ago)
-      
+
       expect(old_task.age_hours).to be >= 2
       expect(new_task.age_hours).to be < 1
     end
@@ -311,7 +311,7 @@ RSpec.describe Task, type: :model do
     it 'checks if task is recent' do
       recent_task = create(:task, list: list, creator: user, created_at: 30.minutes.ago)
       old_task = create(:task, list: list, creator: user, created_at: 2.hours.ago)
-      
+
       expect(recent_task.recent?).to be true
       expect(old_task.recent?).to be false
     end
@@ -319,7 +319,7 @@ RSpec.describe Task, type: :model do
     it 'returns priority level' do
       urgent_task = create(:task, list: list, creator: user, due_at: 1.hour.from_now)
       normal_task = create(:task, list: list, creator: user, due_at: 1.day.from_now)
-      
+
       expect(urgent_task.priority).to eq("high")
       expect(normal_task.priority).to eq("medium")
     end
@@ -372,10 +372,10 @@ RSpec.describe Task, type: :model do
     end
 
     it 'checks if task is overdue for recurring' do
-      overdue_template = create(:task, 
-                               list: list, 
-                               creator: user, 
-                               is_recurring: true, 
+      overdue_template = create(:task,
+                               list: list,
+                               creator: user,
+                               is_recurring: true,
                                is_template: true,
                                due_at: 1.hour.ago)
       expect(overdue_template.overdue?).to be true
@@ -384,9 +384,9 @@ RSpec.describe Task, type: :model do
 
   describe 'location based tasks' do
     let(:location_task) do
-      create(:task, 
-             list: list, 
-             creator: user, 
+      create(:task,
+             list: list,
+             creator: user,
              location_based: true,
              location_latitude: 40.7128,
              location_longitude: -74.0060,
@@ -441,7 +441,7 @@ RSpec.describe Task, type: :model do
     it 'updates completed_at when status changes' do
       task.complete!
       expect(task.completed_at).not_to be_nil
-      
+
       task.uncomplete!
       expect(task.completed_at).to be_nil
     end
