@@ -1,6 +1,14 @@
 class TaskPolicy < ApplicationPolicy
   def show?
     return false unless record
+
+    # If deleted, only the list owner may view
+    if record.respond_to?(:status) && record.status.to_s == "deleted"
+      return false unless user
+      list_owner_id = record.list.respond_to?(:owner_id) ? record.list.owner_id : record.list.user_id
+      return list_owner_id == user.id
+    end
+
     record.visible_to?(user)
   end
 
@@ -64,8 +72,22 @@ class TaskPolicy < ApplicationPolicy
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      # For now, just return tasks in lists owned by the user
-      scope.joins(:list).where(lists: { user_id: user.id })
+      # Lists the user can see (owner_id OR user_id) OR accepted shares
+      accessible_list_ids = List
+        .left_outer_joins(:list_shares)
+        .where(
+          "lists.user_id = :uid " \
+          "OR (list_shares.user_id = :uid AND list_shares.status = 'accepted')",
+          uid: user.id
+        )
+        .select(:id)
+
+      rel = scope.where("tasks.deleted_at IS NULL")
+                 .where("tasks.list_id IN (?)", accessible_list_ids)
+                 .includes(:list) # avoid N+1 when visible_to? looks at list
+
+      # visible_to? is complex; keep it in Ruby
+      rel.select { |task| task.visible_to?(user) }
     end
   end
 end

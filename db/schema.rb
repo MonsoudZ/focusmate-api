@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_24_035505) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_24_041459) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -305,7 +305,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_035505) do
     t.index ["recurring_template_id"], name: "index_tasks_on_recurring_template_id"
     t.index ["status", "due_at"], name: "index_tasks_on_status_and_due_at"
     t.index ["visibility"], name: "index_tasks_on_visibility"
-    t.check_constraint "status = ANY (ARRAY[0, 1, 2])", name: "check_tasks_status"
+    t.check_constraint "status = ANY (ARRAY[0, 1, 2, 3])", name: "check_tasks_status"
     t.check_constraint "visibility = ANY (ARRAY[0, 1, 2, 3])", name: "check_tasks_visibility"
   end
 

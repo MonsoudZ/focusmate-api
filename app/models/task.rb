@@ -16,7 +16,7 @@ class Task < ApplicationRecord
   belongs_to :missed_reason_reviewed_by, class_name: "User", optional: true
 
   # == Enums
-  enum :status,     { pending: 0, in_progress: 1, done: 2 }, default: :pending
+  enum :status,     { pending: 0, in_progress: 1, done: 2, deleted: 3 }, default: :pending
   enum :visibility, { visible_to_all: 0, private_task: 1, hidden_from_coaches: 2, coaching_only: 3 }
 
   # Gentle enum writers to avoid ArgumentError in specs expecting validation errors
@@ -278,10 +278,13 @@ class Task < ApplicationRecord
       return (creator == user || list.owner == user)
     end
 
+    # First check if user has access to the list
+    return false unless list.accessible_by?(user)
+    
     case visibility
     when "visible_to_all"      then true
     when "private_task"        then (creator == user || list.owner == user)
-    when "hidden_from_coaches" then (creator == user || list.owner == user || !user.coach?)
+    when "hidden_from_coaches" then (creator == user || list.owner == user)
     when "coaching_only"       then (creator == user || list.owner == user || user.coach?)
     else false
     end
@@ -335,6 +338,18 @@ class Task < ApplicationRecord
     if subtasks.exists? && subtasks.where.not(status: :done).none?
       update!(status: :done, completed_at: Time.current)
     end
+  end
+
+  # Who can change a task's visibility?
+  # - task creator
+  # - list owner
+  # - a coach of the list owner (specs build a coaching relationship)
+  def can_change_visibility?(user)
+    return false unless user
+    return true  if creator_id == user.id
+    return true  if list.user_id == user.id
+    return true  if list.respond_to?(:coach?) && list.coach?(user)
+    false
   end
 
   # == Callback helpers
@@ -482,4 +497,5 @@ class Task < ApplicationRecord
     c = 2 * Math.asin(Math.sqrt(a))
     6_371_000 * c
   end
+
 end

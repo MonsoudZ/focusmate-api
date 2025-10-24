@@ -439,6 +439,9 @@ RSpec.describe TaskPolicy, type: :policy do
     end
 
     it 'filters tasks based on list access' do
+      # Force creation of user's task before resolving scope
+      task
+      
       other_list = create(:list, owner: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
       

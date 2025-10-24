@@ -157,10 +157,21 @@ class List < ApplicationRecord
   end
 
   # Access checks used by specs
+  def owner_id_or_user_id
+    # support either schema shape
+    respond_to?(:owner_id) ? owner_id : user_id
+  end
+
+  def deleted?
+    respond_to?(:deleted_at) && deleted_at.present?
+  end
+
   def accessible_by?(user)
-    user_id == user.id || 
-      list_shares.exists?(user_id: user.id, status: "accepted") ||
-      memberships.exists?(user_id: user.id)
+    return false if user.nil?
+    return false if deleted?
+    return true  if owner_id_or_user_id == user.id
+    # must allow accepted shares
+    list_shares.where(user_id: user.id, status: 'accepted').exists?
   end
 
   # Coaching helpers expected by spec
