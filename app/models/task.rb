@@ -135,7 +135,7 @@ class Task < ApplicationRecord
   def soft_delete!(user = nil, reason: nil)
     return false if deleted?
     update!(deleted_at: Time.current)
-    create_task_event(user: user, kind: :deleted, reason: reason) if user
+    create_task_event(kind: :deleted, reason: reason, user: user) if user
     true
   end
 
@@ -157,7 +157,7 @@ class Task < ApplicationRecord
     return false unless can_be_reassigned_by?(user)
 
     update!(due_at: new_due_at)
-    create_task_event(user: user, kind: :reassigned, reason: reason, occurred_at: Time.current)
+    create_task_event(kind: :reassigned, reason: reason, user: user, occurred_at: Time.current)
     true
   end
 
@@ -340,12 +340,13 @@ class Task < ApplicationRecord
   # == Callback helpers
   private
 
-  def create_task_event(user: nil, kind: :created, reason: nil, occurred_at: nil)
+  def create_task_event(kind: nil, reason: nil, user: nil, occurred_at: nil, metadata: nil)
     task_events.create!(
-      user: user || list.owner,
-      kind: kind,
-      reason: reason,
-      occurred_at: occurred_at || Time.current
+      user:        user || list&.owner || self.creator, # whichever makes sense in your app
+      kind:        kind || "created",
+      reason:      reason,
+      occurred_at: occurred_at || Time.current,
+      metadata:    metadata
     )
   end
 

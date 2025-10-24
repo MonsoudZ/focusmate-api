@@ -3,7 +3,7 @@ FactoryBot.define do
     task
     user        { association :user }
     kind        { :created }
-    occurred_at { Time.current }
+    occurred_at { 1.hour.ago }  # Default to 1 hour ago
     reason      { nil }
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_23_200004) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_24_035505) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -203,20 +203,26 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_23_200004) do
   create_table "notification_logs", force: :cascade do |t|
     t.bigint "task_id"
     t.bigint "user_id", null: false
-    t.string "notification_type"
+    t.string "notification_type", null: false
     t.boolean "delivered", default: false
     t.datetime "delivered_at"
-    t.text "message"
-    t.jsonb "metadata"
+    t.text "message", null: false
+    t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "delivery_method"
+    t.datetime "deleted_at"
     t.index ["created_at"], name: "index_notification_logs_on_created_at"
+    t.index ["deleted_at"], name: "index_notification_logs_on_deleted_at"
     t.index ["delivered"], name: "index_notification_logs_on_delivered"
+    t.index ["delivery_method"], name: "index_notification_logs_on_delivery_method"
     t.index ["notification_type"], name: "index_notification_logs_on_notification_type"
     t.index ["task_id", "created_at"], name: "index_notification_logs_on_task_created_at"
     t.index ["task_id"], name: "index_notification_logs_on_task_id"
     t.index ["user_id", "created_at"], name: "index_notification_logs_on_user_created_at"
     t.index ["user_id"], name: "index_notification_logs_on_user_id"
+    t.check_constraint "delivery_method IS NULL OR (delivery_method::text = ANY (ARRAY['email'::character varying, 'push'::character varying, 'sms'::character varying, 'in_app'::character varying]::text[]))", name: "chk_notification_log_delivery_method"
+    t.check_constraint "notification_type::text = ANY (ARRAY['task_reminder'::character varying, 'task_due_soon'::character varying, 'task_overdue'::character varying, 'task_escalated'::character varying, 'system_announcement'::character varying, 'coaching_message'::character varying, 'urgent_alert'::character varying]::text[])", name: "chk_notification_log_type"
   end
 
   create_table "saved_locations", force: :cascade do |t|
@@ -239,6 +245,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_23_200004) do
     t.datetime "occurred_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "deleted_at"
     t.index ["created_at", "task_id"], name: "index_task_events_on_created_at_task_id"
     t.index ["task_id", "created_at"], name: "index_task_events_on_task_created_at"
     t.index ["task_id"], name: "index_task_events_on_task_id"
