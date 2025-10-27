@@ -4,6 +4,15 @@ require "sidekiq"
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0") }
 
+  # Configure retry behavior
+  config.retry_jobs = true
+  config.dead_job_retry_in = 1.day
+  config.dead_job_max_retries = 3
+
+  # Configure job monitoring
+  config.logger.level = Logger::INFO
+  config.logger.formatter = Sidekiq::Logger::Formatters::JSON.new
+
   # Load scheduler - temporarily disabled
   # config.on(:startup) do
   #   Sidekiq.schedule = YAML.load_file(File.expand_path('../../sidekiq.yml', __FILE__))
@@ -14,3 +23,10 @@ end
 Sidekiq.configure_client do |config|
   config.redis = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0") }
 end
+
+# Configure job retry behavior globally
+Sidekiq.default_worker_options = {
+  'retry' => 3,
+  'backtrace' => true,
+  'dead' => true
+}
