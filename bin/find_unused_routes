@@ -1,0 +1,95 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Simple script to find potentially unused routes
+# This is a basic implementation since traceroute gem has issues
+
+require_relative '../config/environment'
+
+puts "=== Route Analysis ==="
+puts
+
+# Get all routes
+routes = Rails.application.routes.routes
+
+# Get all controller actions
+controller_actions = []
+Dir.glob('app/controllers/**/*_controller.rb').each do |file|
+  next if file.include?('application_controller.rb')
+  
+  # Extract controller name from file path
+  relative_path = file.gsub('app/controllers/', '').gsub('_controller.rb', '')
+  controller_name = relative_path.camelize + 'Controller'
+  
+  begin
+    controller_class = controller_name.constantize
+    
+    # Get all public methods that could be actions
+    public_methods = controller_class.public_instance_methods(false)
+    public_methods.each do |method|
+      next if method.to_s.start_with?('_')
+      controller_actions << "#{controller_name}##{method}"
+    end
+  rescue NameError
+    puts "Warning: Could not load controller #{controller_name}"
+  end
+end
+
+puts "Total routes: #{routes.count}"
+puts "Total controller actions: #{controller_actions.count}"
+puts
+
+# Find routes that might be unused
+unused_actions = []
+controller_actions.each do |action|
+  controller_name, method_name = action.split('#')
+  
+  # Convert controller name to route format (e.g., Api::V1::AuthenticationController -> api/v1/authentication)
+  route_controller = controller_name.underscore.gsub('_controller', '')
+  
+  # Check if this action has a corresponding route
+  has_route = routes.any? do |route|
+    route.defaults[:controller] == route_controller &&
+    route.defaults[:action] == method_name
+  end
+  
+  unless has_route
+    unused_actions << action
+  end
+end
+
+# Let's also check what routes we actually have
+puts "Sample routes:"
+routes.first(10).each do |route|
+  next unless route.defaults[:controller] && route.defaults[:action]
+  puts "  #{route.verb} #{route.path.to_s} -> #{route.defaults[:controller]}##{route.defaults[:action]}"
+end
+puts
+
+if unused_actions.any?
+  puts "Potentially unused actions (no corresponding routes):"
+  unused_actions.each { |action| puts "  - #{action}" }
+else
+  puts "✅ All controller actions have corresponding routes"
+end
+
+puts
+
+# Find routes that might be unused (basic check)
+puts "Routes that might be unused (no obvious controller action):"
+routes.each do |route|
+  next if route.verb == 'HEAD' # Skip HEAD routes
+  next if route.path.to_s.include?('rails/') # Skip Rails internal routes
+  
+  controller = route.defaults[:controller]
+  action = route.defaults[:action]
+  
+  next unless controller && action
+  
+  controller_class = "#{controller.camelize}Controller".constantize rescue nil
+  next unless controller_class
+  
+  unless controller_class.public_instance_methods(false).include?(action.to_sym)
+    puts "  - #{route.verb} #{route.path} -> #{controller}##{action}"
+  end
+end

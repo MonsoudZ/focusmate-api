@@ -312,9 +312,10 @@ RSpec.describe TaskCreationService, type: :service do
 
     it "should handle multiple date formats" do
       # Test with both dueDate and due_date
+      expected_time = 1.hour.from_now
       multiple_date_params = {
         name: "Task with multiple dates",
-        dueDate: 1.hour.from_now.to_i,
+        dueDate: expected_time.to_i,
         due_date: 2.hours.from_now.iso8601
       }
 
@@ -323,7 +324,7 @@ RSpec.describe TaskCreationService, type: :service do
 
       # Should use the first valid date (dueDate)
       expect(task.due_at).not_to be_nil
-      expect(task.due_at.to_i).to eq(1.hour.from_now.to_i)
+      expect(task.due_at.to_i).to eq(expected_time.to_i)
     end
   end
 end

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base href="../.."/>
+    <script src="assets/jquery-3.2.1.min.js"></script>
+    <script src="https://use.fontawesome.com/81e98abb93.js"></script>
+    <link rel="stylesheet" href="assets/deep_cover.css" type="text/css"/>
+  </head>
+  <body class="source">
+    <div class="overlay">
+      <div class="center">
+        <div class="stats"><table><tr><th class="node">Nodes</th><th class="per_char">Chars</th><th class="branch">Branches</th></tr><tr><td class="node"><span class="executed" title="executed">0</span>  / <span class="potentially_executable" title="potentially_executable">5</span></td><td class="per_char"><span class="executed" title="executed">0</span>  / <span class="potentially_executable" title="potentially_executable">34</span></td><td class="branch"><span class="executed" title="executed">0</span>  / <span class="potentially_executable" title="potentially_executable">0</span></td></tr></table></div>
+      </div>
+    </div>
+    <header>
+      <div class="content">
+        <div class="info"><span class="deep-cover"><span class="deep">Deep</span>Cover</span>
+          <span class="version">v1.1.0</span>
+        </div>
+        <div class="nav">
+          <a href="index.html" aria-label="Home"><i class="fa fa-home" aria-hidden="true"></i></a>
+          <span class="path">app/jobs/application_job.rb<span>
+        </div>
+      </div>
+    </header>
+    <main class="source"><table class="source"><tr><td id="L1" class="nb">1</td><td><span class="node-class kind-keyword not-run" title="never run">class</span> <span class="node-const kind-name not-run" title="never run">ApplicationJob</span> &lt; <span class="node-const kind-name not-run" title="never run">ActiveJob</span><span class="node-const kind-double_colon not-run" title="never run">::</span><span class="node-const kind-name not-run" title="never run">Base</span></td></tr><tr><td id="L2" class="nb">2</td><td>  # Automatically retry jobs that encountered a deadlock</td></tr><tr><td id="L3" class="nb">3</td><td>  # retry_on ActiveRecord::Deadlocked</td></tr><tr><td id="L4" class="nb">4</td><td></td></tr><tr><td id="L5" class="nb">5</td><td>  # Most jobs are safe to ignore if the underlying records are no longer available</td></tr><tr><td id="L6" class="nb">6</td><td>  # discard_on ActiveJob::DeserializationError</td></tr><tr><td id="L7" class="nb">7</td><td><span class="node-EmptyBody kind-empty not-run" title="never run"><i class="empty-icon fa fa-code" aria-hidden="true" title="empty node never run"></i></span>end</td></tr></table></main>
+    <script>
+      $(function() {
+        $('.stats .branch').click(function() {
+          $('body').toggleClass('show-forks')
+        });
+      });
+    </script>
+  </body>
+</html>

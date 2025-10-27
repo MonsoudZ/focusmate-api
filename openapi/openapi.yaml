@@ -1,0 +1,503 @@
+openapi: 3.0.3
+info:
+  title: FocusMate API
+  description: A task management and coaching API
+  version: 1.0.0
+  contact:
+    name: FocusMate Team
+    email: support@focusmate.com
+servers:
+  - url: https://api.focusmate.com/api/v1
+    description: Production server
+  - url: http://localhost:3000/api/v1
+    description: Development server
+paths:
+  /tasks:
+    get:
+      summary: List all tasks
+      description: Get all tasks for the authenticated user
+      tags:
+        - Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: list_id
+          in: query
+          description: Filter tasks by list ID
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: Filter tasks by status
+          required: false
+          schema:
+            type: string
+            enum: [pending, in_progress, completed, cancelled]
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  tombstones:
+                    type: array
+                    items:
+                      type: integer
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Create a new task
+      description: Create a new task
+      tags:
+        - Tasks
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /tasks/{id}:
+    get:
+      summary: Get a specific task
+      description: Get details of a specific task
+      tags:
+        - Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update a task
+      description: Update an existing task
+      tags:
+        - Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      summary: Delete a task
+      description: Soft delete a task
+      tags:
+        - Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task ID
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Task deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /lists:
+    get:
+      summary: List all lists
+      description: Get all lists for the authenticated user
+      tags:
+        - Lists
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lists:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/List'
+                  tombstones:
+                    type: array
+                    items:
+                      type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Create a new list
+      description: Create a new list
+      tags:
+        - Lists
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateListRequest'
+      responses:
+        '201':
+          description: List created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Complete project proposal"
+        description:
+          type: string
+          nullable: true
+          example: "Write a detailed project proposal for the new feature"
+        status:
+          type: string
+          enum: [pending, in_progress, completed, cancelled]
+          example: "pending"
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+          example: "medium"
+        due_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-01-15T10:00:00Z"
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-01-14T15:30:00Z"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-10T09:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-14T15:30:00Z"
+        list_id:
+          type: integer
+          example: 1
+        creator_id:
+          type: integer
+          example: 1
+        assigned_to_id:
+          type: integer
+          nullable: true
+          example: 2
+        visibility:
+          type: string
+          enum: [visible_to_all, private_task, hidden_from_coaches, coaching_only]
+          example: "visible_to_all"
+        is_template:
+          type: boolean
+          example: false
+        strict_mode:
+          type: boolean
+          example: false
+    List:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Work Tasks"
+        description:
+          type: string
+          nullable: true
+          example: "Tasks related to work projects"
+        visibility:
+          type: string
+          enum: [private, shared, public]
+          example: "private"
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-01-31T23:59:59Z"
+        strict_mode:
+          type: boolean
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:00:00Z"
+        owner_id:
+          type: integer
+          example: 1
+    CreateTaskRequest:
+      type: object
+      required:
+        - title
+        - list_id
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Complete project proposal"
+        description:
+          type: string
+          maxLength: 1000
+          example: "Write a detailed project proposal for the new feature"
+        list_id:
+          type: integer
+          example: 1
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+          example: "medium"
+        due_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:00:00Z"
+        assigned_to_id:
+          type: integer
+          example: 2
+        visibility:
+          type: string
+          enum: [visible_to_all, private_task, hidden_from_coaches, coaching_only]
+          example: "visible_to_all"
+        is_template:
+          type: boolean
+          example: false
+        strict_mode:
+          type: boolean
+          example: false
+    UpdateTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Complete project proposal"
+        description:
+          type: string
+          maxLength: 1000
+          example: "Write a detailed project proposal for the new feature"
+        status:
+          type: string
+          enum: [pending, in_progress, completed, cancelled]
+          example: "in_progress"
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+          example: "high"
+        due_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:00:00Z"
+        assigned_to_id:
+          type: integer
+          example: 2
+        visibility:
+          type: string
+          enum: [visible_to_all, private_task, hidden_from_coaches, coaching_only]
+          example: "private_task"
+        is_template:
+          type: boolean
+          example: false
+        strict_mode:
+          type: boolean
+          example: false
+    CreateListRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Work Tasks"
+        description:
+          type: string
+          maxLength: 1000
+          example: "Tasks related to work projects"
+        visibility:
+          type: string
+          enum: [private, shared, public]
+          example: "private"
+        due_date:
+          type: string
+          format: date-time
+          example: "2024-01-31T23:59:59Z"
+        strict_mode:
+          type: boolean
+          example: false
+    Pagination:
+      type: object
+      properties:
+        current_page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 20
+        total_pages:
+          type: integer
+          example: 5
+        total_count:
+          type: integer
+          example: 100
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "Validation failed"
+            details:
+              type: object
+              additionalProperties: true
+              example:
+                title: ["can't be blank"]
+                list_id: ["must exist"]
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

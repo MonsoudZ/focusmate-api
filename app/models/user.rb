@@ -5,8 +5,8 @@ class User < ApplicationRecord
          :recoverable, :rememberable, :validatable,
          :jwt_authenticatable, jwt_revocation_strategy: JwtDenylist
 
-  # Generate JTI on create
-  before_create :generate_jti
+  # Generate JTI on create and set default role
+  before_create :generate_jti, :set_default_role
 
   # Validations
   validates :timezone, presence: true
@@ -310,6 +310,10 @@ class User < ApplicationRecord
     c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
     earth_radius * c
+  end
+
+  def set_default_role
+    self.role = "client" if role.blank?
   end
 
   def generate_jti

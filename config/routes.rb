@@ -53,8 +53,6 @@ Rails.application.routes.draw do
         delete "test-logout", to: "authentication#test_logout"
       end
 
-      # Example resource routes
-      resources :examples
 
       # ===== ENHANCED LIST ROUTES =====
       resources :lists do
@@ -214,6 +212,11 @@ Rails.application.routes.draw do
   # Devise (web) - keep away from /api, skip session routes
   devise_for :users, skip: [ :sessions, :registrations, :passwords ]
 
-  # Health check
+  # Health check endpoints
   get "up" => "rails/health#show", as: :rails_health_check
+  
+  namespace :health do
+    get :live
+    get :ready
+  end
 end

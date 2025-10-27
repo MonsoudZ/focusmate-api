@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_25_181933) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_27_032119) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -34,6 +34,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_181933) do
     t.index ["status"], name: "index_coaching_relationships_on_status"
     t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'inactive'::character varying, 'declined'::character varying]::text[])", name: "check_coaching_relationships_status"
   end
+
+  add_check_constraint "coaching_relationships", "status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'inactive'::character varying, 'declined'::character varying]::text[])", name: "coaching_relationships_status_check", validate: false
 
   create_table "daily_summaries", force: :cascade do |t|
     t.bigint "coaching_relationship_id", null: false
@@ -167,6 +169,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_181933) do
     t.index ["role"], name: "index_list_shares_on_role"
     t.index ["status"], name: "index_list_shares_on_status"
     t.index ["user_id"], name: "index_list_shares_on_user_id"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'accepted'::character varying, 'declined'::character varying]::text[])", name: "list_shares_status_check"
   end
 
   create_table "lists", force: :cascade do |t|
@@ -182,6 +185,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_181933) do
     t.index ["user_id", "deleted_at"], name: "index_lists_on_user_deleted_at"
     t.index ["user_id"], name: "index_lists_on_user_id"
     t.index ["visibility"], name: "index_lists_on_visibility"
+    t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying, 'shared'::character varying, 'public'::character varying]::text[])", name: "lists_visibility_check"
   end
 
   create_table "memberships", force: :cascade do |t|
@@ -198,6 +202,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_181933) do
     t.index ["list_id"], name: "index_memberships_on_list_id"
     t.index ["user_id", "list_id"], name: "index_memberships_on_user_list"
     t.index ["user_id"], name: "index_memberships_on_user_id"
+    t.check_constraint "role::text = ANY (ARRAY['editor'::character varying, 'viewer'::character varying]::text[])", name: "memberships_role_check"
   end
 
   create_table "notification_logs", force: :cascade do |t|
@@ -235,6 +240,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_181933) do
     t.datetime "updated_at", null: false
     t.datetime "deleted_at"
     t.index ["user_id"], name: "index_saved_locations_on_user_id"
+    t.check_constraint "latitude >= '-90'::integer::numeric AND latitude <= 90::numeric", name: "saved_locations_latitude_range"
+    t.check_constraint "longitude >= '-180'::integer::numeric AND longitude <= 180::numeric", name: "saved_locations_longitude_range"
   end
 
   create_table "task_events", force: :cascade do |t|
@@ -283,7 +290,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_181933) do
     t.datetime "missed_reason_submitted_at"
     t.bigint "missed_reason_reviewed_by_id"
     t.datetime "missed_reason_reviewed_at"
-    t.bigint "creator_id"
+    t.bigint "creator_id", null: false
     t.datetime "completed_at"
     t.integer "visibility", default: 0, null: false
     t.datetime "deleted_at"
@@ -305,8 +312,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_181933) do
     t.index ["recurring_template_id"], name: "index_tasks_on_recurring_template_id"
     t.index ["status", "due_at"], name: "index_tasks_on_status_and_due_at"
     t.index ["visibility"], name: "index_tasks_on_visibility"
+    t.check_constraint "location_latitude >= '-90'::integer::numeric AND location_latitude <= 90::numeric", name: "tasks_latitude_range"
+    t.check_constraint "location_longitude >= '-180'::integer::numeric AND location_longitude <= 180::numeric", name: "tasks_longitude_range"
+    t.check_constraint "location_radius_meters > 0", name: "tasks_location_radius_positive"
+    t.check_constraint "notification_interval_minutes > 0", name: "tasks_notification_interval_positive"
+    t.check_constraint "recurrence_interval > 0", name: "tasks_recurrence_interval_positive"
     t.check_constraint "status = ANY (ARRAY[0, 1, 2, 3])", name: "check_tasks_status"
+    t.check_constraint "status = ANY (ARRAY[0, 1, 2, 3])", name: "tasks_status_check"
     t.check_constraint "visibility = ANY (ARRAY[0, 1, 2, 3])", name: "check_tasks_visibility"
+    t.check_constraint "visibility = ANY (ARRAY[0, 1, 2, 3])", name: "tasks_visibility_check"
   end
 
   create_table "user_locations", force: :cascade do |t|
@@ -325,6 +339,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_181933) do
     t.index ["source"], name: "index_user_locations_on_source"
     t.index ["user_id", "recorded_at"], name: "index_user_locations_on_user_recorded_at"
     t.index ["user_id"], name: "index_user_locations_on_user_id"
+    t.check_constraint "latitude >= '-90'::integer::numeric AND latitude <= 90::numeric", name: "user_locations_latitude_range"
+    t.check_constraint "longitude >= '-180'::integer::numeric AND longitude <= 180::numeric", name: "user_locations_longitude_range"
   end
 
   create_table "users", force: :cascade do |t|
@@ -353,6 +369,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_181933) do
     t.index ["jti"], name: "index_users_on_jti"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role"], name: "index_users_on_role"
+    t.check_constraint "role::text = ANY (ARRAY['client'::character varying, 'coach'::character varying, 'admin'::character varying]::text[])", name: "users_role_check"
     t.check_constraint "role::text = ANY (ARRAY['client'::character varying, 'coach'::character varying]::text[])", name: "check_users_role"
   end
 
@@ -378,6 +395,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_181933) do
   add_foreign_key "tasks", "lists"
   add_foreign_key "tasks", "tasks", column: "parent_task_id"
   add_foreign_key "tasks", "tasks", column: "recurring_template_id"
+  add_foreign_key "tasks", "users", column: "assigned_to_id", on_delete: :nullify, validate: false
   add_foreign_key "tasks", "users", column: "creator_id"
   add_foreign_key "tasks", "users", column: "missed_reason_reviewed_by_id"
   add_foreign_key "user_locations", "users"

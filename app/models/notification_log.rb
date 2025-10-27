@@ -16,7 +16,7 @@ class NotificationLog < ApplicationRecord
 
   def metadata_must_be_valid_json
     return if metadata.nil?
-    
+
     # Check if the raw attribute is a string that can't be parsed as JSON
     raw = read_attribute(:metadata)
     if raw.is_a?(String) && raw.present?
@@ -30,7 +30,7 @@ class NotificationLog < ApplicationRecord
 
   def delivered_must_be_boolean
     return if delivered.nil? || delivered.is_a?(TrueClass) || delivered.is_a?(FalseClass)
-    
+
     errors.add(:delivered, "must be a boolean value")
   end
 

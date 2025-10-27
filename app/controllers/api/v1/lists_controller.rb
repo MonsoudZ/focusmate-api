@@ -51,9 +51,12 @@ module Api
 
       # POST /api/v1/lists
       def create
-        # specs treat an empty body as 400
-        cleaned_params = params.permit!.to_h.except(:controller, :action, :list)
-        return bad_request if cleaned_params.blank? && !params.key?(:name)
+        # specs treat an empty body as 422
+        cleaned_params = params.except(:controller, :action, :list).permit(:name, :description, :visibility, :due_date, :strict_mode).to_h
+        if cleaned_params.blank? && !params.key?(:name)
+          render json: { error: { message: "Validation failed", details: ["Name can't be blank"] } }, status: :unprocessable_entity
+          return
+        end
 
         list = current_user.owned_lists.new(list_params_flat)
         list.visibility = "private" # default

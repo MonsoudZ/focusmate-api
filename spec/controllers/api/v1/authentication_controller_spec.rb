@@ -128,10 +128,10 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
       expect(json.dig("user", "email")).to eq("spaced@example.com")
     end
 
-    it "accepts timezone and role when permitted" do
-      register!(email: "coach_#{SecureRandom.hex(4)}@example.com", password: password, password_confirmation: password, role: "coach", timezone: "America/Los_Angeles")
+    it "accepts timezone and sets default role" do
+      register!(email: "user_#{SecureRandom.hex(4)}@example.com", password: password, password_confirmation: password, timezone: "America/Los_Angeles")
       expect(response).to have_http_status(:created)
-      expect(json.dig("user", "role")).to eq("coach")
+      expect(json.dig("user", "role")).to eq("client")  # Default role
       expect(json.dig("user", "timezone")).to eq("America/Los_Angeles")
     end
 

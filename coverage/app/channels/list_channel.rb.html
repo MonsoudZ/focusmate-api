@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base href="../.."/>
+    <script src="assets/jquery-3.2.1.min.js"></script>
+    <script src="https://use.fontawesome.com/81e98abb93.js"></script>
+    <link rel="stylesheet" href="assets/deep_cover.css" type="text/css"/>
+  </head>
+  <body class="source">
+    <div class="overlay">
+      <div class="center">
+        <div class="stats"><table><tr><th class="node">Nodes</th><th class="per_char">Chars</th><th class="branch">Branches</th></tr><tr><td class="node"><span class="executed" title="executed">0</span>  / <span class="potentially_executable" title="potentially_executable">30</span></td><td class="per_char"><span class="executed" title="executed">0</span>  / <span class="potentially_executable" title="potentially_executable">180</span></td><td class="branch"><span class="executed" title="executed">0</span>  / <span class="potentially_executable" title="potentially_executable">2</span></td></tr></table></div>
+      </div>
+    </div>
+    <header>
+      <div class="content">
+        <div class="info"><span class="deep-cover"><span class="deep">Deep</span>Cover</span>
+          <span class="version">v1.1.0</span>
+        </div>
+        <div class="nav">
+          <a href="index.html" aria-label="Home"><i class="fa fa-home" aria-hidden="true"></i></a>
+          <span class="path">app/channels/list_channel.rb<span>
+        </div>
+      </div>
+    </header>
+    <main class="source"><table class="source"><tr><td id="L1" class="nb">1</td><td><span class="node-class kind-keyword not-run" title="never run">class</span> <span class="node-const kind-name not-run" title="never run">ListChannel</span> &lt; <span class="node-const kind-name not-run" title="never run">ApplicationCable</span><span class="node-const kind-double_colon not-run" title="never run">::</span><span class="node-const kind-name not-run" title="never run">Channel</span></td></tr><tr><td id="L2" class="nb">2</td><td>  <span class="node-def kind-keyword not-run" title="never run">def</span> <span class="node-def kind-name not-run" title="never run">subscribed</span></td></tr><tr><td id="L3" class="nb">3</td><td>    <span class="node-ivasgn kind-name not-run" title="never run">@list</span> <span class="node-ivasgn kind-operator not-run" title="never run">=</span> <span class="node-const kind-name not-run" title="never run">List</span><span class="node-send kind-dot not-run" title="never run">.</span><span class="node-send kind-selector_begin not-run" title="never run">find</span>(<span class="node-send kind-selector_begin not-run" title="never run">params</span><span class="node-send kind-selector_begin not-run" title="never run">[</span><span class="node-sym kind-expression not-run" title="never run">:list_id</span><span class="node-send kind-selector_end not-run" title="never run">]</span>)</td></tr><tr><td id="L4" class="nb">4</td><td>    <span class="fork fork-whole fork-not-run " data-fork-id="0"><i class="fork-icon fa fa-code-fork" aria-hidden="true" title="never run"></i><span class="fork fork-branch fork-not-run " data-fork-id="0"><i class="fork-icon fa fa-code-fork" aria-hidden="true" title="never run"></i><span class="node-send kind-selector_begin not-run" title="never run">reject</span></span> <span class="node-if kind-keyword not-run" title="never run">if</span> <span class="node-ivar kind-name not-run" title="never run">@list</span><span class="node-send kind-dot not-run" title="never run">.</span><span class="node-send kind-selector_begin not-run" title="never run">blank?</span></span></td></tr><tr><td id="L5" class="nb">5</td><td>    <span class="fork fork-whole fork-not-run " data-fork-id="1"><i class="fork-icon fa fa-code-fork" aria-hidden="true" title="never run"></i><span class="fork fork-branch fork-not-run " data-fork-id="1"><i class="fork-icon fa fa-code-fork" aria-hidden="true" title="never run"></i><span class="node-send kind-selector_begin not-run" title="never run">reject</span></span> <span class="node-if kind-keyword not-run" title="never run">unless</span> <span class="node-send kind-selector_begin not-run" title="never run">current_user</span><span class="node-send kind-dot not-run" title="never run">.</span><span class="node-send kind-selector_begin not-run" title="never run">memberships</span><span class="node-send kind-dot not-run" title="never run">.</span><span class="node-send kind-selector_begin not-run" title="never run">exists?</span>(<span class="node-sym kind-expression not-run" title="never run">list_id</span><span class="node-pair kind-operator not-run" title="never run">:</span> <span class="node-ivar kind-name not-run" title="never run">@list</span><span class="node-send kind-dot not-run" title="never run">.</span><span class="node-send kind-selector_begin not-run" title="never run">id</span>)</span></td></tr><tr><td id="L6" class="nb">6</td><td>    <span class="node-send kind-selector_begin not-run" title="never run">stream_for</span> <span class="node-ivar kind-name not-run" title="never run">@list</span></td></tr><tr><td id="L7" class="nb">7</td><td>  end</td></tr><tr><td id="L8" class="nb">8</td><td>end</td></tr></table></main>
+    <script>
+      $(function() {
+        $('.stats .branch').click(function() {
+          $('body').toggleClass('show-forks')
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -79,17 +79,38 @@ module ConfigurationHelper
   # Time periods
   def self.recent_activity_period
     value = get("time_periods.recent_activity", 1.week)
-    value.is_a?(String) ? eval(value) : value
+    value.is_a?(String) ? parse_time_period(value) : value
   end
 
   def self.upcoming_deadlines_period
     value = get("time_periods.upcoming_deadlines", 1.week)
-    value.is_a?(String) ? eval(value) : value
+    value.is_a?(String) ? parse_time_period(value) : value
   end
 
   def self.cache_expiry
     value = get("time_periods.cache_expiry", 5.minutes)
-    value.is_a?(String) ? eval(value) : value
+    value.is_a?(String) ? parse_time_period(value) : value
+  end
+
+  # Safe time period parsing
+  def self.parse_time_period(period_string)
+    case period_string.downcase.strip
+    when /^(\d+)\s*minutes?$/
+      $1.to_i.minutes
+    when /^(\d+)\s*hours?$/
+      $1.to_i.hours
+    when /^(\d+)\s*days?$/
+      $1.to_i.days
+    when /^(\d+)\s*weeks?$/
+      $1.to_i.weeks
+    when /^(\d+)\s*months?$/
+      $1.to_i.months
+    when /^(\d+)\s*years?$/
+      $1.to_i.years
+    else
+      # Fallback to default if parsing fails
+      1.week
+    end
   end
 
   # Database configuration

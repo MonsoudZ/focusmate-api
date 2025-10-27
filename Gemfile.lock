@@ -74,7 +74,15 @@ GEM
       uri (>= 0.13.1)
     addressable (2.8.7)
       public_suffix (>= 2.0.2, < 7.0)
+    apnotic (1.7.2)
+      connection_pool (~> 2)
+      net-http2 (>= 0.18.3, < 2)
     ast (2.4.3)
+    axiom-types (0.1.1)
+      descendants_tracker (~> 0.0.4)
+      ice_nine (~> 0.11.0)
+      thread_safe (~> 0.3, >= 0.3.1)
+    backports (3.25.2)
     base64 (0.3.0)
     bcrypt (3.1.20)
     bcrypt_pbkdf (1.1.1)
@@ -82,11 +90,25 @@ GEM
     bcrypt_pbkdf (1.1.1-x86_64-darwin)
     benchmark (0.4.1)
     bigdecimal (3.3.1)
+    binding_of_caller (1.0.1)
+      debug_inspector (>= 1.2.0)
     bootsnap (1.18.6)
       msgpack (~> 1.2)
     brakeman (7.1.0)
       racc
     builder (3.3.0)
+    bundler-audit (0.9.2)
+      bundler (>= 1.2.0, < 3)
+      thor (~> 1.0)
+    childprocess (5.1.0)
+      logger (~> 1.5)
+    coderay (1.1.3)
+    coercible (1.0.0)
+      descendants_tracker (~> 0.0.1)
+    committee (5.6.0)
+      json_schema (~> 0.14, >= 0.14.3)
+      openapi_parser (~> 2.0)
+      rack (>= 1.5)
     concurrent-ruby (1.3.5)
     connection_pool (2.5.4)
     crass (1.0.6)
@@ -99,6 +121,21 @@ GEM
     debug (1.11.0)
       irb (~> 1.10)
       reline (>= 0.3.8)
+    debug_inspector (1.2.0)
+    deep-cover (1.1.0)
+      deep-cover-core (= 1.1.0)
+      highline
+      thor (>= 0.20.3)
+      with_progress
+    deep-cover-core (1.1.0)
+      backports (>= 3.11.0)
+      binding_of_caller
+      parser (>= 2.5)
+      pry
+      term-ansicolor
+      terminal-table
+    descendants_tracker (0.0.4)
+      thread_safe (~> 0.3, >= 0.3.1)
     devise (4.9.4)
       bcrypt (~> 3.0)
       orm_adapter (~> 0.1)
@@ -109,6 +146,7 @@ GEM
       devise (~> 4.0)
       warden-jwt_auth (~> 0.10)
     diff-lcs (1.6.2)
+    docile (1.4.1)
     dotenv (3.1.8)
     dotenv-rails (3.1.8)
       dotenv (= 3.1.8)
@@ -123,6 +161,28 @@ GEM
     dry-core (1.1.0)
       concurrent-ruby (~> 1.0)
       logger
+      zeitwerk (~> 2.6)
+    dry-inflector (1.2.0)
+    dry-initializer (3.2.0)
+    dry-logic (1.6.0)
+      bigdecimal
+      concurrent-ruby (~> 1.0)
+      dry-core (~> 1.1)
+      zeitwerk (~> 2.6)
+    dry-schema (1.14.1)
+      concurrent-ruby (~> 1.0)
+      dry-configurable (~> 1.0, >= 1.0.1)
+      dry-core (~> 1.1)
+      dry-initializer (~> 3.2)
+      dry-logic (~> 1.5)
+      dry-types (~> 1.8)
+      zeitwerk (~> 2.6)
+    dry-types (1.8.3)
+      bigdecimal (~> 3.0)
+      concurrent-ruby (~> 1.0)
+      dry-core (~> 1.0)
+      dry-inflector (~> 1.0)
+      dry-logic (~> 1.4)
       zeitwerk (~> 2.6)
     ed25519 (1.4.0)
     erb (5.1.1)
@@ -146,11 +206,20 @@ GEM
     fcm (2.0.1)
       faraday (>= 1.0.0, < 3.0)
       googleauth (~> 1)
+    flay (2.13.3)
+      erubi (~> 1.10)
+      path_expander (~> 1.0)
+      ruby_parser (~> 3.0)
+      sexp_processor (~> 4.0)
     flipper (1.3.6)
       concurrent-ruby (< 2)
     flipper-active_record (1.3.6)
       activerecord (>= 4.2, < 9)
       flipper (~> 1.3.6)
+    flog (4.8.0)
+      path_expander (~> 1.0)
+      ruby_parser (~> 3.1, > 3.1.0)
+      sexp_processor (~> 4.8)
     fugit (1.11.2)
       et-orbi (~> 1, >= 1.2.11)
       raabro (~> 1.4)
@@ -175,6 +244,8 @@ GEM
       temple (>= 0.8.2)
       thor
       tilt
+    highline (3.1.2)
+      reline
     http-2 (1.1.1)
     httparty (0.23.2)
       csv
@@ -182,12 +253,17 @@ GEM
       multi_xml (>= 0.5.2)
     i18n (1.14.7)
       concurrent-ruby (~> 1.0)
+    ice_nine (0.11.2)
     io-console (0.8.1)
     irb (1.15.2)
       pp (>= 0.6.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     json (2.15.1)
+    json-schema (5.2.2)
+      addressable (~> 2.8)
+      bigdecimal (~> 3.1)
+    json_schema (0.21.0)
     jsonapi-serializer (2.2.0)
       activesupport (>= 4.2)
     jwt (3.1.2)
@@ -204,8 +280,17 @@ GEM
       thor (~> 1.3)
       zeitwerk (>= 2.6.18, < 3.0)
     language_server-protocol (3.17.0.5)
+    launchy (3.1.1)
+      addressable (~> 2.8)
+      childprocess (~> 5.0)
+      logger (~> 1.6)
     lint_roller (1.1.0)
     logger (1.7.0)
+    lograge (0.14.0)
+      actionpack (>= 4)
+      activesupport (>= 4)
+      railties (>= 4)
+      request_store (~> 1.0)
     loofah (2.24.1)
       crass (~> 1.0.2)
       nokogiri (>= 1.12.0)
@@ -225,8 +310,10 @@ GEM
       sqlite3-ruby
       thin
     marcel (1.1.0)
+    method_source (1.1.0)
     mini_mime (1.1.5)
     minitest (5.26.0)
+    mize (0.6.1)
     mocha (2.7.1)
       ruby2_keywords (>= 0.0.5)
     msgpack (1.8.0)
@@ -235,8 +322,20 @@ GEM
       bigdecimal (~> 3.1)
     mustermann (3.0.4)
       ruby2_keywords (~> 0.0.1)
+    mutant (0.13.4)
+      diff-lcs (~> 1.3)
+      irb (~> 1.15.2)
+      parser (~> 3.3.0)
+      regexp_parser (~> 2.10)
+      sorbet-runtime (~> 0.5.0)
+      unparser (~> 0.8.0)
+    mutant-rspec (0.13.4)
+      mutant (= 0.13.4)
+      rspec-core (>= 3.8.0, < 4.0.0)
     net-http (0.6.0)
       uri
+    net-http2 (0.19.0)
+      http-2 (>= 1.0)
     net-imap (0.5.12)
       date
       net-protocol
@@ -268,6 +367,7 @@ GEM
       racc (~> 1.4)
     nokogiri (1.18.10-x86_64-linux-musl)
       racc (~> 1.4)
+    openapi_parser (2.3.0)
     orm_adapter (0.5.0)
     os (1.1.4)
     ostruct (0.6.3)
@@ -275,6 +375,7 @@ GEM
     parser (3.3.9.0)
       ast (~> 2.4.1)
       racc
+    path_expander (1.1.3)
     pg (1.6.2)
     pg (1.6.2-aarch64-linux)
     pg (1.6.2-aarch64-linux-musl)
@@ -286,6 +387,9 @@ GEM
       prettyprint
     prettyprint (0.2.0)
     prism (1.5.2)
+    pry (0.15.2)
+      coderay (~> 1.1)
+      method_source (~> 1.0)
     psych (5.2.6)
       date
       stringio
@@ -350,12 +454,21 @@ GEM
       redis-client (>= 0.22.0)
     redis-client (0.26.1)
       connection_pool
+    reek (6.5.0)
+      dry-schema (~> 1.13)
+      logger (~> 1.6)
+      parser (~> 3.3.0)
+      rainbow (>= 2.0, < 4.0)
+      rexml (~> 3.1)
     regexp_parser (2.11.3)
     reline (0.6.2)
       io-console (~> 0.5)
+    request_store (1.7.0)
+      rack (>= 1.4)
     responders (3.2.0)
       actionpack (>= 7.0)
       railties (>= 7.0)
+    rexml (3.4.4)
     rspec-core (3.13.6)
       rspec-support (~> 3.13.0)
     rspec-expectations (3.13.5)
@@ -373,6 +486,21 @@ GEM
       rspec-mocks (~> 3.13)
       rspec-support (~> 3.13)
     rspec-support (3.13.6)
+    rswag (2.16.0)
+      rswag-api (= 2.16.0)
+      rswag-specs (= 2.16.0)
+      rswag-ui (= 2.16.0)
+    rswag-api (2.16.0)
+      activesupport (>= 5.2, < 8.1)
+      railties (>= 5.2, < 8.1)
+    rswag-specs (2.16.0)
+      activesupport (>= 5.2, < 8.1)
+      json-schema (>= 2.2, < 6.0)
+      railties (>= 5.2, < 8.1)
+      rspec-core (>= 2.14)
+    rswag-ui (2.16.0)
+      actionpack (>= 5.2, < 8.1)
+      railties (>= 5.2, < 8.1)
     rubocop (1.81.1)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
@@ -403,9 +531,31 @@ GEM
       rubocop-rails (>= 2.30)
     ruby-progressbar (1.13.0)
     ruby2_keywords (0.0.5)
+    ruby_parser (3.21.1)
+      racc (~> 1.5)
+      sexp_processor (~> 4.16)
+    rubycritic (4.11.0)
+      flay (~> 2.13)
+      flog (~> 4.7)
+      launchy (>= 2.5.2)
+      parser (>= 3.3.0.5)
+      rainbow (~> 3.1.1)
+      reek (~> 6.5.0, < 7.0)
+      rexml
+      ruby_parser (~> 3.21)
+      simplecov (>= 0.22.0)
+      tty-which (~> 0.5.0)
+      virtus (~> 2.0)
     rufus-scheduler (3.9.2)
       fugit (~> 1.1, >= 1.11.1)
     securerandom (0.4.1)
+    sentry-rails (6.0.0)
+      railties (>= 5.2.0)
+      sentry-ruby (~> 6.0.0)
+    sentry-ruby (6.0.0)
+      bigdecimal
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+    sexp_processor (4.17.4)
     shoulda-matchers (6.5.0)
       activesupport (>= 5.2.0)
     sidekiq (8.0.8)
@@ -427,6 +577,12 @@ GEM
       faraday (>= 0.17.5, < 3.a)
       jwt (>= 1.5, < 4.0)
       multi_json (~> 1.10)
+    simplecov (0.22.0)
+      docile (~> 1.1)
+      simplecov-html (~> 0.11)
+      simplecov_json_formatter (~> 0.1)
+    simplecov-html (0.13.2)
+    simplecov_json_formatter (0.1.4)
     sinatra (4.2.1)
       logger (>= 1.6.0)
       mustermann (~> 3.0)
@@ -453,6 +609,7 @@ GEM
       fugit (~> 1.11.0)
       railties (>= 7.1)
       thor (>= 1.3.1)
+    sorbet-runtime (0.5.12443)
     sqlite3 (2.7.4-aarch64-linux-gnu)
     sqlite3 (2.7.4-aarch64-linux-musl)
     sqlite3 (2.7.4-arm-linux-gnu)
@@ -471,13 +628,21 @@ GEM
       net-ssh (>= 2.8.0)
       ostruct
     stringio (3.1.7)
+    strong_migrations (2.5.1)
+      activerecord (>= 7.1)
+    sync (0.5.0)
     temple (0.10.4)
+    term-ansicolor (1.11.3)
+      tins (~> 1)
+    terminal-table (4.0.0)
+      unicode-display_width (>= 1.1.1, < 4)
     thin (2.0.1)
       daemons (~> 1.0, >= 1.0.9)
       eventmachine (~> 1.0, >= 1.0.4)
       logger
       rack (>= 1, < 4)
     thor (1.4.0)
+    thread_safe (0.3.6)
     thruster (0.1.15)
     thruster (0.1.15-aarch64-linux)
     thruster (0.1.15-arm64-darwin)
@@ -485,15 +650,30 @@ GEM
     thruster (0.1.15-x86_64-linux)
     tilt (2.6.1)
     timeout (0.4.3)
+    tins (1.45.0)
+      bigdecimal
+      mize (~> 0.6)
+      sync
+    traceroute (0.8.1)
+      rails (>= 3.0.0)
     tsort (0.2.0)
+    tty-which (0.5.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
     unicode (0.4.4.5)
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
     unicode-emoji (4.1.0)
+    unparser (0.8.0)
+      diff-lcs (~> 1.6)
+      parser (>= 3.3.0)
+      prism (>= 1.4)
     uri (1.0.4)
     useragent (0.16.11)
+    virtus (2.0.0)
+      axiom-types (~> 0.1)
+      coercible (~> 1.0)
+      descendants_tracker (~> 0.0, >= 0.0.3)
     warden (1.2.9)
       rack (>= 2.0.9)
     warden-jwt_auth (0.12.0)
@@ -505,6 +685,8 @@ GEM
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
+    with_progress (1.0.1)
+      ruby-progressbar (~> 1.4)
     zeitwerk (2.7.3)
 
 PLATFORMS
@@ -520,10 +702,14 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
+  apnotic
   bcrypt (~> 3.1.7)
   bootsnap
   brakeman
+  bundler-audit
+  committee
   debug
+  deep-cover
   devise
   devise-jwt
   dotenv-rails
@@ -538,8 +724,10 @@ DEPENDENCIES
   jsonapi-serializer
   jwt
   kamal
+  lograge
   mailcatcher
   mocha
+  mutant-rspec
   pg (~> 1.1)
   puma (>= 5.0)
   pundit
@@ -547,15 +735,22 @@ DEPENDENCIES
   rails (~> 8.0.3)
   redis (~> 5.0)
   rspec-rails
+  rswag
   rubocop-rails-omakase
+  rubycritic
+  sentry-rails
+  sentry-ruby
   shoulda-matchers
   sidekiq
   sidekiq-cron
   sidekiq-scheduler
+  simplecov
   solid_cable
   solid_cache
   solid_queue
+  strong_migrations
   thruster
+  traceroute
   tzinfo-data
 
 BUNDLED WITH

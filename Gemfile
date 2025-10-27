@@ -35,17 +35,35 @@ gem "flipper"
 gem "flipper-active_record"
 
 # APNs push notifications with HTTP/2 support
+gem "apnotic"    # APNs HTTP/2 client
 gem "http-2"     # HTTP/2 client for APNs
 gem "jwt"        # JWT token generation for APNs
 
 # JSON API serialization
 gem "jsonapi-serializer"
 
+# OpenAPI specification and validation
+gem "committee"  # Response validation against OpenAPI schema
+gem "rswag"      # OpenAPI/Swagger documentation generation
+
 # Geocoding for location-based features
 gem "geocoder"
 
 # Firebase Cloud Messaging for push notifications
 gem "fcm"
+
+# Error tracking and monitoring
+gem "sentry-ruby"
+gem "sentry-rails"
+
+# Structured logging
+gem "lograge"
+
+# Database migration safety
+gem "strong_migrations"
+
+# Mutation testing
+gem "mutant-rspec", require: false, group: :test
 
 # HTTP client for API calls
 gem "httparty"
@@ -86,12 +104,19 @@ group :development, :test do
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
 
+  # Code quality and dead code analysis
+  gem "rubycritic", require: false
+  gem "traceroute", require: false
+  gem "deep-cover", require: false
+  gem "bundler-audit", require: false
+
   # Testing framework
   gem "rspec-rails"
   gem "factory_bot_rails"
   gem "faker"
   gem "shoulda-matchers"
   gem "mocha"
+  gem "simplecov", require: false
 end
 
 # Environment variables

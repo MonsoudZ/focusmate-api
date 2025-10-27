@@ -133,7 +133,22 @@ module Api
       end
 
       def membership_params
-        params.require(:membership).permit(:user_identifier, :role)
+        # Only permit user_identifier, handle role separately for security
+        permitted = params.require(:membership).permit(:user_identifier)
+        
+        # Handle role separately with explicit validation
+        if params[:membership][:role].present?
+          role = params[:membership][:role].to_s.downcase
+          if %w[editor viewer].include?(role)
+            permitted[:role] = role
+          else
+            permitted[:role] = "viewer" # Default to viewer for invalid roles
+          end
+        else
+          permitted[:role] = "viewer" # Default role
+        end
+        
+        permitted
       end
 
       def find_user_by_email_or_id(identifier)

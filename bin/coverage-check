@@ -1,0 +1,43 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Coverage threshold checker
+# Usage: bin/coverage-check [threshold]
+
+require 'simplecov'
+require 'json'
+
+threshold = ARGV[0]&.to_f || 60.0
+
+puts "Checking coverage against threshold: #{threshold}%"
+
+# Run SimpleCov analysis
+SimpleCov.start 'rails' do
+  enable_coverage :branch
+  add_filter %w[bin/ db/ config/ vendor/]
+  minimum_coverage threshold
+end
+
+# Load the application
+require_relative '../config/environment'
+
+# Run a minimal test to generate coverage
+require 'rspec/core'
+RSpec::Core::Runner.run(['--format', 'progress'])
+
+# Get coverage results
+result = SimpleCov.result
+line_coverage = result.covered_percent
+
+puts "\nCoverage Results:"
+puts "Line Coverage: #{line_coverage.round(2)}%"
+puts "Threshold: #{threshold}%"
+
+if line_coverage >= threshold
+  puts "✅ Coverage meets threshold"
+  exit 0
+else
+  puts "❌ Coverage below threshold"
+  puts "Need to increase coverage by #{(threshold - line_coverage).round(2)}%"
+  exit 1
+end

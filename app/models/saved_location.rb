@@ -43,17 +43,27 @@ class SavedLocation < ApplicationRecord
   # DB-agnostic "nearby" using the Haversine formula in SQL (meters).
   # Avoids PostGIS ST_* functions so it runs on plain PostgreSQL/SQLite.
   scope :nearby, ->(lat, lng, radius = 1000) {
+    # Validate inputs to prevent SQL injection
+    lat = lat.to_f
+    lng = lng.to_f
+    radius = radius.to_f
+    
+    # Ensure lat/lng are within valid ranges
+    lat = [[lat, -90].max, 90].min
+    lng = [[lng, -180].max, 180].min
+    
     dist_sql = <<~SQL.squish
       2 * 6371000 * ASIN(
         SQRT(
-          POWER(SIN(RADIANS((#{lat}) - latitude)/2), 2) +
-          COS(RADIANS(latitude)) * COS(RADIANS(#{lat})) *
-          POWER(SIN(RADIANS((#{lng}) - longitude)/2), 2)
+          POWER(SIN(RADIANS((? - latitude)/2)), 2) +
+          COS(RADIANS(latitude)) * COS(RADIANS(?)) *
+          POWER(SIN(RADIANS((? - longitude)/2)), 2)
         )
       )
     SQL
-    select("#{table_name}.*, (#{dist_sql}) AS distance_m")
-      .where("(#{dist_sql}) <= ?", radius)
+    
+    select("#{table_name}.*, (#{dist_sql}) AS distance_m", lat, lat, lng)
+      .where("(#{dist_sql}) <= ?", lat, lat, lng, radius)
       .order(Arel.sql("distance_m ASC"))
   }
 

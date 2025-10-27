@@ -113,7 +113,7 @@ module Api
       private
 
       def user_params
-        params.require(:user).permit(:email, :password, :password_confirmation, :name, :role, :timezone)
+        params.require(:user).permit(:email, :password, :password_confirmation, :name, :timezone)
       end
 
       def generate_jwt_token(user)

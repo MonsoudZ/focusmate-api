@@ -13,6 +13,17 @@
 # it.
 #
 # See https://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
+
+# Coverage reporting with SimpleCov
+require 'simplecov'
+SimpleCov.start 'rails' do
+  enable_coverage :branch
+  add_filter %w[bin/ db/ config/ vendor/]
+  # Set realistic initial thresholds - can be increased over time
+  minimum_coverage 60  # Current coverage is ~60%
+  # minimum_coverage_by_file 20  # Disabled for now - some files have 0% coverage
+end
+
 RSpec.configure do |config|
   # rspec-expectations config goes here. You can use an alternate
   # assertion/expectation library such as wrong or the stdlib/minitest
@@ -91,4 +102,5 @@ RSpec.configure do |config|
   # as the one that triggered the failure.
   Kernel.srand config.seed
 =end
+
 end
