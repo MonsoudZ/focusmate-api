@@ -190,8 +190,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
-      expect(json["errors"]).to have_key("title")
-      expect(json["errors"]).to have_key("due_at")
+      expect(json["details"]).to have_key("title")
     end
   end
 

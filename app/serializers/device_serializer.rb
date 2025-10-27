@@ -11,7 +11,11 @@ class DeviceSerializer
       apns_token: device.apns_token,
       platform: device.platform,
       bundle_id: device.bundle_id,
-      display_name: device.display_name,
+      device_name: device.device_name,
+      user: {
+        id: device.user.id,
+        email: device.user.email
+      },
       created_at: device.created_at.iso8601,
       updated_at: device.updated_at.iso8601
     }

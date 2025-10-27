@@ -24,7 +24,7 @@ module Api
         @relationship = CoachingRelationship.find(params[:coaching_relationship_id])
 
         unless @relationship.coach == current_user || @relationship.client == current_user
-          render json: { error: "Unauthorized" }, status: :forbidden
+          render json: { error: { message: "Unauthorized" } }, status: :forbidden
         end
       end
     end

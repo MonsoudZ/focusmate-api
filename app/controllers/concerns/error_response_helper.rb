@@ -20,28 +20,23 @@ module ErrorResponseHelper
 
   # Validation error response
   def render_validation_errors(errors, status = :unprocessable_content)
-    error_response = {
-      error: {
-        message: "Validation failed",
-        status: Rack::Utils.status_code(status),
-        timestamp: Time.current.iso8601,
-        details: {
-          validation_errors: errors.is_a?(ActiveModel::Errors) ? errors.full_messages : errors
-        }
-      }
-    }
-
-    render json: error_response, status: status
+    render json: { error: { message: "Validation failed", details: errors } }, status: status
   end
 
   # Not found error response
   def render_not_found(resource = "Resource")
-    render_error("#{resource} not found", :not_found)
+    render json: { error: { message: "#{resource} not found" } }, status: :not_found
   end
 
   # Unauthorized error response
   def render_unauthorized(message = "Unauthorized")
-    render_error(message, :unauthorized)
+    render json: {
+      error: {
+        message: message,
+        status: 401,
+        timestamp: Time.current.iso8601
+      }
+    }, status: :unauthorized
   end
 
   # Forbidden error response

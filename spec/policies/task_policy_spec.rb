@@ -27,7 +27,7 @@ RSpec.describe TaskPolicy, type: :policy do
 
   # Create shared list for coach
   let(:shared_list) { create(:list, owner: client) }
-  let(:shared_task) { create(:task, list: shared_list, creator: client) }
+  let(:shared_task) { create(:task, list: shared_list, creator: client, visibility: "visible_to_all") }
 
   before do
     # Share list with coach
@@ -109,7 +109,8 @@ RSpec.describe TaskPolicy, type: :policy do
     end
 
     it 'allows shared user with can_view permission to view tasks' do
-      policy = described_class.new(shared_user, task)
+      visible_task = create(:task, list: list, visibility: "visible_to_all")
+      policy = described_class.new(shared_user, visible_task)
       expect(policy.show?).to be true
     end
 
@@ -139,7 +140,8 @@ RSpec.describe TaskPolicy, type: :policy do
     end
 
     it 'allows shared user with can_edit permission to update tasks' do
-      policy = described_class.new(editor_user, task)
+      visible_task = create(:task, list: list, visibility: "visible_to_all")
+      policy = described_class.new(editor_user, visible_task)
       expect(policy.update?).to be true
       expect(policy.complete?).to be true
       expect(policy.reassign?).to be true
@@ -159,7 +161,8 @@ RSpec.describe TaskPolicy, type: :policy do
     end
 
     it 'allows shared user with can_delete_items to delete tasks' do
-      policy = described_class.new(deleter_user, task)
+      visible_task = create(:task, list: list, visibility: "visible_to_all")
+      policy = described_class.new(deleter_user, visible_task)
       expect(policy.destroy?).to be true
     end
   end
@@ -522,7 +525,8 @@ RSpec.describe TaskPolicy, type: :policy do
         can_delete_items: true
       })
 
-      policy = described_class.new(full_user, task)
+      visible_task = create(:task, list: list, visibility: "visible_to_all")
+      policy = described_class.new(full_user, visible_task)
       expect(policy.show?).to be true
       expect(policy.update?).to be true
       expect(policy.destroy?).to be true
@@ -541,7 +545,8 @@ RSpec.describe TaskPolicy, type: :policy do
         can_delete_items: false
       })
 
-      policy = described_class.new(viewer, task)
+      visible_task = create(:task, list: list, visibility: "visible_to_all")
+      policy = described_class.new(viewer, visible_task)
       expect(policy.show?).to be true # Can view
       expect(policy.update?).to be false # Cannot update
       expect(policy.destroy?).to be false # Cannot delete

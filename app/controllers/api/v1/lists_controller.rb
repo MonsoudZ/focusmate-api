@@ -39,13 +39,9 @@ module Api
           scope = scope.where("lists.updated_at >= ?", since_time) if since_time
         end
 
-        active   = scope.where(deleted_at: nil)
-        deleted  = scope.where.not(deleted_at: nil)
+        active = scope.where(deleted_at: nil)
 
-        render json: {
-          lists: active.map { |l| serialize_list(l) },
-          tombstones: deleted.map { |l| { id: l.id, deleted_at: l.deleted_at.iso8601, type: "list" } }
-        }, status: :ok
+        render json: { lists: active.map { |l| serialize_list(l) }, tombstones: [] }, status: :ok
       end
 
       # GET /api/v1/lists/:id
@@ -107,10 +103,24 @@ module Api
         share = ListShare.find_or_initialize_by(list_id: @list.id, email: user.email)
         share.user_id = target_id
         share.status   = :accepted
+        share.can_view = ActiveModel::Type::Boolean.new.cast(params[:can_view])
         share.can_edit = ActiveModel::Type::Boolean.new.cast(params[:can_edit])
+        share.can_add_items = ActiveModel::Type::Boolean.new.cast(params[:can_add_items])
+        share.can_delete_items = ActiveModel::Type::Boolean.new.cast(params[:can_delete_items])
 
         if share.save
-          render json: serialize_list(@list), status: :ok
+          render json: {
+            id: share.id,
+            user_id: share.user_id,
+            email: share.email,
+            can_view: share.can_view,
+            can_edit: share.can_edit,
+            can_add_items: share.can_add_items,
+            can_delete_items: share.can_delete_items,
+            status: share.status,
+            created_at: share.created_at,
+            updated_at: share.updated_at
+          }, status: :created
         else
           validation_error!(share)
         end
@@ -221,7 +231,7 @@ module Api
       # === Error helpers (match spec shapes) ===
 
       def not_found
-        render json: { error: { message: "Resource not found" } }, status: :not_found
+        render json: { error: { message: "List not found" } }, status: :not_found
       end
 
       def forbidden

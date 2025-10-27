@@ -19,7 +19,7 @@ module ErrorLoggingHelper
 
   def handle_record_not_found(exception)
     log_error(exception, severity: :warn)
-    render_not_found("Resource not found")
+    render_not_found("Resource")
   end
 
   def handle_record_invalid(exception)

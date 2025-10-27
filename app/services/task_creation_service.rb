@@ -106,18 +106,24 @@ class TaskCreationService
     @task = @list.tasks.build(@attrs)
     @task.creator = @user
 
-    # Only set default due_at if explicitly requested or if strict_mode is true and due_at is still blank after validation
-    # This allows validation to fail for missing due_at when required
+    # Set default due_at if not provided and required
+    if @task.due_at.blank? && @task.strict_mode
+      @task.due_at = 1.hour.from_now
+    end
 
     @task.save!
   end
 
   def create_subtasks(subtasks)
     subtasks.each do |subtask_title|
+      # Truncate title if too long
+      title = subtask_title.to_s
+      title = title[0, 255] if title.length > 255
+
       @task.subtasks.create!(
         list: @list,
         creator: @user,
-        title: subtask_title,
+        title: title,
         due_at: @task.due_at,
         strict_mode: @task.strict_mode
       )

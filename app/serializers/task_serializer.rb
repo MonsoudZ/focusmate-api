@@ -22,6 +22,9 @@ class TaskSerializer
       notification_interval_minutes: task.notification_interval_minutes || 10,
       requires_explanation_if_missed: task.requires_explanation_if_missed || false,
 
+      # Status
+      status: task.status,
+
       # Status flags
       overdue: overdue?,
       minutes_overdue: minutes_overdue,
@@ -57,7 +60,7 @@ class TaskSerializer
       can_complete: can_complete?,
 
       # Visibility
-      visibility: task.visibility == "visible",
+      visibility: task.visibility == "visible_to_all",
       can_change_visibility: can_change_visibility?,
 
       # Escalation
@@ -88,7 +91,7 @@ class TaskSerializer
     # Task is overdue if it has a due date in the past and is NOT completed
     task.due_at.present? &&
     task.due_at < Time.current &&
-    (task.status.nil? || task.status == 0 || task.status == "incomplete")
+    (task.status.nil? || task.status == "pending" || task.status == "in_progress")
   end
 
   def minutes_overdue
@@ -160,7 +163,7 @@ class TaskSerializer
   end
 
   def subtasks_completed_count
-    task.subtasks.where(status: :done).count
+    task.subtasks.where(status: "done").count
   end
 
   def subtask_percentage
@@ -170,7 +173,7 @@ class TaskSerializer
 
   def completed_at_value
     # Use the actual completed_at field if it exists, otherwise fall back to updated_at
-    if task.status == 1 || task.status == "done"
+    if task.status == "done"
       task.completed_at&.iso8601 || task.updated_at.iso8601
     else
       nil

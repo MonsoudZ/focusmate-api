@@ -10,14 +10,14 @@ class ListShare < ApplicationRecord
   attr_accessor :invited_by
 
   # Validations
-  # validates :list_id, uniqueness: { scope: :user_id, message: "is already shared with this user" }, if: -> { user_id? && !user_id_was.nil? }
-  validates :list_id, uniqueness: { scope: :email, message: "is already shared with this email" }, if: :email?
+  validates :list_id, uniqueness: { scope: :user_id, message: "is already shared with this user" }, if: :user_id?
+  validates :list_id, uniqueness: { scope: :email, message: "is already shared with this email" }, if: -> { email? && !user_id? }
   validates :can_view, inclusion: { in: [ true, false ] }
   validates :can_edit, inclusion: { in: [ true, false ] }
   validates :can_add_items, inclusion: { in: [ true, false ] }
   validates :can_delete_items, inclusion: { in: [ true, false ] }
   validates :receive_notifications, inclusion: { in: [ true, false ] }
-  validates :email, presence: true, format: { with: /\A[^@\s]+@[^@\s]+\z/ }
+  validates :email, presence: true, format: { with: /\A[^@\s]+@[^@\s]+\z/ }, unless: :user_id?
 
   # Callbacks
   before_validation :normalize_email

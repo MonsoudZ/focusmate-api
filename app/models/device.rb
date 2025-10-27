@@ -49,8 +49,9 @@ class Device < ApplicationRecord
 
   validates :bundle_id,
            presence: true,
+           length: { maximum: 200, message: "is too long (maximum is 200 characters)" },
            format: {
-             with: /\Acom\.[a-zA-Z0-9][a-zA-Z0-9\-_]*(\.[a-zA-Z0-9][a-zA-Z0-9\-_]*)*\z/
+             with: /\A\s*com\.[a-zA-Z0-9][a-zA-Z0-9\-_]*(\.[a-zA-Z0-9][a-zA-Z0-9\-_]*)*\s*\z/
            }
 
   # APNs token:
@@ -60,7 +61,7 @@ class Device < ApplicationRecord
   validates :apns_token, presence: true, if: :ios?
   validates :apns_token, uniqueness: true, allow_nil: true
   validates :apns_token,
-           format: { with: /\A[[:alnum:]_\-]{3,}\z/, message: "is invalid" },
+           format: { with: /\A[[:alnum:]\s_\-]{3,}\z/, message: "is invalid" },
            allow_blank: true
 
   # FCM token:
@@ -141,9 +142,9 @@ class Device < ApplicationRecord
 
   def normalize_fields
     self.platform   = platform.to_s.downcase.strip if platform.present?
-    self.apns_token = apns_token.to_s.strip        if apns_token.present?
+    self.apns_token = apns_token.to_s              if apns_token.present?
     self.fcm_token  = fcm_token.to_s.strip         if fcm_token.present?
-    self.bundle_id  = bundle_id.to_s.strip         if bundle_id.present?
+    self.bundle_id  = bundle_id.to_s               if bundle_id.present?
   end
 
   def seed_last_seen_at

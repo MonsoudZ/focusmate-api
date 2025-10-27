@@ -18,7 +18,7 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
   let(:notification2) do
     NotificationLog.create!(
       user: user,
-      notification_type: "task_completed",
+      notification_type: "task_reminder",
       message: "Your task has been completed",
       metadata: { read: true, priority: "medium" },
       delivered: true,
@@ -29,7 +29,7 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
   let(:notification3) do
     NotificationLog.create!(
       user: user,
-      notification_type: "list_shared",
+      notification_type: "coaching_message",
       message: "A list has been shared with you",
       metadata: { read: false, priority: "low" },
       delivered: true,
@@ -53,6 +53,12 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
 
   describe "GET /api/v1/notifications" do
     it "should get all notifications for user" do
+      # Ensure notifications are created
+      notification1
+      notification2
+      notification3
+      other_user_notification
+
       get "/api/v1/notifications", headers: user_headers
 
       expect(response).to have_http_status(:success)
@@ -69,6 +75,11 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
     end
 
     it "should filter by read/unread" do
+      # Ensure notifications are created
+      notification1
+      notification2
+      notification3
+
       # Test unread notifications
       get "/api/v1/notifications?read=false", headers: user_headers
 
@@ -155,6 +166,12 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
     end
 
     it "should only show user's own notifications" do
+      # Ensure notifications are created
+      notification1
+      notification2
+      notification3
+      other_user_notification
+
       get "/api/v1/notifications", headers: user_headers
 
       expect(response).to have_http_status(:success)
@@ -181,6 +198,11 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
     end
 
     it "should include notification details" do
+      # Ensure notifications are created
+      notification1
+      notification2
+      notification3
+
       get "/api/v1/notifications", headers: user_headers
 
       expect(response).to have_http_status(:success)
@@ -224,7 +246,7 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
 
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Notification not found")
+      expect(json["error"]["message"]).to eq("Resource not found")
     end
 
     it "should not mark notification as read without authentication" do
@@ -250,7 +272,7 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
 
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Notification not found")
+      expect(json["error"]["message"]).to eq("Resource not found")
     end
 
     it "should preserve other metadata when marking as read" do
@@ -268,6 +290,11 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
 
   describe "PATCH /api/v1/notifications/mark_all_read" do
     it "should mark all notifications as read" do
+      # Ensure notifications are created
+      notification1
+      notification2
+      notification3
+
       patch "/api/v1/notifications/mark_all_read", headers: user_headers
 
       expect(response).to have_http_status(:no_content)
@@ -282,6 +309,12 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
     end
 
     it "should only affect current user's notifications" do
+      # Ensure notifications are created
+      notification1
+      notification2
+      notification3
+      other_user_notification
+
       patch "/api/v1/notifications/mark_all_read", headers: user_headers
 
       expect(response).to have_http_status(:no_content)
@@ -315,6 +348,11 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
     end
 
     it "should handle user with all notifications already read" do
+      # Ensure notifications are created
+      notification1
+      notification2
+      notification3
+
       # Mark all notifications as read first
       user.notification_logs.update_all(metadata: { read: true })
 
@@ -332,6 +370,10 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
     end
 
     it "should preserve other metadata when marking all as read" do
+      # Ensure notifications are created
+      notification1
+      notification3
+
       original_metadata1 = notification1.metadata.dup
       original_metadata3 = notification3.metadata.dup
 
@@ -351,6 +393,9 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
 
   describe "Edge cases" do
     it "should handle malformed JSON" do
+      # Ensure notification is created
+      notification1
+
       patch "/api/v1/notifications/#{notification1.id}/mark_read",
             params: "invalid json",
             headers: user_headers.merge("Content-Type" => "application/json")
@@ -465,6 +510,10 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
     end
 
     it "should handle concurrent mark all read operations" do
+      # Ensure notifications are created
+      notification1
+      notification3
+
       threads = []
       3.times do
         threads << Thread.new do

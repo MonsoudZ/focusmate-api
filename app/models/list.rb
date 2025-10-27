@@ -171,7 +171,10 @@ class List < ApplicationRecord
     return false if deleted?
     return true  if owner_id_or_user_id == user.id
     # must allow accepted shares
-    list_shares.where(user_id: user.id, status: "accepted").exists?
+    return true if list_shares.where(user: user, status: "accepted").exists?
+    # must allow memberships
+    return true if memberships.where(user: user).exists?
+    false
   end
 
   # Coaching helpers expected by spec

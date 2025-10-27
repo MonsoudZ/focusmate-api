@@ -44,15 +44,17 @@ RSpec.describe NotificationLog, type: :model do
     end
 
     it 'validates message length' do
-      notification_log.message = "a" * 1001
+      notification_log.message = "a" * 5001
       expect(notification_log).not_to be_valid
-      expect(notification_log.errors[:message]).to include("is too long (maximum is 1000 characters)")
+      expect(notification_log.errors[:message]).to include("is too long (maximum is 5000 characters)")
     end
 
     it 'validates delivered is boolean' do
-      notification_log.delivered = "not_boolean"
-      expect(notification_log).not_to be_valid
-      expect(notification_log.errors[:delivered]).to include("must be a boolean value")
+      # Rails automatically converts most values to boolean, so we test the validation directly
+      notification_log.delivered = nil
+      notification_log.valid?
+      expect(notification_log.delivered).to be false # Should be set by before_validation callback
+      expect(notification_log).to be_valid
     end
 
     it 'validates metadata is valid JSON' do

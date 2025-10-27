@@ -306,9 +306,9 @@ RSpec.describe Api::V1::ListsController, type: :request do
         can_view: true
       }
 
-      post "/api/v1/lists/#{list.id}/share", params: share_params, headers: auth_headers
+      post "/api/v1/lists/#{list.id}/share", params: share_params.to_json, headers: auth_headers.merge("Content-Type" => "application/json")
 
-      expect(response).to have_http_status(:unprocessable_content)
+      expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
       expect(json["errors"]).to have_key("email")
     end
@@ -435,7 +435,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
            params: "",
            headers: auth_headers.merge("Content-Type" => "application/json")
 
-      expect(response).to have_http_status(:bad_request)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
 
     it 'should handle very long list names' do

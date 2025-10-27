@@ -3,7 +3,7 @@ FactoryBot.define do
     title { Faker::Lorem.sentence(word_count: 4) }
     due_at { 1.day.from_now }
     status { "pending" }
-    visibility { "visible_to_all" }
+    visibility { "private_task" }
     strict_mode { false }
     requires_explanation_if_missed { false }
     list { association :list }

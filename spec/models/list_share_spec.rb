@@ -413,10 +413,9 @@ RSpec.describe ListShare, type: :model do
 
     it 'should handle share with no email' do
       user = create(:user)
-      # Email is required by validation, so this test verifies the validation works
+      # When a user is present, email is optional since we can use the user's email
       share = build(:list_share, list: list, user: user, email: nil)
-      expect(share).not_to be_valid
-      expect(share.errors[:email]).to include("can't be blank")
+      expect(share).to be_valid
     end
 
     it 'should handle permission updates with invalid keys' do

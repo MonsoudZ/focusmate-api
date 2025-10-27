@@ -23,6 +23,9 @@ RSpec.describe Api::V1::DashboardController, type: :request do
 
   describe "GET /api/v1/dashboard" do
     it "should get dashboard summary for user" do
+      # Ensure relationship is created
+      relationship
+
       get "/api/v1/dashboard", headers: user_headers
 
       expect(response).to have_http_status(:success)
@@ -104,6 +107,9 @@ RSpec.describe Api::V1::DashboardController, type: :request do
     end
 
     it "should include coaching relationships summary" do
+      # Ensure relationship is created
+      relationship
+
       get "/api/v1/dashboard", headers: user_headers
 
       expect(response).to have_http_status(:success)
@@ -133,6 +139,9 @@ RSpec.describe Api::V1::DashboardController, type: :request do
     end
 
     it "should get coach dashboard for coach user" do
+      # Ensure relationship is created
+      relationship
+
       get "/api/v1/dashboard", headers: coach_headers
 
       expect(response).to have_http_status(:success)
@@ -542,6 +551,9 @@ RSpec.describe Api::V1::DashboardController, type: :request do
     end
 
     it "should get coach stats for coach user" do
+      # Ensure relationship is created
+      relationship
+
       get "/api/v1/dashboard/stats", headers: coach_headers
 
       expect(response).to have_http_status(:success)
@@ -639,6 +651,9 @@ RSpec.describe Api::V1::DashboardController, type: :request do
     end
 
     it "should handle coach stats with multiple clients" do
+      # Ensure first relationship is created
+      relationship
+
       # Create another client
       client2 = create(:user, email: "client2_#{SecureRandom.hex(4)}@example.com")
       CoachingRelationship.create!(

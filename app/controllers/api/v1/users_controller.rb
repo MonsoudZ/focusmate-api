@@ -11,13 +11,13 @@ module Api
 
         # Allow nil tokens for logout, but reject empty/whitespace tokens
         if token.blank? && !params.key?(:device_token) && !params.key?(:pushToken) && !params.key?(:push_token)
-          render json: { error: "Device token is required" }, status: :bad_request
+          render json: { error: { message: "Device token is required" } }, status: :bad_request
           return
         end
 
         # Reject empty or whitespace-only tokens (but allow nil for logout)
         if token && token.strip.blank?
-          render json: { error: "Device token is required" }, status: :bad_request
+          render json: { error: { message: "Device token is required" } }, status: :bad_request
           return
         end
 
@@ -41,7 +41,7 @@ module Api
         longitude = params[:longitude]
 
         if latitude.blank? || longitude.blank?
-          render json: { error: "Latitude and longitude are required" }, status: :bad_request
+          render json: { error: { message: "Latitude and longitude are required" } }, status: :bad_request
           return
         end
 
@@ -69,7 +69,7 @@ module Api
         else
           Rails.logger.error "Failed to update location: #{current_user.errors.full_messages}"
           render json: {
-            error: "Failed to update location",
+            error: { message: "Failed to update location" },
             details: current_user.errors.full_messages
           }, status: :unprocessable_entity
         end
@@ -80,7 +80,7 @@ module Api
 
         # Allow nil/empty tokens for logout
         if token.blank? && !params.key?(:fcm_token) && !params.key?(:fcmToken)
-          render json: { error: "FCM token is required" }, status: :bad_request
+          render json: { error: { message: "FCM token is required" } }, status: :bad_request
           return
         end
 

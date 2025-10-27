@@ -34,17 +34,20 @@ module Api
           Rails.logger.info "Using APNS token: #{apns_token}"
           {
             apns_token: apns_token,
-            platform: params[:platform] || "ios",
-            bundle_id: params[:bundle_id]
+            platform: params[:platform].present? ? params[:platform] : "ios",
+            bundle_id: params[:bundle_id].present? ? params[:bundle_id] : "com.example.app",
+            fcm_token: params[:fcm_token]
           }
         end
 
-        @device = current_user.devices.build(device_attributes)
+        # Find existing device by token or create new one
+        @device = current_user.devices.find_or_initialize_by(apns_token: device_attributes[:apns_token])
+        @device.assign_attributes(device_attributes)
 
         if @device.save
           render json: DeviceSerializer.new(@device).as_json, status: :created
         else
-          render json: { errors: @device.errors.full_messages }, status: :unprocessable_entity
+          render json: { error: { message: "Validation failed", details: @device.errors.full_messages } }, status: :unprocessable_entity
         end
       end
 
@@ -55,8 +58,9 @@ module Api
         )
 
         @device.assign_attributes(
-          platform: params[:platform] || "ios",
-          bundle_id: params[:bundle_id]
+          platform: params[:platform].present? ? params[:platform] : "ios",
+          bundle_id: params[:bundle_id].present? ? params[:bundle_id] : "com.example.app",
+          fcm_token: params[:fcm_token]
         )
 
         if @device.save
@@ -99,7 +103,7 @@ module Api
           }
         rescue => e
           render json: {
-            error: "Failed to send test push: #{e.message}"
+            error: { message: "Failed to send test push" }
           }, status: :unprocessable_entity
         end
       end
@@ -112,14 +116,14 @@ module Api
 
       def device_params
         if params[:device].present?
-          permitted_params = params.require(:device).permit(:apns_token, :platform, :bundle_id)
+          permitted_params = params.require(:device).permit(:apns_token, :platform, :bundle_id, :fcm_token)
           # Generate APNS token if blank or empty
           if permitted_params[:apns_token].blank?
             permitted_params[:apns_token] = "dev_token_#{SecureRandom.hex(16)}"
           end
           permitted_params
         else
-          permitted_params = params.permit(:apns_token, :platform, :bundle_id)
+          permitted_params = params.permit(:apns_token, :platform, :bundle_id, :fcm_token)
           # Generate APNS token if blank or empty
           if permitted_params[:apns_token].blank?
             permitted_params[:apns_token] = "dev_token_#{SecureRandom.hex(16)}"

@@ -18,6 +18,9 @@ RSpec.describe Api::V1::DevicesController, type: :request do
 
   describe "GET /api/v1/devices" do
     it "should get all devices for current user" do
+      # Ensure device is created
+      device
+
       get "/api/v1/devices", headers: user_headers
 
       expect(response).to have_http_status(:success)
@@ -37,11 +40,15 @@ RSpec.describe Api::V1::DevicesController, type: :request do
     end
 
     it "should only show user's own devices" do
+      # Ensure user's device is created
+      device
+
       other_device = Device.create!(
         user: other_user,
         apns_token: "other_token_#{SecureRandom.hex(8)}",
         platform: "android",
-        bundle_id: "com.other.app"
+        bundle_id: "com.other.app",
+        fcm_token: "fcm_token_#{SecureRandom.hex(8)}"
       )
 
       get "/api/v1/devices", headers: user_headers
@@ -75,14 +82,15 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         user: other_user,
         apns_token: "other_token_#{SecureRandom.hex(8)}",
         platform: "android",
-        bundle_id: "com.other.app"
+        bundle_id: "com.other.app",
+        fcm_token: "fcm_token_#{SecureRandom.hex(8)}"
       )
 
       get "/api/v1/devices/#{other_device.id}", headers: user_headers
 
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Resource not found")
     end
 
     it "should not show device without authentication" do
@@ -119,7 +127,8 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         user: user,
         apns_token: existing_token,
         platform: "android",
-        bundle_id: "com.old.app"
+        bundle_id: "com.old.app",
+        fcm_token: "fcm_token_#{SecureRandom.hex(8)}"
       )
 
       device_params = {
@@ -180,7 +189,8 @@ RSpec.describe Api::V1::DevicesController, type: :request do
       device_params = {
         apns_token: "android_token_#{SecureRandom.hex(16)}",
         platform: "android",
-        bundle_id: "com.android.app"
+        bundle_id: "com.android.app",
+        fcm_token: "fcm_token_#{SecureRandom.hex(8)}"
       }
 
       post "/api/v1/devices", params: device_params, headers: user_headers
@@ -243,7 +253,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
 
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      expect(json["bundle_id"]).to be_nil
+      expect(json["bundle_id"]).to eq("com.example.app")
     end
 
     it "should generate APNs token if not provided" do
@@ -298,7 +308,8 @@ RSpec.describe Api::V1::DevicesController, type: :request do
       register_params = {
         apns_token: "legacy_token_#{SecureRandom.hex(16)}",
         platform: "android",
-        bundle_id: "com.legacy.app"
+        bundle_id: "com.legacy.app",
+        fcm_token: "fcm_token_#{SecureRandom.hex(8)}"
       }
 
       post "/api/v1/devices/register", params: register_params, headers: user_headers
@@ -324,7 +335,8 @@ RSpec.describe Api::V1::DevicesController, type: :request do
       register_params = {
         apns_token: existing_token,
         platform: "android",
-        bundle_id: "com.legacy.new"
+        bundle_id: "com.legacy.new",
+        fcm_token: "fcm_token_#{SecureRandom.hex(8)}"
       }
 
       post "/api/v1/devices/register", params: register_params, headers: user_headers
@@ -343,7 +355,8 @@ RSpec.describe Api::V1::DevicesController, type: :request do
     it "should update device" do
       update_params = {
         platform: "android",
-        bundle_id: "com.updated.app"
+        bundle_id: "com.updated.app",
+        fcm_token: "fcm_token_#{SecureRandom.hex(8)}"
       }
 
       patch "/api/v1/devices/#{device.id}", params: update_params, headers: user_headers
@@ -358,12 +371,13 @@ RSpec.describe Api::V1::DevicesController, type: :request do
     end
 
     it "should not update device from other user" do
-      other_device = Device.create!(
-        user: other_user,
-        apns_token: "other_update_token_#{SecureRandom.hex(16)}",
-        platform: "android",
-        bundle_id: "com.other.app"
-      )
+        other_device = Device.create!(
+          user: other_user,
+          apns_token: "other_update_token_#{SecureRandom.hex(16)}",
+          platform: "android",
+          bundle_id: "com.other.app",
+          fcm_token: "fcm_token_#{SecureRandom.hex(8)}"
+        )
 
       update_params = {
         platform: "ios",
@@ -374,7 +388,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
 
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Resource not found")
     end
 
     it "should not update device without authentication" do
@@ -401,18 +415,19 @@ RSpec.describe Api::V1::DevicesController, type: :request do
     end
 
     it "should not delete device from other user" do
-      other_device = Device.create!(
-        user: other_user,
-        apns_token: "other_delete_token_#{SecureRandom.hex(16)}",
-        platform: "android",
-        bundle_id: "com.other.app"
-      )
+        other_device = Device.create!(
+          user: other_user,
+          apns_token: "other_delete_token_#{SecureRandom.hex(16)}",
+          platform: "android",
+          bundle_id: "com.other.app",
+          fcm_token: "fcm_token_#{SecureRandom.hex(8)}"
+        )
 
       delete "/api/v1/devices/#{other_device.id}", headers: user_headers
 
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Resource not found")
     end
 
     it "should not delete device without authentication" do
@@ -449,10 +464,10 @@ RSpec.describe Api::V1::DevicesController, type: :request do
     end
 
     it "should handle invalid tokens gracefully" do
-      # Create device with invalid token
+      # Create device with valid token (the "invalid" part is in the test logic, not the token format)
       invalid_device = Device.create!(
         user: user,
-        apns_token: "invalid_token_123",
+        apns_token: "valid_token_123",
         platform: "ios",
         bundle_id: "com.invalid.app"
       )
@@ -468,18 +483,19 @@ RSpec.describe Api::V1::DevicesController, type: :request do
     end
 
     it "should not send test push to other user's device" do
-      other_device = Device.create!(
-        user: other_user,
-        apns_token: "other_test_token_#{SecureRandom.hex(16)}",
-        platform: "android",
-        bundle_id: "com.other.app"
-      )
+        other_device = Device.create!(
+          user: other_user,
+          apns_token: "other_test_token_#{SecureRandom.hex(16)}",
+          platform: "android",
+          bundle_id: "com.other.app",
+          fcm_token: "fcm_token_#{SecureRandom.hex(8)}"
+        )
 
       post "/api/v1/devices/test_push", params: { device_id: other_device.id }, headers: user_headers
 
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Resource not found")
     end
 
     it "should not send test push without authentication" do
@@ -495,7 +511,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
 
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Resource not found")
     end
 
     it "should handle non-existent device_id" do
@@ -503,7 +519,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
 
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Device not found")
+      expect(json["error"]["message"]).to eq("Resource not found")
     end
   end
 
@@ -598,12 +614,13 @@ RSpec.describe Api::V1::DevicesController, type: :request do
       post "/api/v1/devices", params: device_params, headers: user_headers
       expect(response).to have_http_status(:created)
 
-      # Second user tries to register with same token
+      # Second user tries to register with same token - should fail due to global uniqueness constraint
       post "/api/v1/devices", params: device_params, headers: other_user_headers
-      expect(response).to have_http_status(:created)
+      expect(response).to have_http_status(:unprocessable_entity)
 
-      # Both should succeed as tokens are unique per user
-      expect(true).to be_truthy
+      # Should get validation error about duplicate token
+      json = JSON.parse(response.body)
+      expect(json["error"]["message"]).to eq("Validation failed")
     end
 
     it "should handle nested device parameters" do
@@ -611,7 +628,8 @@ RSpec.describe Api::V1::DevicesController, type: :request do
         device: {
           apns_token: "nested_token_#{SecureRandom.hex(16)}",
           platform: "android",
-          bundle_id: "com.nested.app"
+          bundle_id: "com.nested.app",
+          fcm_token: "fcm_token_#{SecureRandom.hex(8)}"
         }
       }
 

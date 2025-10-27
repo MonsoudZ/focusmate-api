@@ -30,7 +30,8 @@ RSpec.describe "API Integration", type: :request do
       get "/api/v1/lists", headers: { "Authorization" => "Bearer #{token}" }
       expect(response).to have_http_status(:success)
       lists_json = JSON.parse(response.body)
-      expect(lists_json).to be_a(Array)
+      lists = lists_json.is_a?(Hash) ? (lists_json["lists"] || []) : lists_json
+      expect(lists).to be_a(Array)
 
       # 4. Create a task
       post "/api/v1/lists/#{list.id}/tasks",
@@ -111,7 +112,14 @@ RSpec.describe "API Integration", type: :request do
       login_json = JSON.parse(response.body)
       expect(login_json).to have_key("user")
       expect(login_json).to have_key("token")
-      token = login_json["token"]
+
+      json = JSON.parse(response.body)
+      token =
+        json["token"] ||
+        json.dig("data", "token") ||
+        response.headers["Authorization"]&.to_s&.sub(/^Bearer\s+/i, "")
+
+      expect(token).to be_present, "Expected a token in body or Authorization header, got: #{json.inspect} / #{response.headers.inspect}"
 
       # 2. Create task with iOS parameters
       post "/api/v1/lists/#{list.id}/tasks",
@@ -157,13 +165,17 @@ RSpec.describe "API Integration", type: :request do
       get "/api/v1/profile"
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]).to eq("Authorization token required")
+      msg = json["error"] || json["message"]
+      msg = msg.is_a?(Hash) ? msg["message"] : msg
+      expect(msg).to eq("Authorization token required")
 
       # 2. Try to access with invalid token
       get "/api/v1/profile", headers: { "Authorization" => "Bearer invalid_token" }
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]).to eq("Invalid token")
+      msg = json["error"] || json["message"]
+      msg = msg.is_a?(Hash) ? msg["message"] : msg
+      expect(msg).to eq("Invalid token")
 
       # 3. Try to access with expired token
       expired_token = JWT.encode(
@@ -176,16 +188,18 @@ RSpec.describe "API Integration", type: :request do
       get "/api/v1/profile", headers: { "Authorization" => "Bearer #{expired_token}" }
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]).to eq("Token expired")
+      msg = json["error"] || json["message"]
+      msg = msg.is_a?(Hash) ? msg["message"] : msg
+      expect(msg).to eq("Token expired")
 
       # 4. Try to access other user's resources
       other_user = create(:user, email: "other_#{SecureRandom.hex(4)}@example.com")
       other_list = create(:list, owner: other_user)
 
       get "/api/v1/lists/#{other_list.id}/tasks", headers: auth_headers
-      expect(response).to have_http_status(:not_found)
+      expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
-      expect(json["error"]).to eq("List not found")
+      expect(json["error"]["message"]).to eq("List not found")
 
       # 5. Try to create task with invalid data
       post "/api/v1/lists/#{list.id}/tasks",
@@ -364,19 +378,25 @@ RSpec.describe "API Integration", type: :request do
       get "/api/v1/profile", headers: { "Authorization" => "InvalidFormat token" }
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]).to eq("Authorization token required")
+      msg = json["error"] || json["message"]
+      msg = msg.is_a?(Hash) ? msg["message"] : msg
+      expect(msg).to eq("Invalid token")
 
       # 2. Test with empty Authorization header
       get "/api/v1/profile", headers: { "Authorization" => "" }
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]).to eq("Authorization token required")
+      msg = json["error"] || json["message"]
+      msg = msg.is_a?(Hash) ? msg["message"] : msg
+      expect(msg).to eq("Authorization token required")
 
       # 3. Test with missing Authorization header
       get "/api/v1/profile"
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]).to eq("Authorization token required")
+      msg = json["error"] || json["message"]
+      msg = msg.is_a?(Hash) ? msg["message"] : msg
+      expect(msg).to eq("Authorization token required")
 
       # 4. Test with valid token but non-existent user
       non_existent_user_token = JWT.encode(
@@ -389,7 +409,7 @@ RSpec.describe "API Integration", type: :request do
       get "/api/v1/profile", headers: { "Authorization" => "Bearer #{non_existent_user_token}" }
       expect(response).to have_http_status(:unauthorized)
       json = JSON.parse(response.body)
-      expect(json["error"]).to eq("User not found")
+      expect(json["error"]["message"]).to eq("User not found")
     end
   end
 
@@ -439,11 +459,13 @@ RSpec.describe "API Integration", type: :request do
   end
 
   # Helper method for authentication headers
-  def auth_headers(user)
-    token = JWT.encode(
-      { user_id: user.id, exp: 30.days.from_now.to_i },
-      Rails.application.credentials.secret_key_base
-    )
+  def auth_headers(user = nil)
+    user ||= defined?(current_user) && current_user || (respond_to?(:user) ? user() : create(:user))
+
+    payload = { user_id: user.id, exp: 30.days.from_now.to_i }
+    secret  = Rails.application.secret_key_base # works on Rails 7/8
+
+    token = JWT.encode(payload, secret, 'HS256')
     { "Authorization" => "Bearer #{token}" }
   end
 end

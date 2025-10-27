@@ -18,10 +18,8 @@ Rails.application.routes.draw do
 
   mount Sidekiq::Web => "/sidekiq"
 
-  devise_for :users
-
-  # API routes
-  namespace :api do
+  # API routes (stateless JWT) - define these first to take precedence
+  namespace :api, defaults: { format: :json } do
     namespace :v1 do
       # ===== EXISTING (KEEP) =====
 
@@ -41,15 +39,15 @@ Rails.application.routes.draw do
       post "login", to: "authentication#login"
       post "register", to: "authentication#register"
       get "profile", to: "authentication#profile"
-      delete "logout", to: "authentication#logout"
+      delete "logout", to: "authentication#logout", defaults: { format: :json }
 
       # iOS app expected auth routes
       post "auth/sign_in", to: "authentication#login"
       post "auth/sign_up", to: "authentication#register"
-      delete "auth/sign_out", to: "authentication#logout"
+      delete "auth/sign_out", to: "authentication#logout", defaults: { format: :json }
 
-      # Test routes (development only)
-      if Rails.env.development?
+      # Test routes (available in test and development)
+      if Rails.env.development? || Rails.env.test?
         get "test-profile", to: "authentication#test_profile"
         get "test-lists", to: "authentication#test_lists"
         delete "test-logout", to: "authentication#test_logout"
@@ -65,6 +63,7 @@ Rails.application.routes.draw do
         end
         member do
           patch :unshare
+          post :share
           get :members
         end
         # EXISTING
@@ -172,7 +171,7 @@ Rails.application.routes.draw do
       end
 
       # ===== NEW - LOCATION FEATURES =====
-      resources :saved_locations, only: [ :index, :create, :update, :destroy ]
+      resources :saved_locations, only: [ :index, :show, :create, :update, :destroy ]
 
       # User location updates
       post "users/location", to: "users#update_location"
@@ -211,6 +210,9 @@ Rails.application.routes.draw do
 
   # ActionCable
   mount ActionCable.server => "/cable"
+
+  # Devise (web) - keep away from /api, skip session routes
+  devise_for :users, skip: [ :sessions, :registrations, :passwords ]
 
   # Health check
   get "up" => "rails/health#show", as: :rails_health_check

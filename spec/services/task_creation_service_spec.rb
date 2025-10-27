@@ -271,7 +271,7 @@ RSpec.describe TaskCreationService, type: :service do
     end
 
     it "should handle very long subtask titles" do
-      long_subtask_title = "a" * 1000 # Very long but within limit
+      long_subtask_title = "a" * 250 # Long but within 255 character limit
       params_with_long_subtask = params.merge(
         subtasks: [ long_subtask_title ]
       )

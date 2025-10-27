@@ -278,15 +278,22 @@ class Task < ApplicationRecord
       return (creator == user || list.owner == user)
     end
 
-    # First check if user has access to the list
-    return false unless list.accessible_by?(user)
-
     case visibility
-    when "visible_to_all"      then true
-    when "private_task"        then (creator == user || list.owner == user)
-    when "hidden_from_coaches" then (creator == user || list.owner == user)
-    when "coaching_only"       then (creator == user || list.owner == user || user.coach?)
-    else false
+    when "visible_to_all"
+      # visible_to_all tasks are visible to everyone, regardless of list access
+      true
+    when "private_task"
+      # Private tasks require list access and ownership
+      list.accessible_by?(user) && (creator == user || list.owner == user)
+    when "hidden_from_coaches"
+      # Hidden from coaches requires list access and ownership
+      list.accessible_by?(user) && (creator == user || list.owner == user)
+    when "coaching_only"
+      # Coaching only requires list access and either ownership or coach role
+      list.accessible_by?(user) && (creator == user || list.owner == user || user.coach?)
+    else
+      # For other visibility levels, check if user has access to the list
+      list.accessible_by?(user)
     end
   end
 

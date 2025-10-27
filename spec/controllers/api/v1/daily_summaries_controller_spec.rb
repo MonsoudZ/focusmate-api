@@ -52,6 +52,10 @@ RSpec.describe Api::V1::DailySummariesController, type: :request do
 
   describe "GET /api/v1/coaching_relationships/:id/daily_summaries" do
     it "should get daily summaries for coaching relationship" do
+      # Ensure summaries are created
+      summary1
+      summary2
+
       get "/api/v1/coaching_relationships/#{relationship.id}/daily_summaries", headers: coach_headers
 
       expect(response).to have_http_status(:success)
@@ -71,6 +75,10 @@ RSpec.describe Api::V1::DailySummariesController, type: :request do
     end
 
     it "should filter by date range" do
+      # Ensure existing summaries are created
+      summary1
+      summary2
+
       # Create summary for 2 days ago
       DailySummary.create!(
         coaching_relationship: relationship,
@@ -124,6 +132,10 @@ RSpec.describe Api::V1::DailySummariesController, type: :request do
     end
 
     it "should order summaries by date descending" do
+      # Ensure summaries are created
+      summary1
+      summary2
+
       get "/api/v1/coaching_relationships/#{relationship.id}/daily_summaries", headers: coach_headers
 
       expect(response).to have_http_status(:success)
@@ -219,23 +231,25 @@ RSpec.describe Api::V1::DailySummariesController, type: :request do
 
     it "should handle future-dated summaries" do
       # Create summary for tomorrow (shouldn't happen in practice but test edge case)
-      future_summary = DailySummary.create!(
-        coaching_relationship: relationship,
-        summary_date: 1.day.from_now,
-        tasks_completed: 1,
-        tasks_missed: 0,
-        tasks_overdue: 0,
-        summary_data: {}
-      )
+      # This should fail validation since future dates are not allowed
+      expect {
+        DailySummary.create!(
+          coaching_relationship: relationship,
+          summary_date: 1.day.from_now,
+          tasks_completed: 1,
+          tasks_missed: 0,
+          tasks_overdue: 0,
+          summary_data: {}
+        )
+      }.to raise_error(ActiveRecord::RecordInvalid, /Summary date cannot be in the future/)
 
       get "/api/v1/coaching_relationships/#{relationship.id}/daily_summaries", headers: coach_headers
 
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
 
-      # Should include future summary in results
-      summary_ids = json.map { |s| s["id"] }
-      expect(summary_ids).to include(future_summary.id)
+      # Should not include future summary since it couldn't be created
+      expect(json.length).to eq(0)
     end
 
     it "should handle concurrent requests" do
@@ -313,6 +327,9 @@ RSpec.describe Api::V1::DailySummariesController, type: :request do
     end
 
     it "should return 404 if not participant" do
+      # Ensure summary1 is created
+      summary1
+
       get "/api/v1/coaching_relationships/#{relationship.id}/daily_summaries/#{summary1.id}", headers: other_user_headers
 
       expect(response).to have_http_status(:forbidden)

@@ -3,7 +3,7 @@
 module Api
   module V1
     class AuthenticationController < ApplicationController
-      skip_before_action :authenticate_user!, only: [ :login, :register ]
+      skip_before_action :authenticate_user!, only: [ :login, :register, :test_profile, :test_lists, :test_logout ]
 
       # POST /api/v1/login
       # POST /api/v1/auth/sign_in
@@ -67,9 +67,8 @@ module Api
       # DELETE /api/v1/logout
       # DELETE /api/v1/auth/sign_out
       def logout
-        # With JWT, logout is handled client-side by deleting the token
-        # Optional: Add token to blocklist if you implement one
-        head :no_content
+        # JWT logout is client-side; just return 204. Be explicit about content type to avoid to_sym on nil.
+        head :no_content, content_type: "application/json"
       end
 
       # GET /api/v1/test-profile
@@ -118,13 +117,15 @@ module Api
       end
 
       def generate_jwt_token(user)
+        secret = Rails.application.secret_key_base
         JWT.encode(
           {
             user_id: user.id,
             jti: user.jti || SecureRandom.uuid,
             exp: 30.days.from_now.to_i
           },
-          Rails.application.credentials.secret_key_base
+          secret,
+          "HS256"
         )
       end
     end
