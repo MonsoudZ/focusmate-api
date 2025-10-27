@@ -110,6 +110,9 @@ group :development, :test do
   gem "deep-cover", require: false
   gem "bundler-audit", require: false
 
+  # PR quality gates
+  gem "danger", require: false
+
   # Testing framework
   gem "rspec-rails"
   gem "factory_bot_rails"

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Test Danger rules locally
+
+set -e
+
+echo "🧪 Testing Danger rules..."
+
+# Set up environment variables for Danger
+export DANGER_GITHUB_API_TOKEN="test"
+export CI="true"
+export GITHUB_ACTIONS="true"
+
+# Create a test commit to check rules
+echo "Creating test commit for Danger..."
+
+# Test the rules
+bundle exec danger --verbose

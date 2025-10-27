@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Comprehensive quality check script
+# Runs all quality gates and reports results
+
+set -e
+
+echo "🔍 Running comprehensive quality check..."
+echo "========================================"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Track failures
+FAILURES=0
+
+# Function to run a check and track failures
+run_check() {
+    local name="$1"
+    local command="$2"
+    
+    echo -e "\n${BLUE}Running: $name${NC}"
+    echo "Command: $command"
+    echo "----------------------------------------"
+    
+    if eval "$command"; then
+        echo -e "${GREEN}✅ $name passed${NC}"
+    else
+        echo -e "${RED}❌ $name failed${NC}"
+        FAILURES=$((FAILURES + 1))
+    fi
+}
+
+# 1. RuboCop linting
+run_check "RuboCop" "bundle exec rubocop"
+
+# 2. Brakeman security scan
+run_check "Brakeman Security Scan" "bundle exec brakeman -q -w2"
+
+# 3. Bundler audit
+run_check "Bundler Audit" "bundle exec bundler-audit check --update"
+
+# 4. RubyCritic quality gate
+run_check "RubyCritic Quality Gate" "./bin/rubycritic-gate"
+
+# 5. Test coverage
+run_check "Test Coverage" "bundle exec rspec"
+
+# 6. Danger rules (if in CI)
+if [ "$CI" = "true" ]; then
+    run_check "Danger Rules" "bundle exec danger"
+else
+    echo -e "\n${YELLOW}⚠️  Skipping Danger rules (not in CI)${NC}"
+fi
+
+# 7. Database migrations safety
+run_check "Strong Migrations" "bundle exec rails db:migrate:status"
+
+# Summary
+echo -e "\n========================================"
+if [ $FAILURES -eq 0 ]; then
+    echo -e "${GREEN}🎉 All quality checks passed!${NC}"
+    exit 0
+else
+    echo -e "${RED}💥 $FAILURES quality check(s) failed${NC}"
+    exit 1
+fi

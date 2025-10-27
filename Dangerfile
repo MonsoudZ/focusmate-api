@@ -16,14 +16,15 @@ end
 debug_files.each do |file|
   content = File.read(file)
   if content.match?(/puts|p\s|binding\.pry|debugger|console\.log|TODO|FIXME|HACK/)
-    warn("Debug/TODO markers found in #{file}", file: file, line: content.lines.find_index { |line| line.match?(/puts|p\s|binding\.pry|debugger|console\.log|TODO|FIXME|HACK/) } + 1)
+    line_number = content.lines.find_index { |line| line.match?(/puts|p\s|binding\.pry|debugger|console\.log|TODO|FIXME|HACK/) } + 1
+    warn("Debug/TODO markers found in #{file}", file: file, line: line_number)
   end
 end
 
 # Rule: Large diffs should be reviewed carefully
 large_files = (git.modified_files + git.added_files).select do |file|
   File.exist?(file) && `git diff --stat HEAD~1..HEAD -- "#{file}"`.split("\n").last&.include?("+") &&
-  `git diff --stat HEAD~1..HEAD -- "#{file}"`.split("\n").last&.split("+")&.last&.to_i&.> 50
+  `git diff --stat HEAD~1..HEAD -- "#{file}"`.split("\n").last&.split("+")&.last&.to_i > 50
 end
 
 if large_files.any?
