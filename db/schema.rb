@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_27_032119) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_27_042424) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -73,8 +73,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_032119) do
     t.index ["apns_token"], name: "index_devices_on_apns_token", unique: true
     t.index ["deleted_at"], name: "index_devices_on_deleted_at"
     t.index ["fcm_token"], name: "index_devices_on_fcm_token"
+    t.index ["platform"], name: "index_devices_on_platform"
+    t.index ["user_id", "apns_token"], name: "index_devices_on_user_id_and_apns_token", unique: true
+    t.index ["user_id", "fcm_token"], name: "index_devices_on_user_id_and_fcm_token", unique: true
     t.index ["user_id"], name: "index_devices_on_user_id"
   end
+
+  add_check_constraint "devices", "platform::text = ANY (ARRAY['ios'::character varying, 'android'::character varying]::text[])", name: "devices_platform_enum", validate: false
 
   create_table "examples", force: :cascade do |t|
     t.string "name"
@@ -337,6 +342,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_032119) do
     t.index ["deleted_at"], name: "index_user_locations_on_deleted_at"
     t.index ["recorded_at"], name: "index_user_locations_on_recorded_at"
     t.index ["source"], name: "index_user_locations_on_source"
+    t.index ["user_id", "recorded_at"], name: "index_user_locations_on_user_id_and_recorded_at"
     t.index ["user_id", "recorded_at"], name: "index_user_locations_on_user_recorded_at"
     t.index ["user_id"], name: "index_user_locations_on_user_id"
     t.check_constraint "latitude >= '-90'::integer::numeric AND latitude <= 90::numeric", name: "user_locations_latitude_range"

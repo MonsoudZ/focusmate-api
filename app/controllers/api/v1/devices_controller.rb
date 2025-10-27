@@ -1,13 +1,15 @@
+# frozen_string_literal: true
+
 module Api
   module V1
     class DevicesController < ApplicationController
       before_action :authenticate_user!
-      before_action :set_device, only: [ :show, :update, :destroy ]
+      before_action :set_device, only: [:show, :update, :destroy]
 
       # GET /api/v1/devices
       def index
-        @devices = current_user.devices.includes(:user)
-        render json: @devices.map { |device| DeviceSerializer.new(device).as_json }
+        devices = DeviceManagementService.new(user: current_user).list
+        render json: devices.map { |device| DeviceSerializer.new(device).as_json }
       end
 
       # GET /api/v1/devices/:id
@@ -17,66 +19,64 @@ module Api
 
       # POST /api/v1/devices
       def create
-        # Debug logging
-        Rails.logger.info "Device registration params: #{params.inspect}"
-        Rails.logger.info "APNS token value: '#{params[:apns_token]}' (blank?: #{params[:apns_token].blank?})"
-
-        # Handle both nested and direct parameter formats
-        device_attributes = if params[:device].present?
-          device_params
-        else
-          # Always generate a token if none provided or if it's blank/empty
-          apns_token = if params[:apns_token].present? && !params[:apns_token].blank? && !params[:apns_token].empty?
-            params[:apns_token]
-          else
-            "dev_token_#{SecureRandom.hex(16)}"
-          end
-          Rails.logger.info "Using APNS token: #{apns_token}"
-          {
-            apns_token: apns_token,
-            platform: params[:platform].present? ? params[:platform] : "ios",
-            bundle_id: params[:bundle_id].present? ? params[:bundle_id] : "com.example.app",
-            fcm_token: params[:fcm_token]
-          }
+        service = DeviceManagementService.new(user: current_user)
+        
+        # Determine token and platform
+        token = params[:apns_token].present? ? params[:apns_token] : params[:fcm_token]
+        platform = params[:platform] || (params[:apns_token].present? ? 'ios' : 'android')
+        
+        # Generate token if none provided
+        if token.blank?
+          token = "dev_token_#{SecureRandom.hex(16)}"
         end
 
-        # Find existing device by token or create new one
-        @device = current_user.devices.find_or_initialize_by(apns_token: device_attributes[:apns_token])
-        @device.assign_attributes(device_attributes)
+        device = service.register(
+          token: token,
+          platform: platform,
+          locale: params[:locale],
+          app_version: params[:app_version],
+          device_name: params[:device_name],
+          os_version: params[:os_version],
+          bundle_id: params[:bundle_id],
+          fcm_token: params[:fcm_token]
+        )
 
-        if @device.save
-          render json: DeviceSerializer.new(@device).as_json, status: :created
-        else
-          render json: { error: { message: "Validation failed", details: @device.errors.full_messages } }, status: :unprocessable_entity
-        end
+        render json: DeviceSerializer.new(device).as_json, status: :created
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { error: { message: "Validation failed", details: e.record.errors.full_messages } }, status: :unprocessable_entity
       end
 
       # POST /api/v1/devices/register (legacy endpoint)
       def register
-        @device = current_user.devices.find_or_initialize_by(
-          apns_token: params[:apns_token]
-        )
+        service = DeviceManagementService.new(user: current_user)
+        
+        token = params[:apns_token] || "dev_token_#{SecureRandom.hex(16)}"
+        platform = params[:platform] || 'ios'
 
-        @device.assign_attributes(
-          platform: params[:platform].present? ? params[:platform] : "ios",
-          bundle_id: params[:bundle_id].present? ? params[:bundle_id] : "com.example.app",
+        device = service.register(
+          token: token,
+          platform: platform,
+          bundle_id: params[:bundle_id],
           fcm_token: params[:fcm_token]
         )
 
-        if @device.save
-          render json: DeviceSerializer.new(@device).as_json, status: :created
-        else
-          render json: { errors: @device.errors.full_messages }, status: :unprocessable_entity
-        end
+        render json: DeviceSerializer.new(device).as_json, status: :created
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
       # PATCH/PUT /api/v1/devices/:id
       def update
-        if @device.update(device_params)
-          render json: DeviceSerializer.new(@device).as_json
-        else
-          render json: { errors: @device.errors.full_messages }, status: :unprocessable_entity
-        end
+        service = DeviceManagementService.new(user: current_user)
+        
+        device = service.update_device(
+          device: @device,
+          attributes: device_params
+        )
+
+        render json: DeviceSerializer.new(device).as_json
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
       # DELETE /api/v1/devices/:id
@@ -88,23 +88,14 @@ module Api
       # POST /api/v1/devices/test_push
       def test_push
         device = current_user.devices.find(params[:device_id])
+        service = DeviceManagementService.new(user: current_user)
+        
+        result = service.send_test_push(device: device)
 
-        # Send a test push notification
-        begin
-          NotificationService.send_test_notification(
-            current_user,
-            "Test Push: This is a test push notification from the API"
-          )
-
-          render json: {
-            message: "Test push notification sent successfully",
-            device_id: device.id,
-            platform: device.platform
-          }
-        rescue => e
-          render json: {
-            error: { message: "Failed to send test push" }
-          }, status: :unprocessable_entity
+        if result[:success]
+          render json: result
+        else
+          render json: { error: { message: result[:error] } }, status: :unprocessable_entity
         end
       end
 
@@ -115,21 +106,7 @@ module Api
       end
 
       def device_params
-        if params[:device].present?
-          permitted_params = params.require(:device).permit(:apns_token, :platform, :bundle_id, :fcm_token)
-          # Generate APNS token if blank or empty
-          if permitted_params[:apns_token].blank?
-            permitted_params[:apns_token] = "dev_token_#{SecureRandom.hex(16)}"
-          end
-          permitted_params
-        else
-          permitted_params = params.permit(:apns_token, :platform, :bundle_id, :fcm_token)
-          # Generate APNS token if blank or empty
-          if permitted_params[:apns_token].blank?
-            permitted_params[:apns_token] = "dev_token_#{SecureRandom.hex(16)}"
-          end
-          permitted_params
-        end
+        params.permit(:apns_token, :platform, :bundle_id, :fcm_token, :device_name, :os_version, :app_version, :locale)
       end
     end
   end

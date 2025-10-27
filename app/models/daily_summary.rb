@@ -1,4 +1,5 @@
-# app/models/daily_summary.rb
+# frozen_string_literal: true
+
 class DailySummary < ApplicationRecord
   belongs_to :coaching_relationship
 
@@ -10,26 +11,23 @@ class DailySummary < ApplicationRecord
 
   # Validations
   validates :summary_date, presence: true
-  validates :summary_date, uniqueness: { scope: :coaching_relationship_id } # “has already been taken”
+  validates :summary_date, uniqueness: { scope: :coaching_relationship_id }
   validates :tasks_completed, :tasks_missed, :tasks_overdue, presence: true
   validates :tasks_completed, :tasks_missed, :tasks_overdue,
             numericality: { only_integer: true, greater_than_or_equal_to: 0 }
-  validate  :summary_data_must_be_object
-  validate  :summary_date_cannot_be_in_future
-  validate  :coaching_relationship_must_be_active
+  validate :summary_data_must_be_object
+  validate :summary_date_cannot_be_in_future
+  validate :coaching_relationship_must_be_active
 
-  # Callbacks – only set numeric defaults when *all three* are missing.
-  # (Prevents masking presence errors when a single field is intentionally omitted in specs.)
+  # Callbacks
   before_validation :apply_defaults
-  # before_validation :ensure_unique_summary_date, on: :create
 
   # Scopes
-  scope :sent,    -> { where(sent: true) }
-  scope :unsent,  -> { where(sent: false) }
+  scope :sent, -> { where(sent: true) }
+  scope :unsent, -> { where(sent: false) }
   scope :for_date, ->(date) { where(summary_date: date.to_date) }
   scope :for_coaching_relationship, ->(rel) { where(coaching_relationship_id: rel.is_a?(CoachingRelationship) ? rel.id : rel) }
-  # “recent” excludes exactly-7-days-old entries (strictly greater-than per earlier failures)
-  scope :recent,  -> { where("summary_date > ?", 7.days.ago.to_date).order(summary_date: :desc) }
+  scope :recent, -> { where("summary_date > ?", 7.days.ago.to_date).order(summary_date: :desc) }
   scope :with_tasks, -> { where("tasks_completed > 0 OR tasks_missed > 0 OR tasks_overdue > 0") }
 
   # Instance helpers
@@ -37,96 +35,8 @@ class DailySummary < ApplicationRecord
     update!(sent: true, sent_at: Time.current)
   end
 
-  def total_tasks
-    tasks_completed.to_i + tasks_missed.to_i
-  end
-
-  def completion_rate
-    total = total_tasks
-    return 0.0 if total.zero?
-    ((tasks_completed.to_f / total) * 100).round(2)
-  end
-
-  def has_overdue_tasks?
-    tasks_overdue.to_i.positive?
-  end
-
-  def positive?
-    tasks_completed.to_i > tasks_missed.to_i
-  end
-
-  def negative?
-    tasks_missed.to_i > tasks_completed.to_i
-  end
-
-  def age_days
-    (Date.current - summary_date.to_date).to_i
-  end
-
-  # Match the same recency window as the scope
-  def recent?
-    summary_date.to_date > 7.days.ago.to_date
-  end
-
-  # Priority rules aligned to expectations:
-  # - "high" only for heavier risk (e.g., many overdue)
-  # - "medium" for moderate completion (< 80%)
-  # - "low" otherwise
-  def priority
-    return "high"   if tasks_overdue.to_i.positive?     # any overdue => high
-    return "medium" if completion_rate < 80.0 && completion_rate >= 50.0
-    "low"
-  end
-
-  def title
-    "Daily Summary - #{summary_date.to_date.strftime('%B %d, %Y')}"
-  end
-
-  # Make sure this string includes “5 completed”, etc.
-  def description
-    "#{tasks_completed} completed, #{tasks_missed} missed, #{tasks_overdue} overdue (#{completion_rate}%)"
-  end
-
-  # Tests expect top-level keys (not nested)
-  def details
-    {
-      id: id,
-      summary_date: summary_date.to_date,
-      tasks_completed: tasks_completed.to_i,
-      tasks_missed: tasks_missed.to_i,
-      tasks_overdue: tasks_overdue.to_i,
-      completion_rate: completion_rate,
-      summary_data: summary_data || {},
-      positive: positive?,
-      priority: priority
-    }
-  end
-
-  # Tests expect a flattened report hash with specific keys
-  def generate_report
-    {
-      title: title,
-      description: description,
-      date: summary_date.to_date,
-      tasks_completed: tasks_completed.to_i,
-      tasks_missed: tasks_missed.to_i,
-      tasks_overdue: tasks_overdue.to_i,
-      completion_rate: completion_rate,
-      notes: (summary_data || {})["notes"],
-      details: {
-        date: summary_date.to_date,
-        totals: {
-          completed: tasks_completed.to_i,
-          missed:    tasks_missed.to_i,
-          overdue:   tasks_overdue.to_i,
-          total:     total_tasks,
-          completion_rate: completion_rate
-        },
-        positive:  positive?,
-        priority:  priority
-      },
-      data: summary_data || {}
-    }
+  def payload
+    DailySummaryCalculator.new(user: coaching_relationship.client, date: summary_date).call
   end
 
   # Soft deletion API expected by specs
@@ -173,7 +83,7 @@ class DailySummary < ApplicationRecord
 
   private
 
-  # Only default when *all* three counters are missing (so “presence” specs still fail correctly).
+  # Only default when *all* three counters are missing (so "presence" specs still fail correctly).
   def apply_defaults
     return unless tasks_completed.nil? && tasks_missed.nil? && tasks_overdue.nil?
     self.tasks_completed = 0
@@ -182,24 +92,9 @@ class DailySummary < ApplicationRecord
     self.summary_data  ||= {}
   end
 
-  def ensure_unique_summary_date
-    return if summary_date == nil # Don't auto-set if explicitly set to nil
-    return if summary_date.blank? # Don't auto-set if no date provided
-
-    # Only auto-adjust if there's a conflict and we're not in a validation context
-    if self.class.exists?(coaching_relationship_id: coaching_relationship_id, summary_date: summary_date) && !@_validating_uniqueness
-      date = summary_date
-      # pick the most recent available date going backwards
-      while self.class.exists?(coaching_relationship_id: coaching_relationship_id, summary_date: date)
-        date -= 1.day
-      end
-      self.summary_date = date
-    end
-  end
-
   # Only allow JSON objects (Hash) for this column and surface the exact message expected.
   def summary_data_must_be_object
-    return if summary_data.nil?                    # allow nil
+    return if summary_data.nil?
     errors.add(:summary_data, "is not a valid JSON") unless summary_data.is_a?(Hash)
   end
 
