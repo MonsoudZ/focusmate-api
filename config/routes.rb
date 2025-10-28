@@ -106,19 +106,6 @@ Rails.application.routes.draw do
         end
 
         member do
-          # Task completion
-          patch :complete
-          patch :uncomplete
-
-          # Task reassignment
-          patch :reassign
-
-          # Task explanations
-          post :submit_explanation
-
-          # Task visibility
-          patch :toggle_visibility
-
           # Subtask management
           post   :add_subtask
           patch  :update_subtask

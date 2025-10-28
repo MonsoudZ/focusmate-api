@@ -4,7 +4,7 @@ module Api
     class UsersController < ApplicationController
       before_action :authenticate_user!
 
-      # iOS can call this as PUT /devices/token or PATCH /users/device_token
+      # iOS updates device tokens via PATCH /api/v1/users/device_token
       def update_device_token
         # Handle both parameter formats
         token = params[:device_token] || params[:pushToken] || params[:push_token]
