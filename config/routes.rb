@@ -32,14 +32,7 @@ Rails.application.routes.draw do
       end
 
       # Device token management for iOS push notifications (legacy)
-      put "devices/token", to: "users#update_device_token" # iOS calls this
       patch "users/device_token", to: "users#update_device_token"  # iOS also uses this
-
-      # Authentication routes
-      post "login", to: "authentication#login"
-      post "register", to: "authentication#register"
-      get "profile", to: "authentication#profile"
-      delete "logout", to: "authentication#logout", defaults: { format: :json }
 
       # iOS app expected auth routes
       post "auth/sign_in", to: "authentication#login"
@@ -69,8 +62,6 @@ Rails.application.routes.draw do
         resources :tasks, except: [ :new, :edit ] do
           member do
             # EXISTING
-            post :complete
-            post :reassign
             patch :reassign              # Also support PATCH for iOS compatibility
 
             # NEW - Accountability features
@@ -81,16 +72,6 @@ Rails.application.routes.draw do
           end
         end
 
-        # iOS app compatibility - redirect /items to /tasks
-        get "items", to: "tasks#index"
-        post "items", to: "tasks#create"
-        get "items/:id", to: "tasks#show"
-        patch "items/:id", to: "tasks#update"
-        delete "items/:id", to: "tasks#destroy"
-        post "items/:id/complete", to: "tasks#complete"
-        patch "items/:id/reassign", to: "tasks#reassign"
-        post "items/:id/reassign", to: "tasks#reassign"
-        post "items/:id/explanations", to: "tasks#submit_explanation"
 
         # NEW - List sharing with coaches
         resources :shares, only: [ :index, :show, :create, :update, :destroy ], controller: "list_shares" do
@@ -109,16 +90,6 @@ Rails.application.routes.draw do
       # Global list share accept endpoint (for email links)
       post "list_shares/accept", to: "list_shares_global#accept"
 
-      # iOS app compatibility - global /items routes
-      get "items", to: "tasks#index"
-      post "items", to: "tasks#create"
-      get "items/:id", to: "tasks#show"
-      patch "items/:id", to: "tasks#update"
-      delete "items/:id", to: "tasks#destroy"
-      post "items/:id/complete", to: "tasks#complete"
-      patch "items/:id/reassign", to: "tasks#reassign"
-      post "items/:id/reassign", to: "tasks#reassign"
-      post "items/:id/explanations", to: "tasks#submit_explanation"
 
       # iOS app compatibility - global /tasks routes
       get "tasks", to: "tasks#index"
@@ -137,12 +108,10 @@ Rails.application.routes.draw do
         member do
           # Task completion
           patch :complete
-          post  :complete
           patch :uncomplete
 
           # Task reassignment
           patch :reassign
-          post  :reassign
 
           # Task explanations
           post :submit_explanation
@@ -199,10 +168,12 @@ Rails.application.routes.draw do
       get "dashboard/stats", to: "dashboard#stats"
 
       # ===== STAGING / TESTING =====
-      post "staging/test_push", to: "staging#test_push"
-      post "staging/test_push_immediate", to: "staging#test_push_immediate"
-      get "staging/push_status", to: "staging#push_status"
-      post "staging/cleanup_test_data", to: "staging#cleanup_test_data"
+      if Rails.env.development? || Rails.env.test?
+        post "staging/test_push", to: "staging#test_push"
+        post "staging/test_push_immediate", to: "staging#test_push_immediate"
+        get "staging/push_status", to: "staging#push_status"
+        post "staging/cleanup_test_data", to: "staging#cleanup_test_data"
+      end
     end
   end
 
