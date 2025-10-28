@@ -10,7 +10,7 @@ RSpec.describe ItemVisibilityRestriction, type: :model do
   let(:coaching_relationship) { create(:coaching_relationship, coach: coach, client: client, invited_by: coach, status: :active) }
   let(:other_relationship) { create(:coaching_relationship, coach: other_coach, client: client, invited_by: other_coach, status: :active) }
 
-  let(:list) { create(:list, owner: client) }
+  let(:list) { create(:list, user: client) }
   let(:task) { create(:task, list: list, creator: client) }
 
   let(:restriction) { build(:item_visibility_restriction, task: task, coaching_relationship: coaching_relationship) }

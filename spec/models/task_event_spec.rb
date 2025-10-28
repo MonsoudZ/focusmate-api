@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe TaskEvent, type: :model do
   let(:user) { create(:user) }
-  let(:list) { create(:list, owner: user) }
+  let(:list) { create(:list, user: user) }
   let(:task) { create(:task, list: list, creator: user) }
   let(:task_event) { build(:task_event, task: task, user: user, kind: "created", reason: "Task was created", occurred_at: Time.current) }
 

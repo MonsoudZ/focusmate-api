@@ -5,7 +5,7 @@ class TaskPolicy < ApplicationPolicy
     # If deleted, only the list owner may view
     if record.respond_to?(:status) && record.status.to_s == "deleted"
       return false unless user
-      list_owner_id = record.list.respond_to?(:owner_id) ? record.list.owner_id : record.list.user_id
+      list_owner_id = record.list.user_id
       return list_owner_id == user.id
     end
 
@@ -24,7 +24,7 @@ class TaskPolicy < ApplicationPolicy
     return false unless record
     # User can update tasks they can see and have edit permissions for
     # But coaches cannot edit client's tasks
-    if user.coach? && record.creator != user && record.list.owner != user
+    if user.coach? && record.creator != user && record.list.user != user
       return false
     end
     record.visible_to?(user) && record.list.editable_by?(user)
@@ -35,7 +35,7 @@ class TaskPolicy < ApplicationPolicy
     return false unless record
     # User can delete tasks they can see and have delete permissions for
     # But coaches cannot delete client's tasks
-    if user.coach? && record.creator != user && record.list.owner != user
+    if user.coach? && record.creator != user && record.list.user != user
       return false
     end
     record.visible_to?(user) && record.list.can_delete_items_by?(user)
@@ -46,7 +46,7 @@ class TaskPolicy < ApplicationPolicy
     return false unless record
     # User can complete tasks they can see and have edit permissions for
     # But coaches cannot complete client's tasks
-    if user.coach? && record.creator != user && record.list.owner != user
+    if user.coach? && record.creator != user && record.list.user != user
       return false
     end
     record.visible_to?(user) && record.list.editable_by?(user)
@@ -57,7 +57,7 @@ class TaskPolicy < ApplicationPolicy
     return false unless record
     # User can reassign tasks they can see and have edit permissions for
     # But coaches cannot reassign client's tasks
-    if user.coach? && record.creator != user && record.list.owner != user
+    if user.coach? && record.creator != user && record.list.user != user
       return false
     end
     record.visible_to?(user) && record.list.editable_by?(user)

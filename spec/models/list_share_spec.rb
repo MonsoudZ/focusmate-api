@@ -47,7 +47,7 @@ RSpec.describe ListShare, type: :model do
     it 'should not allow sharing list with owner' do
       # This test verifies that sharing with the owner is not prevented by the model
       # In a real application, this would be handled at the controller level
-      share = build(:list_share, list: list, user: list.owner)
+      share = build(:list_share, list: list, user: list.user)
       expect(share).to be_valid
     end
   end
@@ -365,7 +365,7 @@ RSpec.describe ListShare, type: :model do
 
   describe 'security' do
     let(:owner) { create(:user) }
-    let(:list) { create(:list, owner: owner) }
+    let(:list) { create(:list, user: owner) }
     let(:user) { create(:user) }
 
     it 'should not allow sharing list with owner' do
@@ -439,7 +439,7 @@ RSpec.describe ListShare, type: :model do
 
   describe 'integration with list model' do
     let(:owner) { create(:user) }
-    let(:list) { create(:list, owner: owner) }
+    let(:list) { create(:list, user: owner) }
     let(:user) { create(:user) }
 
     it 'should be accessible through list association' do

@@ -20,10 +20,10 @@ RSpec.describe "Working", type: :model do
     list = List.create!(
       name: "Test List",
       description: "A test list",
-      owner: user
+      user: user
     )
 
-    expect(list.owner).to eq(user)
+    expect(list.user).to eq(user)
     expect(list.user_id == user.id ? user : nil).to eq(user)
   end
 
@@ -39,7 +39,7 @@ RSpec.describe "Working", type: :model do
     list = List.create!(
       name: "Test List",
       description: "A test list",
-      owner: user
+      user: user
     )
 
     task = list.tasks.create!(

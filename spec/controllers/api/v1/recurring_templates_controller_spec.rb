@@ -3,8 +3,8 @@ require "rails_helper"
 RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
   let(:user) { create(:user, email: "user_#{SecureRandom.hex(4)}@example.com") }
   let(:other_user) { create(:user, email: "other_#{SecureRandom.hex(4)}@example.com") }
-  let(:list) { create(:list, owner: user, name: "Test List") }
-  let(:other_list) { create(:list, owner: other_user, name: "Other List") }
+  let(:list) { create(:list, user: user, name: "Test List") }
+  let(:other_list) { create(:list, user: other_user, name: "Other List") }
 
   let!(:template) do
     Task.create!(
@@ -39,7 +39,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
     end
 
     it "should filter by list_id" do
-      other_list = create(:list, owner: user, name: "Other List")
+      other_list = create(:list, user: user, name: "Other List")
       other_template = Task.create!(
         list: other_list,
         creator: user,

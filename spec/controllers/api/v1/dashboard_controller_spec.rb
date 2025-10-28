@@ -18,8 +18,8 @@ RSpec.describe Api::V1::DashboardController, type: :request do
     )
   end
 
-  let(:list) { create(:list, owner: user, name: "Test List") }
-  let(:coach_list) { create(:list, owner: coach, name: "Coach List") }
+  let(:list) { create(:list, user: user, name: "Test List") }
+  let(:coach_list) { create(:list, user: coach, name: "Coach List") }
 
   describe "GET /api/v1/dashboard" do
     it "should get dashboard summary for user" do
@@ -664,7 +664,7 @@ RSpec.describe Api::V1::DashboardController, type: :request do
       )
 
       # Create tasks for both clients
-      list2 = create(:list, owner: client2, name: "Client 2 List")
+      list2 = create(:list, user: client2, name: "Client 2 List")
 
       Task.create!(
         list: list,

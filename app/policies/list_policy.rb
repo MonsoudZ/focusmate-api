@@ -16,7 +16,7 @@ class ListPolicy < ApplicationPolicy
   end
 
   def destroy?
-    record.owner == user # Only the owner can delete a list
+    record.user == user # Only the user can delete a list
   end
 
   def invite_member?

@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Api::V1::TasksController, type: :request do
   let(:user) { create(:user) }
-  let(:list) { create(:list, owner: user) }
+  let(:list) { create(:list, user: user) }
   let(:task) { create(:task, list: list, creator: user) }
   let(:auth_headers) { { 'Authorization' => "Bearer #{JWT.encode({ user_id: user.id, exp: 24.hours.from_now.to_i }, Rails.application.credentials.secret_key_base)}" } }
 
@@ -22,7 +22,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
       test_list = List.create!(
         name: "Test List",
         description: "A test list",
-        owner: test_user
+        user: test_user
       )
 
       # Create task manually
@@ -54,7 +54,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
     end
 
     it 'should get all tasks across lists' do
-      other_list = create(:list, owner: user, name: "Other List")
+      other_list = create(:list, user: user, name: "Other List")
       create(:task, list: other_list, creator: user)
 
       get "/api/v1/tasks/all_tasks", headers: auth_headers
@@ -82,7 +82,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
     end
 
     it 'should filter tasks by list_id' do
-      other_list = create(:list, owner: user, name: "Other List")
+      other_list = create(:list, user: user, name: "Other List")
       other_task = create(:task, list: other_list, creator: user)
 
       get "/api/v1/tasks/all_tasks?list_id=#{other_list.id}", headers: auth_headers
@@ -104,7 +104,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not get tasks from other user\'s list' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
 
       get "/api/v1/lists/#{other_list.id}/tasks", headers: auth_headers
 
@@ -130,7 +130,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not show task from other user' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
 
       get "/api/v1/tasks/#{other_task.id}", headers: auth_headers
@@ -169,7 +169,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not create task in other user\'s list' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
 
       task_params = {
         title: "New Task",
@@ -221,7 +221,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not update task from other user' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
 
       update_params = {
@@ -250,7 +250,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not delete task from other user' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
 
       delete "/api/v1/tasks/#{other_task.id}", headers: auth_headers
@@ -277,7 +277,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
     it 'should not complete task from other user' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
 
       patch "/api/v1/tasks/#{other_task.id}/complete", headers: auth_headers

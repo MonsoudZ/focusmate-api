@@ -4,41 +4,41 @@ require 'rails_helper'
 
 RSpec.describe List, type: :model do
   let(:user) { create(:user) }
-  let(:list) { create(:list, owner: user) }
+  let(:list) { create(:list, user: user) }
 
   describe 'validations' do
     it 'creates list with valid attributes' do
-      list = build(:list, name: "New List", description: "A new list", owner: user)
+      list = build(:list, name: "New List", description: "A new list", user: user)
       expect(list).to be_valid
       expect(list.save).to be true
     end
 
     it 'does not create list without name' do
-      list = build(:list, name: nil, description: "A list without name", owner: user)
+      list = build(:list, name: nil, description: "A list without name", user: user)
       expect(list).not_to be_valid
       expect(list.errors[:name]).to include("can't be blank")
     end
 
     it 'does not create list without owner' do
-      list = build(:list, name: "List without owner", description: "A list without owner", owner: nil)
+      list = build(:list, name: "List without owner", description: "A list without owner", user: nil)
       expect(list).not_to be_valid
-      expect(list.errors[:owner]).to include("must exist")
+      expect(list.errors[:user]).to include("must exist")
     end
 
     it 'validates name length' do
-      list = build(:list, name: "a" * 256, owner: user)
+      list = build(:list, name: "a" * 256, user: user)
       expect(list).not_to be_valid
       expect(list.errors[:name]).to include("is too long (maximum is 255 characters)")
     end
 
     it 'validates description length' do
-      list = build(:list, description: "a" * 1001, owner: user)
+      list = build(:list, description: "a" * 1001, user: user)
       expect(list).not_to be_valid
       expect(list.errors[:description]).to include("is too long (maximum is 1000 characters)")
     end
 
     it 'validates visibility inclusion' do
-      list = build(:list, visibility: "invalid_visibility", owner: user)
+      list = build(:list, visibility: "invalid_visibility", user: user)
       expect(list).not_to be_valid
       expect(list.errors[:visibility]).to include("is not included in the list")
     end
@@ -46,7 +46,7 @@ RSpec.describe List, type: :model do
 
   describe 'associations' do
     it 'belongs to owner' do
-      expect(list.owner).to eq(user)
+      expect(list.user).to eq(user)
     end
 
     it 'has many tasks' do
@@ -278,24 +278,24 @@ RSpec.describe List, type: :model do
 
   describe 'scopes' do
     it 'has public scope' do
-      public_list = create(:list, owner: user, visibility: "public")
-      private_list = create(:list, owner: user, visibility: "private")
+      public_list = create(:list, user: user, visibility: "public")
+      private_list = create(:list, user: user, visibility: "private")
 
       expect(List.public).to include(public_list)
       expect(List.public).not_to include(private_list)
     end
 
     it 'has private scope' do
-      public_list = create(:list, owner: user, visibility: "public")
-      private_list = create(:list, owner: user, visibility: "private")
+      public_list = create(:list, user: user, visibility: "public")
+      private_list = create(:list, user: user, visibility: "private")
 
       expect(List.private).to include(private_list)
       expect(List.private).not_to include(public_list)
     end
 
     it 'has shared scope' do
-      shared_list = create(:list, owner: user, visibility: "shared")
-      private_list = create(:list, owner: user, visibility: "private")
+      shared_list = create(:list, user: user, visibility: "shared")
+      private_list = create(:list, user: user, visibility: "private")
 
       expect(List.shared).to include(shared_list)
       expect(List.shared).not_to include(private_list)
@@ -304,13 +304,13 @@ RSpec.describe List, type: :model do
 
   describe 'callbacks' do
     it 'sets default visibility before validation' do
-      list = build(:list, owner: user, visibility: nil)
+      list = build(:list, user: user, visibility: nil)
       list.valid?
       expect(list.visibility).to eq("private")
     end
 
     it 'does not override existing visibility' do
-      list = build(:list, owner: user, visibility: "public")
+      list = build(:list, user: user, visibility: "public")
       list.valid?
       expect(list.visibility).to eq("public")
     end

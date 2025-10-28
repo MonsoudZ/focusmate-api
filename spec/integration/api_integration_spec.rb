@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe "API Integration", type: :request do
   let(:user) { create(:user, email: "integration_#{SecureRandom.hex(4)}@example.com") }
-  let(:list) { create(:list, owner: user) }
+  let(:list) { create(:list, user: user) }
   let(:auth_headers) { auth_headers(user) }
 
   describe "complete user workflow" do
@@ -194,7 +194,7 @@ RSpec.describe "API Integration", type: :request do
 
       # 4. Try to access other user's resources
       other_user = create(:user, email: "other_#{SecureRandom.hex(4)}@example.com")
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
 
       get "/api/v1/lists/#{other_list.id}/tasks", headers: auth_headers
       expect(response).to have_http_status(:forbidden)
@@ -227,7 +227,7 @@ RSpec.describe "API Integration", type: :request do
       users.each_with_index do |user, index|
         threads << Thread.new do
           auth_headers = auth_headers(user)
-          list = create(:list, owner: user, name: "List #{index}")
+          list = create(:list, user: user, name: "List #{index}")
 
           # Create multiple tasks
           5.times do |j|

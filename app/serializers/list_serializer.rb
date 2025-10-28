@@ -12,7 +12,7 @@ class ListSerializer
       id: list.id,
       name: list.name,
       description: list.description,
-      owner: UserSerializer.new(list.owner).as_json,
+      user: UserSerializer.new(list.user).as_json,
       role: role_for_current_user,
       shared_with_coaches: shared_coaches,
       tasks_count: tasks_count,
@@ -31,7 +31,7 @@ class ListSerializer
   private
 
   def role_for_current_user
-    if list.owner == current_user
+    if list.user == current_user
       "owner"
     elsif current_user.coach? && list.shared_with?(current_user)
       "coach"
@@ -41,7 +41,7 @@ class ListSerializer
   end
 
   def shared_coaches
-    return [] unless list.owner == current_user
+    return [] unless list.user == current_user
 
     list.coaches.map { |coach| UserSerializer.new(coach).as_json }
   end

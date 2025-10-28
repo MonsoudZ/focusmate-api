@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe NotificationLog, type: :model do
   let(:user) { create(:user) }
-  let(:list) { create(:list, owner: user) }
+  let(:list) { create(:list, user: user) }
   let(:task) { create(:task, list: list, creator: user) }
   let(:notification_log) { build(:notification_log, user: user, task: task, notification_type: "task_reminder", message: "Your task is due soon", delivered: false) }
 

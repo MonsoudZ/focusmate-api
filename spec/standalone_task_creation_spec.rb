@@ -13,7 +13,7 @@ RSpec.describe "Standalone Task Creation", type: :model do
     list = List.create!(
       name: "Test List",
       description: "A test list",
-      owner: user
+      user: user
     )
 
     # Test TaskCreationService with valid parameters (no priority)
@@ -44,7 +44,7 @@ RSpec.describe "Standalone Task Creation", type: :model do
     list = List.create!(
       name: "Test List",
       description: "A test list",
-      owner: user
+      user: user
     )
 
     # Test with subtasks
@@ -76,7 +76,7 @@ RSpec.describe "Standalone Task Creation", type: :model do
     list = List.create!(
       name: "Test List",
       description: "A test list",
-      owner: user
+      user: user
     )
 
     # Test with iOS-specific parameters

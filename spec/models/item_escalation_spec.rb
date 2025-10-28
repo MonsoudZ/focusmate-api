@@ -11,7 +11,7 @@ RSpec.describe ItemEscalation, type: :model do
     it { should validate_inclusion_of(:escalation_level).in_array(%w[normal warning critical blocking]) }
     it 'should validate task_id uniqueness' do
       user = create(:user)
-      list = create(:list, owner: user)
+      list = create(:list, user: user)
       task = create(:task, list: list, creator: user)
       create(:item_escalation, task: task)
 
@@ -252,7 +252,7 @@ RSpec.describe ItemEscalation, type: :model do
 
   describe 'edge cases' do
     let(:user) { create(:user) }
-    let(:list) { create(:list, owner: user) }
+    let(:list) { create(:list, user: user) }
 
     it 'should handle task with no due date (should not escalate)' do
       # Tasks without due dates are not realistic in the system
@@ -299,7 +299,7 @@ RSpec.describe ItemEscalation, type: :model do
 
   describe 'escalation workflow scenarios' do
     let(:user) { create(:user) }
-    let(:list) { create(:list, owner: user) }
+    let(:list) { create(:list, user: user) }
     let(:task) { create(:task, list: list, creator: user, due_at: 1.hour.ago) }
     let(:escalation) { create(:item_escalation, task: task) }
 

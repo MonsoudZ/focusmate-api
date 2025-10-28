@@ -72,7 +72,7 @@ RSpec.describe Api::V1::UsersController, type: :request do
 
     it "should trigger location-based task notifications" do
       # Create a location-based task
-      list = create(:list, owner: user)
+      list = create(:list, user: user)
       task = Task.create!(
         list: list,
         creator: user,

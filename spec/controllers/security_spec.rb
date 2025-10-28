@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Security", type: :request do
   let(:user) { create(:user, email: "security_test_#{SecureRandom.hex(4)}@example.com") }
-  let(:list) { create(:list, owner: user) }
+  let(:list) { create(:list, user: user) }
   let!(:task) { create(:task, list: list, creator: user) }
   let(:auth_headers) do
     token = JWT.encode(
@@ -104,7 +104,7 @@ RSpec.describe "Security", type: :request do
   describe "Authorization Security" do
     it "should not allow access to other user's resources" do
       other_user = create(:user, email: "other_#{SecureRandom.hex(4)}@example.com")
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
 
       # Try to access other user's list

@@ -2,4 +2,4 @@ You've been added to "<%= @list.name %>".
 
 Open the app to view: <%= ENV.fetch('APP_WEB_BASE', 'http://localhost:3000') %>
 
-This list was shared by <%= @list.owner.name || @list.owner.email %>.
+This list was shared by <%= @list.user.name || @list.user.email %>.

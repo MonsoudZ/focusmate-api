@@ -106,7 +106,7 @@ RSpec.describe DashboardDataService do
 
     it 'calculates completion rate correctly' do
       # Create some tasks for the user
-      list = create(:list, owner: user)
+      list = create(:list, user: user)
       create(:task, list:, status: :done, updated_at: 1.day.ago)
       create(:task, list:, status: :pending, updated_at: 1.day.ago)
 

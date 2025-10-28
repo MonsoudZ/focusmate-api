@@ -8,7 +8,7 @@ class NotificationService
     def new_item_assigned(task)
       return unless task.created_by_coach?
 
-      client = task.list.owner
+      client = task.list.user
 
       send_apns_notification(
         user: client,
@@ -38,19 +38,19 @@ class NotificationService
       return unless task.created_by_coach?
 
       task.list.coaches.each do |coach|
-        relationship = task.list.owner.relationship_with_coach(coach)
+        relationship = task.list.user.relationship_with_coach(coach)
         next unless relationship&.notify_on_completion?
         next unless task.visible_to?(coach)
 
         send_apns_notification(
           user: coach,
           title: "✅ Task Completed",
-          body: "#{task.list.owner.name} completed: #{task.title}",
+          body: "#{task.list.user.name} completed: #{task.title}",
           data: {
             type: "task_completed",
             task_id: task.id,
-            client_id: task.list.owner.id,
-            client_name: task.list.owner.name
+            client_id: task.list.user.id,
+            client_name: task.list.user.name
           },
           badge: nil, # Don't update coach's badge
           category: "TASK_COMPLETED"
@@ -60,7 +60,7 @@ class NotificationService
           task: task,
           user: coach,
           type: "task_completed",
-          message: "#{task.list.owner.name} completed task"
+          message: "#{task.list.user.name} completed task"
         )
       end
     end
@@ -68,18 +68,18 @@ class NotificationService
     # When task becomes overdue
     def task_missed(task)
       task.list.coaches.each do |coach|
-        relationship = task.list.owner.relationship_with_coach(coach)
+        relationship = task.list.user.relationship_with_coach(coach)
         next unless relationship&.notify_on_missed_deadline?
         next unless task.visible_to?(coach)
 
         send_apns_notification(
           user: coach,
           title: "⚠️ Task Missed",
-          body: "#{task.list.owner.name} missed: #{task.title}",
+          body: "#{task.list.user.name} missed: #{task.title}",
           data: {
             type: "task_missed",
             task_id: task.id,
-            client_id: task.list.owner.id,
+            client_id: task.list.user.id,
             minutes_overdue: task.minutes_overdue
           },
           sound: "default",
@@ -97,7 +97,7 @@ class NotificationService
 
     # When task requires explanation from client
     def task_missed_needs_explanation(task)
-      client = task.list.owner
+      client = task.list.user
 
       send_apns_notification(
         user: client,
@@ -132,11 +132,11 @@ class NotificationService
         send_apns_notification(
           user: coach,
           title: "📝 Explanation Submitted",
-          body: "#{task.list.owner.name} explained missing: #{task.title}",
+          body: "#{task.list.user.name} explained missing: #{task.title}",
           data: {
             type: "explanation_submitted",
             task_id: task.id,
-            client_id: task.list.owner.id,
+            client_id: task.list.user.id,
             explanation: task.missed_reason
           },
           category: "EXPLANATION_SUBMITTED"
@@ -157,7 +157,7 @@ class NotificationService
 
     # Regular reminder for overdue task
     def send_reminder(task, escalation_level)
-      client = task.list.owner
+      client = task.list.user
 
       emoji = case escalation_level
       when "normal" then "⏰"
@@ -208,7 +208,7 @@ class NotificationService
 
     # When app gets blocked due to critical overdue task
     def app_blocking_started(task)
-      client = task.list.owner
+      client = task.list.user
 
       send_apns_notification(
         user: client,
@@ -237,18 +237,18 @@ class NotificationService
     # Alert coaches that client has critical overdue task
     def alert_coaches_of_overdue(task)
       task.list.coaches.each do |coach|
-        relationship = task.list.owner.relationship_with_coach(coach)
+        relationship = task.list.user.relationship_with_coach(coach)
         next unless relationship&.notify_on_missed_deadline?
         next unless task.visible_to?(coach)
 
         send_apns_notification(
           user: coach,
           title: "🚨 Client Task Critical",
-          body: "#{task.list.owner.name}'s task '#{task.title}' is #{task.minutes_overdue} min overdue",
+          body: "#{task.list.user.name}'s task '#{task.title}' is #{task.minutes_overdue} min overdue",
           data: {
             type: "coach_alert_critical",
             task_id: task.id,
-            client_id: task.list.owner.id,
+            client_id: task.list.user.id,
             minutes_overdue: task.minutes_overdue,
             escalation_level: task.escalation.escalation_level
           },
@@ -270,7 +270,7 @@ class NotificationService
     # ==========================================
 
     def location_based_reminder(task, event)
-      client = task.list.owner
+      client = task.list.user
 
       message = case event
       when :arrival
@@ -311,7 +311,7 @@ class NotificationService
     # ==========================================
 
     def recurring_task_generated(task)
-      client = task.list.owner
+      client = task.list.user
 
       # Only notify if due soon (within 24 hours)
       return unless task.due_at.present? && task.due_at < 24.hours.from_now
@@ -440,11 +440,11 @@ class NotificationService
       send_push_notification(
         user: coach,
         title: "📋 List Shared",
-        body: "#{list.owner.name} shared '#{list.name}' with you",
+        body: "#{list.user.name} shared '#{list.name}' with you",
         data: {
           type: "list_shared",
           list_id: list.id,
-          owner_id: list.user_id
+          user_id: list.user_id
         }
       )
 

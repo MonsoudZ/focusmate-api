@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe TaskCreationService, type: :service do
   let(:user) { create(:user, email: "task_creation_#{SecureRandom.hex(4)}@example.com") }
-  let(:list) { create(:list, owner: user) }
+  let(:list) { create(:list, user: user) }
   let(:params) do
     {
       title: "Test Task",

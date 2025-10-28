@@ -439,7 +439,7 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
 
     it "should not affect tasks using this location" do
       # Create a task that uses this location
-      list = create(:list, owner: user)
+      list = create(:list, user: user)
       task = Task.create!(
         list: list,
         creator: user,

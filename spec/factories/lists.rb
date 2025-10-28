@@ -3,7 +3,7 @@ FactoryBot.define do
     name { Faker::Lorem.words(number: 3).join(" ").titleize }
     description { Faker::Lorem.sentence }
     visibility { "private" }
-    owner { association :user }
+    user { association :user }
 
     trait :public do
       visibility { "public" }

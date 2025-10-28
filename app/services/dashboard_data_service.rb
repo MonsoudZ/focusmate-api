@@ -169,7 +169,7 @@ class DashboardDataService
     recent_events.map do |event|
       {
         id: event.id,
-        client_name: event.task.list.owner.name,
+        client_name: event.task.list.user.name,
         task_title: event.task.title,
         action: event.kind,
         occurred_at: event.occurred_at

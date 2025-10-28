@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Api::V1::ListsController, type: :request do
   let(:user) { create(:user) }
-  let(:list) { create(:list, owner: user) }
+  let(:list) { create(:list, user: user) }
   let(:auth_headers) { { 'Authorization' => "Bearer #{JWT.encode({ user_id: user.id, exp: 24.hours.from_now.to_i }, Rails.application.credentials.secret_key_base)}" } }
 
   describe 'GET /api/v1/lists' do
@@ -13,8 +13,8 @@ RSpec.describe Api::V1::ListsController, type: :request do
       list # This forces the let(:list) to be evaluated
 
       # Create additional lists for the user
-      list2 = create(:list, owner: user, name: "Second List")
-      list3 = create(:list, owner: user, name: "Third List")
+      list2 = create(:list, user: user, name: "Second List")
+      list3 = create(:list, user: user, name: "Third List")
 
       get "/api/v1/lists", headers: auth_headers
 
@@ -36,7 +36,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
       list # This forces the let(:list) to be evaluated
 
       other_user = create(:user, email: "other@example.com")
-      shared_list = create(:list, owner: other_user, name: "Shared List")
+      shared_list = create(:list, user: other_user, name: "Shared List")
 
       # Share list with current user
       create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner")
@@ -60,7 +60,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should handle empty lists' do
       # Delete all lists for user
-      List.where(owner: user).destroy_all
+      List.where(user: user).destroy_all
 
       get "/api/v1/lists", headers: auth_headers
 
@@ -88,7 +88,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not show list from other user' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
 
       get "/api/v1/lists/#{other_list.id}", headers: auth_headers
 
@@ -97,7 +97,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should show shared list' do
       other_user = create(:user)
-      shared_list = create(:list, owner: other_user)
+      shared_list = create(:list, user: other_user)
       create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner")
 
       get "/api/v1/lists/#{shared_list.id}", headers: auth_headers
@@ -188,7 +188,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not update list from other user' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
 
       update_params = {
         name: "Updated List"
@@ -201,7 +201,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should update shared list if user has edit permission' do
       other_user = create(:user)
-      shared_list = create(:list, owner: other_user)
+      shared_list = create(:list, user: other_user)
       create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner", can_edit: true)
 
       update_params = {
@@ -232,7 +232,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not delete list from other user' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
 
       delete "/api/v1/lists/#{other_list.id}", headers: auth_headers
 
@@ -241,7 +241,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not delete shared list' do
       other_user = create(:user)
-      shared_list = create(:list, owner: other_user)
+      shared_list = create(:list, user: other_user)
       create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner")
 
       delete "/api/v1/lists/#{shared_list.id}", headers: auth_headers
@@ -286,7 +286,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not share list from other user' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
 
       share_params = {
         email: "shared@example.com",
@@ -346,7 +346,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not unshare list from other user' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
       create(:list_share, list: other_list, user: user, status: "accepted", invited_by: "owner")
 
       unshare_params = {
@@ -383,7 +383,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not get members from other user\'s list' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
 
       get "/api/v1/lists/#{other_list.id}/members", headers: auth_headers
 
@@ -413,7 +413,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
     it 'should not get tasks from other user\'s list' do
       other_user = create(:user)
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
 
       get "/api/v1/lists/#{other_list.id}/tasks", headers: auth_headers
 

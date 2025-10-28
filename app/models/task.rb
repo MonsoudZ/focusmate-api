@@ -275,7 +275,7 @@ class Task < ApplicationRecord
     return false unless user
     return false if list.deleted?
     if deleted?
-      return (creator == user || list.owner == user)
+      return (creator == user || list.user == user)
     end
 
     case visibility
@@ -284,13 +284,13 @@ class Task < ApplicationRecord
       true
     when "private_task"
       # Private tasks require list access and ownership
-      list.accessible_by?(user) && (creator == user || list.owner == user)
+      list.accessible_by?(user) && (creator == user || list.user == user)
     when "hidden_from_coaches"
       # Hidden from coaches requires list access and ownership
-      list.accessible_by?(user) && (creator == user || list.owner == user)
+      list.accessible_by?(user) && (creator == user || list.user == user)
     when "coaching_only"
       # Coaching only requires list access and either ownership or coach role
-      list.accessible_by?(user) && (creator == user || list.owner == user || user.coach?)
+      list.accessible_by?(user) && (creator == user || list.user == user || user.coach?)
     else
       # For other visibility levels, check if user has access to the list
       list.accessible_by?(user)
@@ -364,7 +364,7 @@ class Task < ApplicationRecord
 
   def create_task_event(kind: nil, reason: nil, user: nil, occurred_at: nil, metadata: nil)
     task_events.create!(
-      user:        user || list&.owner || self.creator, # whichever makes sense in your app
+      user:        user || list&.user || self.creator, # whichever makes sense in your app
       kind:        kind || "created",
       reason:      reason,
       occurred_at: occurred_at || Time.current,

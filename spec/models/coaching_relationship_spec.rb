@@ -147,7 +147,7 @@ RSpec.describe CoachingRelationship, type: :model do
     let(:coach) { create(:user, :coach) }
     let(:client) { create(:user, :client) }
     let(:relationship) { create(:coaching_relationship, coach: coach, client: client, status: 'active') }
-    let(:list) { create(:list, owner: client) }
+    let(:list) { create(:list, user: client) }
     let(:task) { create(:task, list: list, creator: client) }
 
     before do
@@ -190,7 +190,7 @@ RSpec.describe CoachingRelationship, type: :model do
 
     it 'client should NOT see other clients data' do
       other_client = create(:user, :client)
-      other_list = create(:list, owner: other_client)
+      other_list = create(:list, user: other_client)
       other_task = create(:task, list: other_list, creator: other_client)
 
       # Test that the other client's task is not in the relationship's lists
@@ -341,7 +341,7 @@ RSpec.describe CoachingRelationship, type: :model do
     let(:coach) { create(:user, :coach) }
     let(:client) { create(:user, :client) }
     let(:relationship) { create(:coaching_relationship, coach: coach, client: client, status: 'active') }
-    let(:list) { create(:list, owner: client) }
+    let(:list) { create(:list, user: client) }
 
     before do
       # Create membership to share the list with the coach

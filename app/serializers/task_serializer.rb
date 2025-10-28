@@ -104,7 +104,7 @@ class TaskSerializer
   end
 
   def creator_data
-    creator = task.creator || task.list.owner
+    creator = task.creator || task.list.user
     return {} unless creator
 
     {
@@ -138,7 +138,7 @@ class TaskSerializer
   def can_change_visibility?
     return false unless current_user
     # Only creator, list owner, or coaches can change visibility
-    task.creator == current_user || task.list.owner == current_user || (current_user.coach? && task.list.coach?(current_user))
+    task.creator == current_user || task.list.user == current_user || (current_user.coach? && task.list.coach?(current_user))
   end
 
   def escalation_data

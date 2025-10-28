@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: true do
   let(:user) { create(:user) }
-  let(:list) { create(:list, owner: user) }
+  let(:list) { create(:list, user: user) }
   
   def auth_headers_for(u)
     controller = Api::V1::AuthenticationController.new

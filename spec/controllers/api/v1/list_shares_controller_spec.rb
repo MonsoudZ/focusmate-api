@@ -4,7 +4,7 @@ RSpec.describe Api::V1::ListSharesController, type: :request do
   let(:list_owner) { create(:user, email: "owner_#{SecureRandom.hex(4)}@example.com") }
   let(:shared_user) { create(:user, email: "shared_#{SecureRandom.hex(4)}@example.com") }
   let(:other_user) { create(:user, email: "other_#{SecureRandom.hex(4)}@example.com") }
-  let(:list) { create(:list, owner: list_owner, name: "Shared List") }
+  let(:list) { create(:list, user: list_owner, name: "Shared List") }
 
   let(:list_share) do
     ListShare.create!(
@@ -45,7 +45,7 @@ RSpec.describe Api::V1::ListSharesController, type: :request do
 
       expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Only list owner can manage shares")
+      expect(json["error"]["message"]).to eq("Only list user can manage shares")
     end
 
     it "should not get shares without authentication" do
@@ -167,7 +167,7 @@ RSpec.describe Api::V1::ListSharesController, type: :request do
 
       expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Only list owner can manage shares")
+      expect(json["error"]["message"]).to eq("Only list user can manage shares")
     end
 
     it "should return error if already shared with user" do
@@ -337,7 +337,7 @@ RSpec.describe Api::V1::ListSharesController, type: :request do
 
       expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Only list owner can manage shares")
+      expect(json["error"]["message"]).to eq("Only list user can manage shares")
     end
 
     it "should not update permissions without authentication" do
@@ -578,7 +578,7 @@ RSpec.describe Api::V1::ListSharesController, type: :request do
 
       expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Only list owner or share owner can delete this share")
+      expect(json["error"]["message"]).to eq("Only list user or share user can delete this share")
     end
 
     it "should not revoke share without authentication" do

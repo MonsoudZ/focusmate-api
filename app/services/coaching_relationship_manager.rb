@@ -45,8 +45,18 @@ class CoachingRelationshipManager
   end
 
   def enqueue_notification(event)
-    # For now, we'll use a simple notification service
-    # In a real app, you'd enqueue a job like: RelationshipEventJob.perform_later(@rel.id, event)
-    Rails.logger.info "Coaching relationship event: #{event} for relationship #{@rel.id}"
+    # Map internal events to NotificationService methods
+    method = case event
+             when :relationship_requested then :coaching_invitation_sent
+             when :relationship_accepted then :coaching_invitation_accepted
+             when :relationship_declined then :coaching_invitation_declined
+             when :relationship_cancelled then :coaching_invitation_declined
+             when :relationship_terminated then :coaching_invitation_declined
+             else
+               Rails.logger.warn "Unknown coaching relationship event: #{event}"
+               return
+             end
+
+    NotificationJob.perform_later(method.to_s, @rel.id)
   end
 end

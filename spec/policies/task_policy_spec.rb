@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe TaskPolicy, type: :policy do
   let(:user) { create(:user, email: "task_policy_user@example.com") }
-  let(:list) { create(:list, owner: user) }
+  let(:list) { create(:list, user: user) }
   let(:task) { create(:task, list: list) }
 
   # Create another user for testing permissions
@@ -26,7 +26,7 @@ RSpec.describe TaskPolicy, type: :policy do
   end
 
   # Create shared list for coach
-  let(:shared_list) { create(:list, owner: client) }
+  let(:shared_list) { create(:list, user: client) }
   let(:shared_task) { create(:task, list: shared_list, creator: client, visibility: "visible_to_all") }
 
   before do
@@ -346,7 +346,7 @@ RSpec.describe TaskPolicy, type: :policy do
     end
 
     it 'does not allow user to create tasks in lists they don\'t have access to' do
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
       new_task = Task.new(
         list: other_list,
         creator: user,
@@ -445,7 +445,7 @@ RSpec.describe TaskPolicy, type: :policy do
       # Force creation of user's task before resolving scope
       task
 
-      other_list = create(:list, owner: other_user)
+      other_list = create(:list, user: other_user)
       other_task = create(:task, list: other_list, creator: other_user)
 
       # Test scope for user (should only see tasks in their accessible lists)

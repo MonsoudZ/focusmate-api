@@ -1,6 +1,6 @@
 class List < ApplicationRecord
   # Associations
-  belongs_to :owner, class_name: "User", foreign_key: "user_id"
+  belongs_to :user
   has_many :memberships, dependent: :destroy
   has_many :members, through: :memberships, source: :user
   has_many :tasks, dependent: :destroy
@@ -35,7 +35,7 @@ class List < ApplicationRecord
   def delete        = soft_delete!
 
   # Validations
-  validates :owner, presence: true
+  validates :user, presence: true
   validates :name, presence: true, length: { maximum: 255 }
   validates :description, length: { maximum: 1000 }, allow_nil: true
 
@@ -48,8 +48,8 @@ class List < ApplicationRecord
   end
 
   # Scopes that the spec calls
-  scope :owned_by,      ->(user) { where(owner: user) }
-  scope :accessible_by, ->(user) { left_joins(:memberships).where(memberships: { user: user }).or(where(owner: user)) }
+  scope :owned_by,      ->(user) { where(user: user) }
+  scope :accessible_by, ->(user) { left_joins(:memberships).where(memberships: { user: user }).or(where(user: user)) }
   scope :modified_since, ->(ts)   { where("updated_at > ? OR deleted_at > ?", ts, ts) }
 
   # YES, these names collide with Ruby visibility helpers, but defining them explicitly works in Rails
@@ -67,7 +67,7 @@ class List < ApplicationRecord
 
   # Roles & permissions
   def role_for(user)
-    return "owner" if owner == user
+    return "owner" if self.user == user
     memberships.find_by(user: user)&.role
   end
 
@@ -81,20 +81,20 @@ class List < ApplicationRecord
   end
 
   def editable_by?(user)
-    return true if owner == user
+    return true if self.user == user
     return true if can_edit?(user)
     share = list_shares.find_by(user: user)
     share&.can_edit? || false
   end
 
   def can_add_items_by?(user)
-    return true if owner == user
+    return true if self.user == user
     return true if can_add_items?(user)
     list_shares.find_by(user: user)&.can_add_items? || false
   end
 
   def can_delete_items_by?(user)
-    return true if owner == user
+    return true if self.user == user
     return true if can_edit?(user)
     list_shares.find_by(user: user)&.can_delete_items? || false
   end
@@ -218,7 +218,7 @@ class List < ApplicationRecord
       name: name,
       description: description,
       visibility: visibility,
-      owner_id: user_id,
+      user_id: user_id,
       task_count: task_count,
       completed_task_count: completed_task_count,
       overdue_task_count: overdue_task_count,

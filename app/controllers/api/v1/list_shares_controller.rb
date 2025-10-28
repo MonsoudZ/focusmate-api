@@ -4,8 +4,8 @@ module Api
       before_action :authenticate_user!
       before_action :set_list, only: %i[index create show update destroy update_permissions accept decline]
       before_action :set_list_share, only: %i[show update destroy update_permissions accept decline]
-      before_action :authorize_list_owner, only: %i[index create update update_permissions]
-      before_action :authorize_share_owner_or_list_owner, only: %i[destroy]
+      before_action :authorize_list_user, only: %i[index create update update_permissions]
+      before_action :authorize_share_user_or_list_user, only: %i[destroy]
       before_action :authorize_share_access, only: %i[show]
 
       # GET /api/v1/lists/:list_id/shares
@@ -125,9 +125,9 @@ module Api
         @list_share = @list.list_shares.find(params[:id])
       end
 
-      def authorize_list_owner
-        unless @list.owner == current_user
-          render json: { error: { message: "Only list owner can manage shares" } }, status: :forbidden
+      def authorize_list_user
+        unless @list.user == current_user
+          render json: { error: { message: "Only list user can manage shares" } }, status: :forbidden
         end
       end
 
@@ -136,11 +136,11 @@ module Api
         render json: { error: { message: "Unauthorized" } }, status: :forbidden
       end
 
-      def authorize_share_owner_or_list_owner
-        return if @list.owner == current_user || @list_share.user == current_user
+      def authorize_share_user_or_list_user
+        return if @list.user == current_user || @list_share.user == current_user
 
         # Default: assume they're trying to delete a share they don't own
-        render json: { error: { message: "Only list owner or share owner can delete this share" } }, status: :forbidden
+        render json: { error: { message: "Only list user or share user can delete this share" } }, status: :forbidden
       end
 
       def share_params
