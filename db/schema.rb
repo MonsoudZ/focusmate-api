@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_27_042424) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_28_210429) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -259,7 +259,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_042424) do
     t.datetime "updated_at", null: false
     t.datetime "deleted_at"
     t.index ["created_at", "task_id"], name: "index_task_events_on_created_at_task_id"
+    t.index ["created_at"], name: "index_task_events_on_created_at"
     t.index ["task_id", "created_at"], name: "index_task_events_on_task_created_at"
+    t.index ["task_id", "created_at"], name: "index_task_events_on_task_id_and_created_at"
     t.index ["task_id"], name: "index_task_events_on_task_id"
     t.index ["user_id"], name: "index_task_events_on_user_id"
   end
@@ -302,14 +304,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_042424) do
     t.bigint "assigned_to_id"
     t.boolean "is_template"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
+    t.index ["completed_at", "list_id"], name: "index_tasks_on_completed_at_and_list_id"
+    t.index ["completed_at"], name: "index_tasks_on_completed_at"
     t.index ["creator_id", "status"], name: "index_tasks_on_creator_status"
     t.index ["creator_id"], name: "index_tasks_on_creator_id"
     t.index ["deleted_at"], name: "index_tasks_on_deleted_at"
+    t.index ["due_at", "completed_at"], name: "index_tasks_on_due_at_and_completed_at"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_and_status"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_status"
     t.index ["is_recurring"], name: "index_tasks_on_is_recurring"
     t.index ["list_id", "status", "due_at"], name: "index_tasks_on_list_status_due_at"
     t.index ["list_id", "status"], name: "index_tasks_on_list_id_and_status"
+    t.index ["list_id", "updated_at"], name: "index_tasks_on_list_id_and_updated_at"
     t.index ["list_id"], name: "index_tasks_on_list_id"
     t.index ["location_based"], name: "index_tasks_on_location_based"
     t.index ["missed_reason_reviewed_by_id"], name: "index_tasks_on_missed_reason_reviewed_by_id"

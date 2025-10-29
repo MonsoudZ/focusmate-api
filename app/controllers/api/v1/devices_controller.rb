@@ -21,24 +21,29 @@ module Api
       def create
         service = DeviceManagementService.new(user: current_user)
         
+        # Handle nested parameters
+        device_params = params[:device] || params
+        
         # Determine token and platform
-        token = params[:apns_token].present? ? params[:apns_token] : params[:fcm_token]
-        platform = params[:platform] || (params[:apns_token].present? ? 'ios' : 'android')
+        token = device_params[:apns_token].present? ? device_params[:apns_token] : device_params[:fcm_token]
+        platform = device_params[:platform] || (device_params[:apns_token].present? ? 'ios' : 'android')
         
         # Generate token if none provided
         if token.blank?
           token = "dev_token_#{SecureRandom.hex(16)}"
+          platform = 'ios' # Default to iOS when generating token
         end
 
         device = service.register(
           token: token,
           platform: platform,
-          locale: params[:locale],
-          app_version: params[:app_version],
-          device_name: params[:device_name],
-          os_version: params[:os_version],
-          bundle_id: params[:bundle_id],
-          fcm_token: params[:fcm_token]
+          locale: device_params[:locale],
+          app_version: device_params[:app_version],
+          device_name: device_params[:device_name],
+          os_version: device_params[:os_version],
+          bundle_id: device_params[:bundle_id],
+          fcm_token: device_params[:fcm_token],
+          apns_token: device_params[:apns_token]
         )
 
         render json: DeviceSerializer.new(device).as_json, status: :created
@@ -57,7 +62,8 @@ module Api
           token: token,
           platform: platform,
           bundle_id: params[:bundle_id],
-          fcm_token: params[:fcm_token]
+          fcm_token: params[:fcm_token],
+          apns_token: params[:apns_token]
         )
 
         render json: DeviceSerializer.new(device).as_json, status: :created

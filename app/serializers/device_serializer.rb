@@ -9,9 +9,14 @@ class DeviceSerializer
     {
       id: device.id,
       apns_token: device.apns_token,
+      fcm_token: device.fcm_token,
       platform: device.platform,
       bundle_id: device.bundle_id,
       device_name: device.device_name,
+      os_version: device.os_version,
+      app_version: device.app_version,
+      active: device.active,
+      last_seen_at: device.last_seen_at&.iso8601,
       user: {
         id: device.user.id,
         email: device.user.email

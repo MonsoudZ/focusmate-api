@@ -48,6 +48,9 @@ class Task < ApplicationRecord
   validates :note, length: { maximum: 1000 }
   validates :due_at, presence: true
   validates :strict_mode, inclusion: { in: [ true, false ] }
+  
+  # Set default values
+  after_initialize :set_defaults
   validates :notification_interval_minutes, numericality: { greater_than: 0 }
   validates :recurrence_pattern, inclusion: { in: %w[daily weekly monthly yearly] }, allow_nil: true
   validates :recurrence_interval, numericality: { greater_than: 0 }, allow_nil: true
@@ -361,6 +364,10 @@ class Task < ApplicationRecord
 
   # == Callback helpers
   private
+
+  def set_defaults
+    self.strict_mode ||= false
+  end
 
   def create_task_event(kind: nil, reason: nil, user: nil, occurred_at: nil, metadata: nil)
     task_events.create!(
