@@ -174,5 +174,7 @@ Rails.application.routes.draw do
   namespace :health do
     get :live
     get :ready
+    get :detailed
+    get :metrics
   end
 end

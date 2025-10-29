@@ -14,7 +14,18 @@ class ApplicationController < ActionController::API
   private
 
   def force_json_format
-    request.format = :json   # set unconditionally for API-only app
+    begin
+      request.format = :json   # set unconditionally for API-only app
+    rescue ActionView::Template::Error => e
+      # Handle malformed JSON in force_json_format
+      if e.message.include?("Error occurred while parsing request parameters")
+        log_error(e, severity: :warn)
+        render_bad_request("Invalid JSON format")
+        return false # Prevent further processing
+      else
+        raise e
+      end
+    end
   end
 
   def authenticate_user!
@@ -83,10 +94,21 @@ class ApplicationController < ActionController::API
 
   # Handle malformed JSON errors
   rescue_from ActionDispatch::Http::Parameters::ParseError do |exception|
+    log_error(exception, severity: :warn)
     if request.path.include?("/api/v1/notifications/") && (request.path.include?("mark_read") || request.path.include?("mark_all_read"))
       head :no_content
     else
-      render json: { error: { message: "Invalid JSON format" } }, status: :bad_request
+      render_bad_request("Invalid JSON format")
+    end
+  end
+
+  # Handle JSON parsing errors that occur before controller actions
+  rescue_from ActionView::Template::Error do |exception|
+    if exception.message.include?("Error occurred while parsing request parameters")
+      log_error(exception, severity: :warn)
+      render_bad_request("Invalid JSON format")
+    else
+      raise exception
     end
   end
 end

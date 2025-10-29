@@ -1,32 +1,275 @@
+# frozen_string_literal: true
+
 class NudgeJob
   include Sidekiq::Job
 
-  def perform(task_id, reason = nil)
-    task = Task.find(task_id)
-    list = task.list
-    members = list.memberships.includes(:user).map(&:user)
+  # Job configuration
+  sidekiq_options queue: :notifications, retry: 3, backtrace: true
 
-    members.each do |user|
-      user.devices.find_each do |device|
-        ApnsClient.new.push(
-          device_token: device.apns_token,
-          title: "Task updated",
-          body:  push_body(task, reason),
-          payload: { type: "task.nudge", task_id: task.id }
-        )
+  # Retry configuration
+  sidekiq_retry_in do |count, exception|
+    case exception
+    when ActiveRecord::RecordNotFound
+      0 # Don't retry if task doesn't exist
+    when ApnsClient::InvalidTokenError
+      0 # Don't retry for invalid tokens
+    when ApnsClient::RateLimitError
+      60 * (count + 1) # Exponential backoff for rate limits
+    else
+      30 * (count + 1) # Default exponential backoff
+    end
+  end
+
+  def perform(task_id, reason = nil, options = {})
+    start_time = Time.current
+    job_id = jid || SecureRandom.uuid
+    
+    Rails.logger.info "[NudgeJob] Starting job #{job_id} for task #{task_id}, reason: #{reason || 'none'}"
+
+    begin
+      # Validate inputs
+      validate_inputs(task_id, reason, options)
+
+      # Find and validate task
+      task = find_task(task_id)
+      return if task.nil? # Early return if task not found
+
+      # Get list and members
+      list = task.list
+      members = get_list_members(list)
+      
+      if members.empty?
+        Rails.logger.warn "[NudgeJob] No members found for list #{list.id}, skipping notifications"
+        return
       end
+
+      # Send notifications
+      notification_stats = send_notifications(task, members, reason, options)
+      
+      # Log completion
+      duration = ((Time.current - start_time) * 1000).round(2)
+      Rails.logger.info "[NudgeJob] Completed job #{job_id} in #{duration}ms. " \
+                        "Sent: #{notification_stats[:sent]}, " \
+                        "Failed: #{notification_stats[:failed]}, " \
+                        "Skipped: #{notification_stats[:skipped]}"
+
+    rescue => e
+      duration = ((Time.current - start_time) * 1000).round(2)
+      Rails.logger.error "[NudgeJob] Job #{job_id} failed after #{duration}ms: #{e.class}: #{e.message}"
+      Rails.logger.error "[NudgeJob] Backtrace: #{e.backtrace.first(5).join(', ')}"
+      
+      # Re-raise to trigger Sidekiq retry mechanism
+      raise e
     end
   end
 
   private
 
-  def push_body(task, reason)
+  def validate_inputs(task_id, reason, options)
+    unless task_id.present? && task_id.is_a?(Numeric)
+      raise ArgumentError, "Invalid task_id: #{task_id}"
+    end
+
+    if reason.present? && reason.length > 500
+      raise ArgumentError, "Reason too long: #{reason.length} characters (max 500)"
+    end
+
+    if options.is_a?(Hash) && options[:priority].present?
+      unless %w[low normal high].include?(options[:priority])
+        raise ArgumentError, "Invalid priority: #{options[:priority]}"
+      end
+    end
+  end
+
+  def find_task(task_id)
+    Task.find(task_id)
+  rescue ActiveRecord::RecordNotFound => e
+    Rails.logger.warn "[NudgeJob] Task #{task_id} not found: #{e.message}"
+    nil
+  end
+
+  def get_list_members(list)
+    return [] unless list.present?
+
+    # Get active members only
+    list.memberships
+        .includes(:user)
+        .joins(:user)
+        .where(users: { active: true })
+        .map(&:user)
+  rescue => e
+    Rails.logger.error "[NudgeJob] Failed to get list members: #{e.message}"
+    []
+  end
+
+  def send_notifications(task, members, reason, options)
+    stats = { sent: 0, failed: 0, skipped: 0 }
+    
+    # Prepare notification data
+    notification_data = prepare_notification_data(task, reason, options)
+    
+    members.each do |user|
+      begin
+        # Check if user should receive notifications
+        unless should_send_notification?(user, task, options)
+          stats[:skipped] += 1
+          next
+        end
+
+        # Get user's devices
+        devices = get_user_devices(user)
+        
+        if devices.empty?
+          Rails.logger.debug "[NudgeJob] No devices found for user #{user.id}"
+          stats[:skipped] += 1
+          next
+        end
+
+        # Send to each device
+        devices.each do |device|
+          send_to_device(device, notification_data, stats)
+        end
+
+      rescue => e
+        Rails.logger.error "[NudgeJob] Failed to process user #{user.id}: #{e.message}"
+        stats[:failed] += 1
+      end
+    end
+
+    stats
+  end
+
+  def prepare_notification_data(task, reason, options)
+    {
+      title: notification_title(task, reason),
+      body: push_body(task, reason),
+      payload: {
+        type: "task.nudge",
+        task_id: task.id,
+        list_id: task.list_id,
+        priority: options[:priority] || 'normal',
+        timestamp: Time.current.iso8601
+      }
+    }
+  end
+
+  def notification_title(task, reason)
     if task.done?
-      "Completed: #{task.title}"
+      "Task Completed"
     elsif reason.present?
-      "Reassigned: #{task.title} — #{reason}"
+      "Task Reassigned"
     else
-      "Due soon: #{task.title}"
+      "Task Reminder"
+    end
+  end
+
+  def push_body(task, reason)
+    # Truncate task title if too long
+    title = truncate_text(task.title, 50)
+    
+    if task.done?
+      "Completed: #{title}"
+    elsif reason.present?
+      reason_text = truncate_text(reason, 100)
+      "Reassigned: #{title} — #{reason_text}"
+    else
+      "Due soon: #{title}"
+    end
+  end
+
+  def should_send_notification?(user, task, options)
+    # Check if user has notifications enabled
+    return false unless user_notifications_enabled?(user)
+    
+    # Check if user is not the task creator (avoid self-notifications)
+    return false if options[:skip_creator] && task.creator_id == user.id
+    
+    # Check if user has access to the task
+    return false unless task.visible_to?(user)
+    
+    true
+  end
+
+  def user_notifications_enabled?(user)
+    # Check user preferences
+    return false if user.preferences&.dig('notifications', 'enabled') == false
+    
+    # Check if user is active
+    return false unless user.active?
+    
+    true
+  end
+
+  def get_user_devices(user)
+    user.devices
+        .where.not(apns_token: [nil, ''])
+        .where(active: true)
+        .find_each
+  rescue => e
+    Rails.logger.error "[NudgeJob] Failed to get devices for user #{user.id}: #{e.message}"
+    []
+  end
+
+  def send_to_device(device, notification_data, stats)
+    begin
+      ApnsClient.new.push(
+        device_token: device.apns_token,
+        title: notification_data[:title],
+        body: notification_data[:body],
+        payload: notification_data[:payload]
+      )
+      
+      stats[:sent] += 1
+      Rails.logger.debug "[NudgeJob] Sent notification to device #{device.id} for user #{device.user_id}"
+      
+    rescue ApnsClient::InvalidTokenError => e
+      Rails.logger.warn "[NudgeJob] Invalid token for device #{device.id}: #{e.message}"
+      # Mark device as inactive
+      device.update!(active: false)
+      stats[:failed] += 1
+      
+    rescue ApnsClient::RateLimitError => e
+      Rails.logger.warn "[NudgeJob] Rate limited for device #{device.id}: #{e.message}"
+      # Re-raise to trigger retry
+      raise e
+      
+    rescue ApnsClient::Error => e
+      Rails.logger.error "[NudgeJob] APNS error for device #{device.id}: #{e.message}"
+      stats[:failed] += 1
+      
+    rescue => e
+      Rails.logger.error "[NudgeJob] Unexpected error for device #{device.id}: #{e.message}"
+      stats[:failed] += 1
+    end
+  end
+
+  def truncate_text(text, max_length)
+    return text if text.length <= max_length
+    
+    text[0, max_length - 3] + "..."
+  end
+
+  # Class methods for job management
+  class << self
+    def enqueue_for_task(task_id, reason = nil, options = {})
+      perform_async(task_id, reason, options)
+    end
+
+    def enqueue_for_task_with_delay(task_id, reason = nil, delay_seconds = 0, options = {})
+      perform_in(delay_seconds, task_id, reason, options)
+    end
+
+    def enqueue_for_task_at(task_id, reason = nil, at_time = nil, options = {})
+      perform_at(at_time, task_id, reason, options)
+    end
+
+    def job_stats
+      {
+        processed: Sidekiq::Stats.new.processed,
+        failed: Sidekiq::Stats.new.failed,
+        enqueued: Sidekiq::Queue.new('notifications').size,
+        retry_set: Sidekiq::RetrySet.new.size
+      }
     end
   end
 end
