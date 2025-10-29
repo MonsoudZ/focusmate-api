@@ -52,7 +52,7 @@ module ErrorLoggingHelper
 
   def log_error(exception, severity: :error)
     error_data = build_error_data(exception, severity)
-    
+
     case severity
     when :error
       Rails.logger.error "API Error: #{error_data.to_json}"
@@ -86,7 +86,7 @@ module ErrorLoggingHelper
 
   def backtrace_for_logging(exception)
     return nil unless exception.backtrace
-    
+
     if Rails.env.development? || Rails.env.test?
       exception.backtrace.first(10) # Limit in development
     else
@@ -102,14 +102,14 @@ module ErrorLoggingHelper
       secret_key api_key access_token refresh_token
       credit_card cvv ssn social_security_number
     ]
-    
+
     # Deep sanitize nested parameters
     sanitize_nested_params(params.except(*sensitive_keys).to_unsafe_h)
   end
 
   def sanitize_nested_params(params_hash)
     return params_hash unless params_hash.is_a?(Hash)
-    
+
     params_hash.transform_values do |value|
       case value
       when Hash

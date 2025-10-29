@@ -8,161 +8,137 @@ module Api
 
       # iOS updates device tokens via PATCH /api/v1/users/device_token
       def update_device_token
-        begin
-          # Handle both parameter formats
-          token = params[:device_token] || params[:pushToken] || params[:push_token]
+        # Handle both parameter formats
+        token = params[:device_token] || params[:pushToken] || params[:push_token]
 
-          # Allow nil tokens for logout, but reject empty/whitespace tokens
-          if token.blank? && !params.key?(:device_token) && !params.key?(:pushToken) && !params.key?(:push_token)
-            return render json: { error: { message: "Device token is required" } }, status: :bad_request
-          end
+        # Allow nil tokens for logout, but reject empty/whitespace tokens
+        if token.blank? && !params.key?(:device_token) && !params.key?(:pushToken) && !params.key?(:push_token)
+          return render json: { error: { message: "Device token is required" } }, status: :bad_request
+        end
 
-          # Reject empty or whitespace-only tokens (but allow nil for logout)
-          if token && token.strip.blank?
-            return render json: { error: { message: "Device token is required" } }, status: :bad_request
-          end
+        # Reject empty or whitespace-only tokens (but allow nil for logout)
+        if token && token.strip.blank?
+          return render json: { error: { message: "Device token is required" } }, status: :bad_request
+        end
 
-          if current_user.update(device_token: token)
-            token_preview = token.present? ? "#{token[0..20]}..." : "nil (logout)"
-            Rails.logger.info "[DeviceToken] Updated for user ##{current_user.id}: #{token_preview}"
-            render json: {
-              message: "Device token updated successfully",
-              user_id: current_user.id
-            }, status: :ok
-          else
-            Rails.logger.error "Device token update failed: #{current_user.errors.full_messages}"
-            render json: {
-              error: { message: "Failed to update device token" },
-              details: current_user.errors.full_messages
-            }, status: :unprocessable_entity
-          end
-        rescue => e
-          Rails.logger.error "Device token update error: #{e.message}"
-          render json: { error: { message: "Failed to update device token" } },
-                 status: :internal_server_error
+        if current_user.update(device_token: token)
+          token_preview = token.present? ? "#{token[0..20]}..." : "nil (logout)"
+          Rails.logger.info "[DeviceToken] Updated for user ##{current_user.id}: #{token_preview}"
+          render json: {
+            message: "Device token updated successfully",
+            user_id: current_user.id
+          }, status: :ok
+        else
+          Rails.logger.error "Device token update failed: #{current_user.errors.full_messages}"
+          render json: {
+            error: { message: "Failed to update device token" },
+            details: current_user.errors.full_messages
+          }, status: :unprocessable_entity
         end
       end
 
       def update_location
-        begin
-          latitude = params[:latitude]
-          longitude = params[:longitude]
+        latitude = params[:latitude]
+        longitude = params[:longitude]
 
-          if latitude.blank? || longitude.blank?
-            return render json: { error: { message: "Latitude and longitude are required" } },
-                   status: :bad_request
-          end
+        if latitude.blank? || longitude.blank?
+          return render json: { error: { message: "Latitude and longitude are required" } },
+                 status: :bad_request
+        end
 
-          # Validate coordinate ranges
-          lat_f = latitude.to_f
-          lng_f = longitude.to_f
+        # Validate coordinate ranges
+        lat_f = latitude.to_f
+        lng_f = longitude.to_f
 
-          # Let model validation handle coordinate range validation to return 422
-          # Only do basic format validation here
+        # Let model validation handle coordinate range validation to return 422
+        # Only do basic format validation here
 
-          Rails.logger.info "Updating location for user #{current_user.id}: lat=#{lat_f}, lng=#{lng_f}"
+        Rails.logger.info "Updating location for user #{current_user.id}: lat=#{lat_f}, lng=#{lng_f}"
 
-          ActiveRecord::Base.transaction do
-            if current_user.update(
+        ActiveRecord::Base.transaction do
+          if current_user.update(
+            latitude: lat_f,
+            longitude: lng_f,
+            location_updated_at: Time.current
+          )
+            # Create UserLocation record for history tracking
+            current_user.user_locations.create!(
               latitude: lat_f,
               longitude: lng_f,
-              location_updated_at: Time.current
+              recorded_at: Time.current
             )
-              # Create UserLocation record for history tracking
-              current_user.user_locations.create!(
-                latitude: lat_f,
-                longitude: lng_f,
-                recorded_at: Time.current
-              )
 
-              current_user.reload
-              Rails.logger.info "Location updated successfully: lat=#{current_user.latitude}, lng=#{current_user.longitude}"
-              render json: {
-                message: "Location updated successfully",
-                latitude: current_user.latitude,
-                longitude: current_user.longitude
-              }, status: :ok
-            else
-              Rails.logger.error "Failed to update location: #{current_user.errors.full_messages}"
-              render json: {
-                error: { message: "Failed to update location" },
-                details: current_user.errors.full_messages
-              }, status: :unprocessable_entity
-            end
-          end
-        rescue ActiveRecord::RecordInvalid => e
-          Rails.logger.error "Location update validation failed: #{e.record.errors.full_messages}"
-          render json: {
-            error: { message: "Failed to update location" },
-            details: e.record.errors.full_messages
-          }, status: :unprocessable_entity
-        rescue => e
-          Rails.logger.error "Location update error: #{e.message}"
-          render json: { error: { message: "Failed to update location" } },
-                 status: :internal_server_error
-        end
-      end
-
-      def update_fcm_token
-        begin
-          token = params[:fcm_token] || params[:fcmToken]
-
-          # Allow nil/empty tokens for logout
-          if token.blank? && !params.key?(:fcm_token) && !params.key?(:fcmToken)
-            return render json: { error: { message: "FCM token is required" } }, status: :bad_request
-          end
-
-          if current_user.update(fcm_token: token)
-            token_preview = token.present? ? "#{token[0..20]}..." : "nil (logout)"
-            Rails.logger.info "[FCMToken] Updated for user ##{current_user.id}: #{token_preview}"
+            current_user.reload
+            Rails.logger.info "Location updated successfully: lat=#{current_user.latitude}, lng=#{current_user.longitude}"
             render json: {
-              message: "FCM token updated successfully",
-              user_id: current_user.id
+              message: "Location updated successfully",
+              latitude: current_user.latitude,
+              longitude: current_user.longitude
             }, status: :ok
           else
-            Rails.logger.error "FCM token update failed: #{current_user.errors.full_messages}"
+            Rails.logger.error "Failed to update location: #{current_user.errors.full_messages}"
             render json: {
-              error: { message: "Failed to update FCM token" },
+              error: { message: "Failed to update location" },
               details: current_user.errors.full_messages
             }, status: :unprocessable_entity
           end
-        rescue => e
-          Rails.logger.error "FCM token update error: #{e.message}"
-          render json: { error: { message: "Failed to update FCM token" } },
-                 status: :internal_server_error
+        end
+      rescue ActiveRecord::RecordInvalid => e
+        Rails.logger.error "Location update validation failed: #{e.record.errors.full_messages}"
+        render json: {
+          error: { message: "Failed to update location" },
+          details: e.record.errors.full_messages
+        }, status: :unprocessable_entity
+      end
+
+      def update_fcm_token
+        token = params[:fcm_token] || params[:fcmToken]
+
+        # Allow nil/empty tokens for logout
+        if token.blank? && !params.key?(:fcm_token) && !params.key?(:fcmToken)
+          return render json: { error: { message: "FCM token is required" } }, status: :bad_request
+        end
+
+        if current_user.update(fcm_token: token)
+          token_preview = token.present? ? "#{token[0..20]}..." : "nil (logout)"
+          Rails.logger.info "[FCMToken] Updated for user ##{current_user.id}: #{token_preview}"
+          render json: {
+            message: "FCM token updated successfully",
+            user_id: current_user.id
+          }, status: :ok
+        else
+          Rails.logger.error "FCM token update failed: #{current_user.errors.full_messages}"
+          render json: {
+            error: { message: "Failed to update FCM token" },
+            details: current_user.errors.full_messages
+          }, status: :unprocessable_entity
         end
       end
 
       def update_preferences
-        begin
-          preferences = params[:preferences] || {}
+        preferences = params[:preferences] || {}
 
-          # Validate preferences structure and content
-          unless preferences.is_a?(Hash) || preferences.is_a?(ActionController::Parameters)
-            return render json: {
-              error: { message: "Preferences must be a valid object" }
-            }, status: :bad_request
-          end
+        # Validate preferences structure and content
+        unless preferences.is_a?(Hash) || preferences.is_a?(ActionController::Parameters)
+          return render json: {
+            error: { message: "Preferences must be a valid object" }
+          }, status: :bad_request
+        end
 
-          # Sanitize preferences to prevent malicious data
-          sanitized_preferences = sanitize_preferences(preferences)
+        # Sanitize preferences to prevent malicious data
+        sanitized_preferences = sanitize_preferences(preferences)
 
-          if current_user.update(preferences: sanitized_preferences)
-            render json: {
-              message: "Preferences updated successfully",
-              preferences: current_user.preferences
-            }, status: :ok
-          else
-            Rails.logger.error "Preferences update failed: #{current_user.errors.full_messages}"
-            render json: {
-              error: { message: "Failed to update preferences" },
-              details: current_user.errors.full_messages
-            }, status: :unprocessable_entity
-          end
-        rescue => e
-          Rails.logger.error "Preferences update error: #{e.message}"
-          render json: { error: { message: "Failed to update preferences" } },
-                 status: :internal_server_error
+        if current_user.update(preferences: sanitized_preferences)
+          render json: {
+            message: "Preferences updated successfully",
+            preferences: current_user.preferences
+          }, status: :ok
+        else
+          Rails.logger.error "Preferences update failed: #{current_user.errors.full_messages}"
+          render json: {
+            error: { message: "Failed to update preferences" },
+            details: current_user.errors.full_messages
+          }, status: :unprocessable_entity
         end
       end
 

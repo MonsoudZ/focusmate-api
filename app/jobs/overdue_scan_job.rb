@@ -49,9 +49,9 @@ class OverdueScanJob
       next if ids.empty?
 
       Sidekiq::Client.push_bulk(
-        'class' => NudgeJob,
-        'args'  => ids.map { |id| [id, nil, { priority: 'high', skip_creator: true }] },
-        'queue' => :notifications
+        "class" => NudgeJob,
+        "args"  => ids.map { |id| [ id, nil, { priority: "high", skip_creator: true } ] },
+        "queue" => :notifications
       )
 
       total += ids.length

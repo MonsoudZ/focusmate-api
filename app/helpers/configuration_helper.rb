@@ -50,7 +50,7 @@ module ConfigurationHelper
   # Validate configuration on startup
   def self.validate_configuration!
     errors = []
-    
+
     # Validate required configurations
     required_configs = [
       "database.default_page_size",
@@ -81,7 +81,7 @@ module ConfigurationHelper
     # Validate page sizes
     default_page_size = get("database.default_page_size", 0, type: :integer, validate: false)
     max_page_size = get("database.max_page_size", 0, type: :integer, validate: false)
-    
+
     if default_page_size > max_page_size
       errors << "Invalid page size configuration: default_page_size (#{default_page_size}) cannot be greater than max_page_size (#{max_page_size})"
     end
@@ -89,7 +89,7 @@ module ConfigurationHelper
     # Validate location radius
     default_radius = get("location.default_radius_meters", 0, type: :integer, validate: false)
     max_radius = get("location.max_radius_meters", 0, type: :integer, validate: false)
-    
+
     if default_radius > max_radius
       errors << "Invalid location radius configuration: default_radius (#{default_radius}) cannot be greater than max_radius (#{max_radius})"
     end
@@ -108,12 +108,12 @@ module ConfigurationHelper
 
   def self.load_configuration
     config_file = Rails.root.join("config", "application.yml")
-    
+
     if File.exist?(config_file)
       begin
         yaml_content = YAML.load_file(config_file, aliases: true)
         config = yaml_content[Rails.env] || yaml_content["default"] || {}
-        
+
         Rails.logger.info "Configuration loaded from #{config_file} for environment: #{Rails.env}"
         config
       rescue Psych::SyntaxError => e
@@ -140,7 +140,7 @@ module ConfigurationHelper
         raise ValidationError, "Configuration #{key_path} must be a string (got #{value.class}: #{value})"
       end
     when :boolean
-      unless [true, false, "true", "false", 1, 0].include?(value)
+      unless [ true, false, "true", "false", 1, 0 ].include?(value)
         raise ValidationError, "Configuration #{key_path} must be a boolean (got #{value.class}: #{value})"
       end
     when :array
@@ -161,7 +161,7 @@ module ConfigurationHelper
     when :boolean
       %w[true 1 yes on].include?(value.downcase)
     when :array
-      value.split(',').map(&:strip)
+      value.split(",").map(&:strip)
     when :hash
       JSON.parse(value) rescue value
     else
@@ -189,12 +189,12 @@ module ConfigurationHelper
   # Performance grades
   def self.performance_grade(completion_rate)
     grades = get("performance.grades", {}, type: :hash)
-    
+
     # Validate completion rate
     unless completion_rate.is_a?(Numeric) && completion_rate >= 0 && completion_rate <= 1
       raise ValidationError, "Completion rate must be a number between 0 and 1 (got #{completion_rate})"
     end
-    
+
     case completion_rate
     when grades["a"] then "A"
     when grades["b"] then "B"

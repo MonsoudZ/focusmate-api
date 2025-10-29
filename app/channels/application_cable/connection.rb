@@ -29,7 +29,7 @@ module ApplicationCable
         return if payload.nil?
 
         user_id = payload["user_id"]
-        
+
         if user_id.blank?
           log_connection_rejected("Invalid token: missing user_id")
           reject_unauthorized_connection
@@ -51,7 +51,7 @@ module ApplicationCable
         end
 
         user = User.find(user_id)
-        
+
         # Additional user validation
         unless user_active?(user)
           log_connection_rejected("User account inactive")
@@ -76,20 +76,20 @@ module ApplicationCable
 
     def extract_token
       # Try multiple token sources for flexibility
-      token = request.params["token"] || 
+      token = request.params["token"] ||
               request.headers["Authorization"]&.split&.last ||
               request.headers["X-Auth-Token"] ||
               request.headers["X-API-Token"]
 
       # Clean up token (remove Bearer prefix if present)
-      token&.gsub(/^Bearer\s+/i, '')
+      token&.gsub(/^Bearer\s+/i, "")
     end
 
     def decode_jwt_token(token)
       JWT.decode(
-        token, 
-        Rails.application.credentials.secret_key_base, 
-        true, 
+        token,
+        Rails.application.credentials.secret_key_base,
+        true,
         { algorithm: "HS256" }
       ).first
     rescue JWT::ExpiredSignature
@@ -114,14 +114,14 @@ module ApplicationCable
 
     def token_expired?(payload)
       return false unless payload["exp"]
-      
+
       payload["exp"] < Time.current.to_i
     end
 
     def token_blacklisted?(token)
       # Check if token is in the JWT denylist
       return false unless defined?(JwtDenylist)
-      
+
       JwtDenylist.exists?(jti: extract_jti_from_token(token))
     end
 

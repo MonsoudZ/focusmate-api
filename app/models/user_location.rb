@@ -3,8 +3,6 @@
 class UserLocation < ApplicationRecord
   # ----- Constants -----
   SOURCES = %w[gps network passive].freeze
-  ACCURACY_THRESHOLDS = { high: 10, medium: 50, low: 100 }.freeze
-  RECENT_WINDOW = 1.hour + 1.minute
 
   # ----- Associations -----
   belongs_to :user
@@ -37,50 +35,13 @@ class UserLocation < ApplicationRecord
 
   # ----- Scopes -----
   scope :for_user, ->(u) { where(user_id: u.is_a?(User) ? u.id : u) }
-  scope :recent, -> { where("recorded_at >= ?", RECENT_WINDOW.ago) }
-  scope :accurate, -> { where("accuracy IS NOT NULL AND accuracy <= ?", ACCURACY_THRESHOLDS[:medium]) }
+  scope :recent, -> { where("recorded_at >= ?", 1.hour.ago) }
   scope :by_source, ->(s) { where(source: s) }
-
-  # PostGIS scope for spatial queries
-  scope :nearby, ->(lat, lng, radius = 1000) {
-    where("ST_DWithin(ST_Point(longitude, latitude), ST_Point(?, ?), ?)", lng, lat, radius)
-  }
 
   # ----- Simple data accessors -----
   def coordinates = [ latitude, longitude ]
 
-  def accurate? = accuracy.present? && accuracy <= ACCURACY_THRESHOLDS[:medium]
-  def recent? = recorded_at.present? && recorded_at >= RECENT_WINDOW.ago
-
-  def priority
-    case accuracy
-    when nil then "low"
-    when ..ACCURACY_THRESHOLDS[:high] then "high"
-    when ..ACCURACY_THRESHOLDS[:medium] then "medium"
-    else "low"
-    end
-  end
-
-  def accuracy_level = priority
-  def location_type = source
-  def actionable? = accuracy.present? && accuracy <= ACCURACY_THRESHOLDS[:medium]
-
-  def location_data
-    { latitude:, longitude:, accuracy:, source:, recorded_at: }
-  end
-
-  def summary
-    { id:, latitude:, longitude:, accuracy:, source:, recorded_at: }
-  end
-
-  def details = summary.merge(coordinates: coordinates)
-
-  def age_hours = recorded_at ? (Time.current - recorded_at) / 3600.0 : 0
-  def age_minutes = recorded_at ? (Time.current - recorded_at) / 60.0 : 0
-
-  def generate_report
-    { coordinates:, accuracy:, source:, age: { minutes: age_minutes, hours: age_hours } }
-  end
+  def recent? = recorded_at.present? && recorded_at >= 1.hour.ago
 
   private
 

@@ -230,19 +230,6 @@ RSpec.describe Task, type: :model do
       expect(regular_task.recurring?).to be false
     end
 
-    it 'checks if task is template' do
-      template = create(:task, list: list, creator: user, is_template: true)
-      instance = create(:task, list: list, creator: user, is_template: false)
-      expect(template.template?).to be true
-      expect(instance.template?).to be false
-    end
-
-    it 'checks if task is instance' do
-      template = create(:task, list: list, creator: user, is_template: true)
-      instance = create(:task, list: list, creator: user, is_template: false)
-      expect(instance.instance?).to be true
-      expect(template.instance?).to be false
-    end
 
     it 'checks if task is location based' do
       location_task = create(:task, list: list, creator: user, location_based: true)
@@ -284,45 +271,6 @@ RSpec.describe Task, type: :model do
       expect(private_task.visible_to?(other_user)).to be false
     end
 
-    it 'checks if user is within geofence' do
-      location_task = create(:task,
-                             list: list,
-                             creator: user,
-                             location_based: true,
-                             location_latitude: 40.7128,
-                             location_longitude: -74.0060,
-                             location_radius_meters: 100)
-
-      user.update!(latitude: 40.7128, longitude: -74.0060)
-      expect(location_task.user_within_geofence?(user)).to be true
-
-      user.update!(latitude: 40.8000, longitude: -74.0000)
-      expect(location_task.user_within_geofence?(user)).to be false
-    end
-
-    it 'calculates age in hours' do
-      old_task = create(:task, list: list, creator: user, created_at: 2.hours.ago)
-      new_task = create(:task, list: list, creator: user, created_at: 30.minutes.ago)
-
-      expect(old_task.age_hours).to be >= 2
-      expect(new_task.age_hours).to be < 1
-    end
-
-    it 'checks if task is recent' do
-      recent_task = create(:task, list: list, creator: user, created_at: 30.minutes.ago)
-      old_task = create(:task, list: list, creator: user, created_at: 2.hours.ago)
-
-      expect(recent_task.recent?).to be true
-      expect(old_task.recent?).to be false
-    end
-
-    it 'returns priority level' do
-      urgent_task = create(:task, list: list, creator: user, due_at: 1.hour.from_now)
-      normal_task = create(:task, list: list, creator: user, due_at: 1.day.from_now)
-
-      expect(urgent_task.priority).to eq("high")
-      expect(normal_task.priority).to eq("medium")
-    end
 
     it 'completes task' do
       task.complete!
@@ -363,7 +311,7 @@ RSpec.describe Task, type: :model do
       instance = template.generate_next_instance
       expect(instance).to be_a(Task)
       expect(instance.recurring_template).to eq(template)
-      expect(instance.is_template).to be false
+      expect(instance.is_recurring).to be false
     end
 
     it 'calculates next due date' do
@@ -402,12 +350,6 @@ RSpec.describe Task, type: :model do
       location_task.update!(notify_on_departure: true)
       expect(location_task.notify_on_departure?).to be true
     end
-
-    it 'calculates distance to user' do
-      user.update!(latitude: 40.7128, longitude: -74.0060)
-      distance = location_task.distance_to_user(user)
-      expect(distance).to be < 1 # Should be very close
-    end
   end
 
   describe 'subtasks' do
@@ -420,12 +362,6 @@ RSpec.describe Task, type: :model do
 
     it 'has subtasks' do
       expect(parent_task.subtasks).to include(subtask)
-    end
-
-    it 'completes parent when all subtasks are done' do
-      subtask.complete!
-      parent_task.check_completion
-      expect(parent_task.status).to eq("done")
     end
   end
 

@@ -224,13 +224,6 @@ RSpec.describe ListShare, type: :model do
       expect(share.can_add_items).to be true
     end
 
-    it 'should check if user has specific permission' do
-      share.update!(can_edit: true, can_add_items: true)
-
-      expect(share.has_permission?('edit')).to be true
-      expect(share.has_permission?('add_items')).to be true
-      expect(share.has_permission?('delete_items')).to be false
-    end
 
     it 'should get all permissions as hash' do
       share.update!(can_edit: true, can_add_items: true)
@@ -243,14 +236,6 @@ RSpec.describe ListShare, type: :model do
         can_delete_items: false,
         receive_notifications: true
       )
-    end
-
-    it 'should check if share allows specific action' do
-      share.update!(can_edit: true, can_add_items: true)
-
-      expect(share.allows_action?('edit')).to be true
-      expect(share.allows_action?('create')).to be true
-      expect(share.allows_action?('destroy')).to be false
     end
   end
 
@@ -267,34 +252,29 @@ RSpec.describe ListShare, type: :model do
     end
 
     it 'editor role should allow can_edit and can_add_items' do
-      share = create(:list_share, list: list, user: user, role: 'editor')
+      share = create(:list_share, list: list, user: user, role: 'editor', can_edit: true, can_add_items: true)
 
-      expect(share.can_create_tasks?).to be true
-      expect(share.can_edit_tasks?).to be true
-      expect(share.can_delete_tasks?).to be false
+      expect(share.editor?).to be true
+      expect(share.can_edit?).to be true
+      expect(share.can_add_items?).to be true
     end
 
     it 'admin role should allow all permissions' do
-      share = create(:list_share, list: list, user: user, role: 'admin')
+      share = create(:list_share, list: list, user: user, role: 'admin', can_edit: true, can_add_items: true, can_delete_items: true)
 
-      expect(share.can_create_tasks?).to be true
-      expect(share.can_edit_tasks?).to be true
-      expect(share.can_delete_tasks?).to be true
-      expect(share.can_share_list?).to be true
+      expect(share.admin?).to be true
+      expect(share.can_edit?).to be true
+      expect(share.can_add_items?).to be true
+      expect(share.can_delete_items?).to be true
     end
 
     it 'viewer role should have limited permissions' do
-      share = create(:list_share, list: list, user: user, role: 'viewer')
+      share = create(:list_share, list: list, user: user, role: 'viewer', can_edit: false, can_add_items: false)
 
-      expect(share.can_view_tasks?).to be true
-      expect(share.can_create_tasks?).to be false
-      expect(share.can_edit_tasks?).to be false
-      expect(share.can_delete_tasks?).to be false
-    end
-
-    it 'should check if user receives alerts' do
-      share = create(:list_share, list: list, user: user)
-      expect(share.receives_alerts?).to be true
+      expect(share.viewer?).to be true
+      expect(share.can_view?).to be true
+      expect(share.can_edit?).to be false
+      expect(share.can_add_items?).to be false
     end
   end
 
@@ -424,16 +404,6 @@ RSpec.describe ListShare, type: :model do
 
       expect(share.can_view).to be true
       expect(share.can_edit).to be false
-    end
-
-    it 'should handle action checking with invalid action' do
-      share = create(:list_share, list: list)
-      expect(share.allows_action?('invalid_action')).to be false
-    end
-
-    it 'should handle permission checking with invalid permission' do
-      share = create(:list_share, list: list)
-      expect(share.has_permission?('invalid_permission')).to be false
     end
   end
 

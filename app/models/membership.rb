@@ -1,7 +1,7 @@
 class Membership < ApplicationRecord
   belongs_to :list
   belongs_to :user
-  belongs_to :coaching_relationship, optional: true  # NEW
+  belongs_to :coaching_relationship, optional: true
 
   validates :role, presence: true, inclusion: { in: %w[editor viewer] }
   validates :user_id, uniqueness: { scope: :list_id, message: "is already a member of this list" }
@@ -19,7 +19,7 @@ class Membership < ApplicationRecord
     role == "editor"
   end
 
-  # NEW: Determine if this is a coach membership
+  # Determine if this is a coach membership
   def coach_membership?
     coaching_relationship_id.present?
   end
@@ -32,41 +32,5 @@ class Membership < ApplicationRecord
   # Check if this membership can add items
   def can_add_items?
     can_add_items
-  end
-
-  # Missing attributes that tests expect
-  def can_edit
-    role == "editor"
-  end
-
-  def can_edit=(value)
-    # This is a setter for test compatibility
-    # In a real implementation, this would update the role
-  end
-
-  def receive_notifications
-    true  # Default to receiving notifications
-  end
-
-  def receive_notifications=(value)
-    # This is a setter for test compatibility
-    # In a real implementation, this would be stored in the database
-  end
-
-  def can_delete_items
-    role == "editor" || role == "owner"
-  end
-
-  def can_delete_items=(value)
-    # This is a setter for test compatibility
-    # In a real implementation, this would update the role
-  end
-
-  def can_delete_items?
-    can_delete_items
-  end
-
-  def receive_notifications?
-    receive_notifications
   end
 end

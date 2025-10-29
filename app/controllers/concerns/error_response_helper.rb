@@ -22,17 +22,17 @@ module ErrorResponseHelper
   def render_validation_errors(errors, status = :unprocessable_entity)
     error_details = if errors.is_a?(ActiveModel::Errors)
                       errors.as_json
-                    elsif errors.respond_to?(:to_hash)
+    elsif errors.respond_to?(:to_hash)
                       errors.to_hash
-                    else
+    else
                       errors
-                    end
+    end
 
-    render json: { 
-      error: { 
-        message: "Validation failed", 
-        details: error_details 
-      } 
+    render json: {
+      error: {
+        message: "Validation failed",
+        details: error_details
+      }
     }, status: status
   end
 
@@ -71,7 +71,7 @@ module ErrorResponseHelper
       error_response[:error][:details] = {
         limit: limit,
         reset_at: Time.at(reset_time).iso8601,
-        retry_after: [(reset_time - Time.current.to_i).to_i, 0].max
+        retry_after: [ (reset_time - Time.current.to_i).to_i, 0 ].max
       }
     end
 
@@ -262,7 +262,7 @@ module ErrorResponseHelper
   # Helper method to validate error details
   def validate_error_details(details)
     return nil if details.nil?
-    
+
     case details
     when Hash, Array, String, Numeric, TrueClass, FalseClass, NilClass
       details

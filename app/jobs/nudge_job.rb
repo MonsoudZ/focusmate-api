@@ -23,7 +23,7 @@ class NudgeJob
   def perform(task_id, reason = nil, options = {})
     start_time = Time.current
     job_id = jid || SecureRandom.uuid
-    
+
     Rails.logger.info "[NudgeJob] Starting job #{job_id} for task #{task_id}, reason: #{reason || 'none'}"
 
     begin
@@ -37,7 +37,7 @@ class NudgeJob
       # Get list and members
       list = task.list
       members = get_list_members(list)
-      
+
       if members.empty?
         Rails.logger.warn "[NudgeJob] No members found for list #{list.id}, skipping notifications"
         return
@@ -45,7 +45,7 @@ class NudgeJob
 
       # Send notifications
       notification_stats = send_notifications(task, members, reason, options)
-      
+
       # Log completion
       duration = ((Time.current - start_time) * 1000).round(2)
       Rails.logger.info "[NudgeJob] Completed job #{job_id} in #{duration}ms. " \
@@ -57,7 +57,7 @@ class NudgeJob
       duration = ((Time.current - start_time) * 1000).round(2)
       Rails.logger.error "[NudgeJob] Job #{job_id} failed after #{duration}ms: #{e.class}: #{e.message}"
       Rails.logger.error "[NudgeJob] Backtrace: #{e.backtrace.first(5).join(', ')}"
-      
+
       # Re-raise to trigger Sidekiq retry mechanism
       raise e
     end
@@ -104,10 +104,10 @@ class NudgeJob
 
   def send_notifications(task, members, reason, options)
     stats = { sent: 0, failed: 0, skipped: 0 }
-    
+
     # Prepare notification data
     notification_data = prepare_notification_data(task, reason, options)
-    
+
     members.each do |user|
       begin
         # Check if user should receive notifications
@@ -118,7 +118,7 @@ class NudgeJob
 
         # Get user's devices
         devices = get_user_devices(user)
-        
+
         if devices.empty?
           Rails.logger.debug "[NudgeJob] No devices found for user #{user.id}"
           stats[:skipped] += 1
@@ -147,7 +147,7 @@ class NudgeJob
         type: "task.nudge",
         task_id: task.id,
         list_id: task.list_id,
-        priority: options[:priority] || 'normal',
+        priority: options[:priority] || "normal",
         timestamp: Time.current.iso8601
       }
     }
@@ -166,7 +166,7 @@ class NudgeJob
   def push_body(task, reason)
     # Truncate task title if too long
     title = truncate_text(task.title, 50)
-    
+
     if task.done?
       "Completed: #{title}"
     elsif reason.present?
@@ -180,29 +180,29 @@ class NudgeJob
   def should_send_notification?(user, task, options)
     # Check if user has notifications enabled
     return false unless user_notifications_enabled?(user)
-    
+
     # Check if user is not the task creator (avoid self-notifications)
     return false if options[:skip_creator] && task.creator_id == user.id
-    
+
     # Check if user has access to the task
     return false unless task.visible_to?(user)
-    
+
     true
   end
 
   def user_notifications_enabled?(user)
     # Check user preferences
-    return false if user.preferences&.dig('notifications', 'enabled') == false
-    
+    return false if user.preferences&.dig("notifications", "enabled") == false
+
     # Check if user is active
     return false unless user.active?
-    
+
     true
   end
 
   def get_user_devices(user)
     user.devices
-        .where.not(apns_token: [nil, ''])
+        .where.not(apns_token: [ nil, "" ])
         .where(active: true)
         .find_each
   rescue => e
@@ -218,25 +218,25 @@ class NudgeJob
         body: notification_data[:body],
         payload: notification_data[:payload]
       )
-      
+
       stats[:sent] += 1
       Rails.logger.debug "[NudgeJob] Sent notification to device #{device.id} for user #{device.user_id}"
-      
+
     rescue ApnsClient::InvalidTokenError => e
       Rails.logger.warn "[NudgeJob] Invalid token for device #{device.id}: #{e.message}"
       # Mark device as inactive
       device.update!(active: false)
       stats[:failed] += 1
-      
+
     rescue ApnsClient::RateLimitError => e
       Rails.logger.warn "[NudgeJob] Rate limited for device #{device.id}: #{e.message}"
       # Re-raise to trigger retry
       raise e
-      
+
     rescue ApnsClient::Error => e
       Rails.logger.error "[NudgeJob] APNS error for device #{device.id}: #{e.message}"
       stats[:failed] += 1
-      
+
     rescue => e
       Rails.logger.error "[NudgeJob] Unexpected error for device #{device.id}: #{e.message}"
       stats[:failed] += 1
@@ -245,7 +245,7 @@ class NudgeJob
 
   def truncate_text(text, max_length)
     return text if text.length <= max_length
-    
+
     text[0, max_length - 3] + "..."
   end
 
@@ -267,7 +267,7 @@ class NudgeJob
       {
         processed: Sidekiq::Stats.new.processed,
         failed: Sidekiq::Stats.new.failed,
-        enqueued: Sidekiq::Queue.new('notifications').size,
+        enqueued: Sidekiq::Queue.new("notifications").size,
         retry_set: Sidekiq::RetrySet.new.size
       }
     end

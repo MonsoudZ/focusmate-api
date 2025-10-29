@@ -11,89 +11,71 @@ module Api
       #   before: cursor string "YYYY-MM-DD:ID" for keyset pagination
       #   date_from, date_to: ISO dates to bound the window (inclusive)
       def index
-        begin
-          limit  = [ [ params[:limit].to_i, 1 ].max, 100 ].min
-          before = params[:before].to_s.presence
-          df     = parse_date(params[:date_from])
-          dt     = parse_date(params[:date_to])
+        limit  = [ [ params[:limit].to_i, 1 ].max, 100 ].min
+        before = params[:before].to_s.presence
+        df     = parse_date(params[:date_from])
+        dt     = parse_date(params[:date_to])
 
-          scope = @relationship.daily_summaries
-                               .includes(:relationship) # preloads minimal assoc if serializer needs it
-                               .order(summary_date: :desc, id: :desc)
+        scope = @relationship.daily_summaries
+                             .includes(:relationship) # preloads minimal assoc if serializer needs it
+                             .order(summary_date: :desc, id: :desc)
 
-          scope = scope.where(summary_date: df..Date::Infinity.new) if df
-          scope = scope.where(summary_date: Date.new(0)..dt)        if dt
+        scope = scope.where(summary_date: df..Date::Infinity.new) if df
+        scope = scope.where(summary_date: Date.new(0)..dt)        if dt
 
-          if before
-            bd, bid = decode_cursor(before)
-            if bd && bid
-              # keyset: (date,id) <
-              scope = scope.where(
-                scope.sanitize_sql_array(
-                  "(summary_date < ? OR (summary_date = ? AND id < ?))", bd, bd, bid
-                )
+        if before
+          bd, bid = decode_cursor(before)
+          if bd && bid
+            # keyset: (date,id) <
+            scope = scope.where(
+              scope.sanitize_sql_array(
+                "(summary_date < ? OR (summary_date = ? AND id < ?))", bd, bd, bid
               )
-            end
+            )
           end
-
-          rows = scope.limit(limit + 1).to_a # overfetch to decide next_cursor
-          next_cursor = nil
-          if rows.length > limit
-            tail = rows[limit - 1]
-            next_cursor = encode_cursor(tail.summary_date, tail.id)
-            rows = rows.first(limit)
-          end
-
-          # Optional caching hint (weak)
-          response.set_header("Cache-Control", "private, max-age=60")
-
-          # Return array format for backward compatibility with tests
-          render json: rows.map { |s| DailySummarySerializer.new(s).as_json }, status: :ok
-        rescue => e
-          Rails.logger.error "DailySummariesController#index error: #{e.message}"
-          render json: { error: { message: "Failed to retrieve daily summaries" } },
-                 status: :internal_server_error
         end
+
+        rows = scope.limit(limit + 1).to_a # overfetch to decide next_cursor
+        next_cursor = nil
+        if rows.length > limit
+          tail = rows[limit - 1]
+          next_cursor = encode_cursor(tail.summary_date, tail.id)
+          rows = rows.first(limit)
+        end
+
+        # Optional caching hint (weak)
+        response.set_header("Cache-Control", "private, max-age=60")
+
+        # Return array format for backward compatibility with tests
+        render json: rows.map { |s| DailySummarySerializer.new(s).as_json }, status: :ok
       end
 
       # GET /api/v1/coaching_relationships/:coaching_relationship_id/daily_summaries/:id
       def show
-        begin
-          s = @relationship.daily_summaries.find(params[:id])
+        s = @relationship.daily_summaries.find(params[:id])
 
-          # ETag/conditional GET
-          fresh_when(etag: [ s.id, s.updated_at.to_i ], last_modified: s.updated_at, public: false)
+        # ETag/conditional GET
+        fresh_when(etag: [ s.id, s.updated_at.to_i ], last_modified: s.updated_at, public: false)
 
-          render json: DailySummarySerializer.new(s, detailed: true).as_json, status: :ok
-        rescue ActiveRecord::RecordNotFound => e
-          Rails.logger.warn "Daily summary not found: #{params[:id]}"
-          render json: { error: { message: "Daily summary not found" } },
-                 status: :not_found
-        rescue => e
-          Rails.logger.error "DailySummariesController#show error: #{e.message}"
-          render json: { error: { message: "Failed to retrieve daily summary" } },
-                 status: :internal_server_error
-        end
+        render json: DailySummarySerializer.new(s, detailed: true).as_json, status: :ok
+      rescue ActiveRecord::RecordNotFound => e
+        Rails.logger.warn "Daily summary not found: #{params[:id]}"
+        render json: { error: { message: "Daily summary not found" } },
+               status: :not_found
       end
 
       private
 
       def set_relationship
-        begin
-          @relationship = CoachingRelationship.find(params[:coaching_relationship_id])
-          unless participant?(@relationship, current_user)
-            render json: { error: { message: "Unauthorized" } }, status: :forbidden
-            nil
-          end
-        rescue ActiveRecord::RecordNotFound => e
-          Rails.logger.warn "Coaching relationship not found: #{params[:coaching_relationship_id]}"
-          render json: { error: { message: "Coaching relationship not found" } },
-                 status: :not_found
-        rescue => e
-          Rails.logger.error "Error finding coaching relationship: #{e.message}"
-          render json: { error: { message: "Failed to retrieve coaching relationship" } },
-                 status: :internal_server_error
+        @relationship = CoachingRelationship.find(params[:coaching_relationship_id])
+        unless participant?(@relationship, current_user)
+          render json: { error: { message: "Unauthorized" } }, status: :forbidden
+          nil
         end
+      rescue ActiveRecord::RecordNotFound => e
+        Rails.logger.warn "Coaching relationship not found: #{params[:coaching_relationship_id]}"
+        render json: { error: { message: "Coaching relationship not found" } },
+               status: :not_found
       end
 
       def participant?(rel, user)

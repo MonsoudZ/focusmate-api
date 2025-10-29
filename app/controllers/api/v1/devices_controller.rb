@@ -10,7 +10,6 @@ module Api
 
       # GET /api/v1/devices
       def index
-        begin
           devices = build_devices_query
 
           # Check if pagination is requested
@@ -35,27 +34,15 @@ module Api
             # Return simple array for backward compatibility
             render json: devices.map { |device| DeviceSerializer.new(device).as_json }
           end
-        rescue => e
-          Rails.logger.error "DevicesController#index error: #{e.message}"
-          render json: { error: { message: "Failed to retrieve devices" } },
-                 status: :internal_server_error
-        end
       end
 
       # GET /api/v1/devices/:id
       def show
-        begin
           render json: DeviceSerializer.new(@device).as_json
-        rescue => e
-          Rails.logger.error "DevicesController#show error: #{e.message}"
-          render json: { error: { message: "Failed to retrieve device" } },
-                 status: :internal_server_error
-        end
       end
 
       # POST /api/v1/devices
       def create
-        begin
           service = DeviceManagementService.new(user: current_user)
 
           # Handle nested parameters
@@ -88,16 +75,10 @@ module Api
           Rails.logger.error "Device creation validation failed: #{e.record.errors.full_messages}"
           render json: { error: { message: "Validation failed", details: e.record.errors.full_messages } },
                  status: :unprocessable_entity
-        rescue => e
-          Rails.logger.error "Device creation failed: #{e.message}"
-          render json: { error: { message: "Failed to create device" } },
-                 status: :internal_server_error
-        end
       end
 
       # POST /api/v1/devices/register (legacy endpoint)
       def register
-        begin
           service = DeviceManagementService.new(user: current_user)
 
           token = params[:apns_token] || "dev_token_#{SecureRandom.hex(16)}"
@@ -116,16 +97,10 @@ module Api
           Rails.logger.error "Device registration validation failed: #{e.record.errors.full_messages}"
           render json: { error: { message: "Validation failed", details: e.record.errors.full_messages } },
                  status: :unprocessable_entity
-        rescue => e
-          Rails.logger.error "Device registration failed: #{e.message}"
-          render json: { error: { message: "Failed to register device" } },
-                 status: :internal_server_error
-        end
       end
 
       # PATCH/PUT /api/v1/devices/:id
       def update
-        begin
           service = DeviceManagementService.new(user: current_user)
 
           device = service.update_device(
@@ -138,28 +113,16 @@ module Api
           Rails.logger.error "Device update validation failed: #{e.record.errors.full_messages}"
           render json: { error: { message: "Validation failed", details: e.record.errors.full_messages } },
                  status: :unprocessable_entity
-        rescue => e
-          Rails.logger.error "Device update failed: #{e.message}"
-          render json: { error: { message: "Failed to update device" } },
-                 status: :internal_server_error
-        end
       end
 
       # DELETE /api/v1/devices/:id
       def destroy
-        begin
           @device.destroy
           head :no_content
-        rescue => e
-          Rails.logger.error "Device deletion failed: #{e.message}"
-          render json: { error: { message: "Failed to delete device" } },
-                 status: :internal_server_error
-        end
       end
 
       # POST /api/v1/devices/test_push
       def test_push
-        begin
           device = current_user.devices.find(params[:device_id])
           service = DeviceManagementService.new(user: current_user)
 
@@ -172,12 +135,8 @@ module Api
           end
         rescue ActiveRecord::RecordNotFound
           render json: { error: { message: "Resource not found" } }, status: :not_found
-        rescue => e
-          Rails.logger.error "Test push failed: #{e.message}"
-          render json: { error: { message: "Failed to send test push" } },
-                 status: :internal_server_error
-        end
       end
+    end
 
       private
 
@@ -304,6 +263,5 @@ module Api
           nil
         end
       end
-    end
   end
 end

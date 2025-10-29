@@ -1,9 +1,7 @@
 class SavedLocation < ApplicationRecord
   belongs_to :user
 
-  # --------------------
   # Validations
-  # --------------------
   validates :name, presence: true, length: { maximum: 255 }
   validates :latitude,
             presence: true,
@@ -16,9 +14,7 @@ class SavedLocation < ApplicationRecord
             numericality: { greater_than: 0, less_than_or_equal_to: 10_000 }
   validates :address, length: { maximum: 500 }, allow_nil: true
 
-  # --------------------
-  # Soft delete
-  # --------------------
+  # Soft deletion
   default_scope { where(deleted_at: nil) }
   scope :with_deleted, -> { unscope(where: :deleted_at) }
   scope :only_deleted, -> { with_deleted.where.not(deleted_at: nil) }
@@ -35,13 +31,10 @@ class SavedLocation < ApplicationRecord
     deleted_at.present?
   end
 
-  # --------------------
   # Scopes
-  # --------------------
   scope :for_user, ->(user) { where(user: user) }
 
-  # DB-agnostic "nearby" using the Haversine formula in SQL (meters).
-  # Avoids PostGIS ST_* functions so it runs on plain PostgreSQL/SQLite.
+  # DB-agnostic "nearby" using the Haversine formula in SQL (meters)
   scope :nearby, ->(lat, lng, radius = 1000) {
     # Validate inputs to prevent SQL injection
     lat = lat.to_f
@@ -67,21 +60,11 @@ class SavedLocation < ApplicationRecord
       .order(Arel.sql("distance_m ASC"))
   }
 
-  # Track explicit assignment (even to nil)
-  def radius_meters=(val)
-    @__radius_explicitly_set = true
-    super
-  end
-
-  # --------------------
   # Callbacks
-  # --------------------
   before_validation :apply_default_radius_on_create, on: :create
   before_validation :geocode_if_needed, if: -> { address.present? && (latitude.blank? || longitude.blank?) }
 
-  # --------------------
   # Instance helpers
-  # --------------------
   def coordinates
     [ latitude, longitude ]
   end
@@ -92,12 +75,6 @@ class SavedLocation < ApplicationRecord
 
   def distance_to(lat, lng)
     calculate_distance(latitude, longitude, lat, lng)
-  end
-
-  # Format coords to 4 dp to match spec expectation like "-74.0060"
-  def formatted_address
-    return address if address.present?
-    "%s (%0.4f, %0.4f)" % [ name, latitude, longitude ]
   end
 
   def user_at_location?(user)
@@ -119,40 +96,13 @@ class SavedLocation < ApplicationRecord
     user.saved_locations.nearby(lat, lng, radius)
   end
 
-  def summary
-    {
-      id: id,
-      name: name,
-      coordinates: coordinates,
-      radius: radius_meters,
-      address: formatted_address
-    }
-  end
-
-  # --------------------
   # Geocoding
-  # --------------------
-  # Keeps things green whether or not the Geocoder gem is present.
-  # Specs that stub Geocoder will still work, and "handles errors gracefully"
-  # won’t explode.
   def geocode
     if defined?(Geocoder) && !Rails.env.test?
       results = Geocoder.search(address.to_s)
       if (first = results.first)
         self.latitude  = first.latitude
         self.longitude = first.longitude
-      end
-    else
-      # Fallback for testing: set some default coordinates for known addresses
-      case address.to_s.downcase
-      when /times square/i
-        self.latitude = 40.7580
-        self.longitude = -73.9855
-        puts "Set Times Square coordinates: #{self.latitude}, #{self.longitude}" if Rails.env.test?
-      when /new york/i
-        self.latitude = 40.7128
-        self.longitude = -74.0060
-        puts "Set NYC coordinates: #{self.latitude}, #{self.longitude}" if Rails.env.test?
       end
     end
     true
@@ -164,14 +114,13 @@ class SavedLocation < ApplicationRecord
   private
 
   def apply_default_radius_on_create
-    # Only default if omitted (setter never called) and value is nil
-    if new_record? && radius_meters.nil? && !instance_variable_defined?(:@__radius_explicitly_set)
+    # Only default if omitted and value is nil
+    if new_record? && radius_meters.nil?
       self.radius_meters = 100
     end
   end
 
   def geocode_if_needed
-    puts "Geocoding address: #{address}" if Rails.env.test?
     geocode
   end
 

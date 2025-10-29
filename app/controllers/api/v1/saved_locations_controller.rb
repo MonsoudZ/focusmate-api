@@ -7,81 +7,51 @@ module Api
 
       # GET /api/v1/saved_locations
       def index
-        begin
-          locations = build_locations_query
-          render json: locations.map { |loc| SavedLocationSerializer.new(loc).as_json }
-        rescue => e
-          Rails.logger.error "SavedLocationsController#index error: #{e.message}"
-          render json: { error: { message: "Failed to retrieve saved locations" } },
-                 status: :internal_server_error
-        end
+        locations = build_locations_query
+        render json: locations.map { |loc| SavedLocationSerializer.new(loc).as_json }
       end
 
       # GET /api/v1/saved_locations/:id
       def show
-        begin
-          render json: SavedLocationSerializer.new(@location).as_json
-        rescue => e
-          Rails.logger.error "SavedLocationsController#show error: #{e.message}"
-          render json: { error: { message: "Failed to retrieve saved location" } },
-                 status: :internal_server_error
-        end
+        render json: SavedLocationSerializer.new(@location).as_json
       end
 
       # POST /api/v1/saved_locations
       def create
-        begin
-          @location = current_user.saved_locations.build(location_params)
+        @location = current_user.saved_locations.build(location_params)
 
-          if @location.save
-            render json: SavedLocationSerializer.new(@location).as_json, status: :created
-          else
-            Rails.logger.error "Location creation validation failed: #{@location.errors.full_messages}"
-            render json: {
-              error: {
-                message: "Validation failed",
-                details: @location.errors.as_json
-              }
-            }, status: :unprocessable_entity
-          end
-        rescue => e
-          Rails.logger.error "SavedLocationsController#create error: #{e.message}"
-          render json: { error: { message: "Failed to create saved location" } },
-                 status: :internal_server_error
+        if @location.save
+          render json: SavedLocationSerializer.new(@location).as_json, status: :created
+        else
+          Rails.logger.error "Location creation validation failed: #{@location.errors.full_messages}"
+          render json: {
+            error: {
+              message: "Validation failed",
+              details: @location.errors.as_json
+            }
+          }, status: :unprocessable_entity
         end
       end
 
       # PATCH /api/v1/saved_locations/:id
       def update
-        begin
-          if @location.update(location_params)
-            render json: SavedLocationSerializer.new(@location).as_json
-          else
-            Rails.logger.error "Location update validation failed: #{@location.errors.full_messages}"
-            render json: {
-              error: {
-                message: "Validation failed",
-                details: @location.errors.as_json
-              }
-            }, status: :unprocessable_entity
-          end
-        rescue => e
-          Rails.logger.error "SavedLocationsController#update error: #{e.message}"
-          render json: { error: { message: "Failed to update saved location" } },
-                 status: :internal_server_error
+        if @location.update(location_params)
+          render json: SavedLocationSerializer.new(@location).as_json
+        else
+          Rails.logger.error "Location update validation failed: #{@location.errors.full_messages}"
+          render json: {
+            error: {
+              message: "Validation failed",
+              details: @location.errors.as_json
+            }
+          }, status: :unprocessable_entity
         end
       end
 
       # DELETE /api/v1/saved_locations/:id
       def destroy
-        begin
-          @location.destroy
-          head :no_content
-        rescue => e
-          Rails.logger.error "SavedLocationsController#destroy error: #{e.message}"
-          render json: { error: { message: "Failed to delete saved location" } },
-                 status: :internal_server_error
-        end
+        @location.destroy
+        head :no_content
       end
 
       private
@@ -112,17 +82,11 @@ module Api
       end
 
       def set_location
-        begin
-          @location = current_user.saved_locations.find(params[:id])
-        rescue ActiveRecord::RecordNotFound => e
-          Rails.logger.warn "Saved location not found: #{params[:id]}"
-          render json: { error: { message: "Resource not found" } },
-                 status: :not_found
-        rescue => e
-          Rails.logger.error "Error finding saved location: #{e.message}"
-          render json: { error: { message: "Failed to retrieve saved location" } },
-                 status: :internal_server_error
-        end
+        @location = current_user.saved_locations.find(params[:id])
+      rescue ActiveRecord::RecordNotFound => e
+        Rails.logger.warn "Saved location not found: #{params[:id]}"
+        render json: { error: { message: "Resource not found" } },
+               status: :not_found
       end
 
       def validate_location_params

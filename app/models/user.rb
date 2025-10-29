@@ -99,18 +99,6 @@ class User < ApplicationRecord
     user_locations.recent.first
   end
 
-  # Get location history for a time period
-  def location_history(start_time, end_time)
-    user_locations.within_timeframe(start_time, end_time).recent
-  end
-
-  # Check if user is at a specific location
-  def at_location?(latitude, longitude, radius = 100)
-    return false unless current_location
-
-    current_location.distance_to(latitude, longitude) <= radius
-  end
-
   # Get tasks requiring explanation
   def tasks_requiring_explanation
     all_lists = owned_lists + lists
@@ -130,79 +118,15 @@ class User < ApplicationRecord
         .where("due_at < ?", Time.current)
   end
 
-  # Get lists shared with this coach
-  def shared_lists
-    List.joins(:memberships)
-        .where(memberships: { user: self })
-        .where.not(memberships: { coaching_relationship_id: nil })
-  end
-
-  # Get lists owned by this user that are shared with coaches
-  def lists_shared_with_coaches
-    owned_lists.joins(:memberships)
-               .where.not(memberships: { coaching_relationship_id: nil })
-               .distinct
-  end
 
   # Get devices for push notifications
   def push_devices
     devices.where.not(apns_token: nil)
   end
 
-  # Get iOS devices
-  def ios_devices
-    devices.ios
-  end
-
-  # Get Android devices
-  def android_devices
-    devices.android
-  end
-
-  # Check if user has any registered devices
-  def has_devices?
-    devices.exists?
-  end
-
-  # Get device count
-  def device_count
-    devices.count
-  end
-
   # Get unread notifications count
   def unread_notifications_count
     notification_logs.where("metadata->>'read' IS NULL OR metadata->>'read' = 'false'").count
-  end
-
-  # Get recent notifications
-  def recent_notifications(limit = 10)
-    notification_logs.recent.limit(limit)
-  end
-
-  # Get notifications by type
-  def notifications_by_type(type)
-    notification_logs.by_type(type)
-  end
-
-  # Mark all notifications as read
-  def mark_all_notifications_read!
-    notification_logs.update_all(
-      metadata: notification_logs.pluck(:metadata).map do |meta|
-        parsed = JSON.parse(meta) rescue {}
-        parsed.merge("read" => true).to_json
-      end
-    )
-  end
-
-  # Get notification statistics
-  def notification_stats
-    {
-      total: notification_logs.count,
-      unread: unread_notifications_count,
-      delivered: notification_logs.delivered.count,
-      undelivered: notification_logs.undelivered.count,
-      recent: notification_logs.recent.count
-    }
   end
 
   # Update user's current location
@@ -215,69 +139,6 @@ class User < ApplicationRecord
     )
   end
 
-  # Get location history for a specific time period
-  def location_history(start_time = 1.week.ago, end_time = Time.current)
-    user_locations.where(recorded_at: start_time..end_time).order(:recorded_at)
-  end
-
-  # Check if user is at a specific saved location
-  def at_location?(saved_location, current_latitude = nil, current_longitude = nil)
-    return false unless current_latitude && current_longitude
-
-    # Use current location if not provided
-    current_lat = current_latitude || current_location&.latitude
-    current_lng = current_longitude || current_location&.longitude
-
-    return false unless current_lat && current_lng
-
-    # Calculate distance using Haversine formula
-    distance = calculate_distance(
-      current_lat, current_lng,
-      saved_location.latitude, saved_location.longitude
-    )
-
-    distance <= saved_location.radius_meters
-  end
-
-  # Missing methods that tests expect
-  def latitude
-    read_attribute(:latitude)
-  end
-
-  def longitude
-    read_attribute(:longitude)
-  end
-
-  # Update current location and track in history
-  def update_current_location(latitude, longitude)
-    # Validate coordinates
-    raise ArgumentError, "Invalid latitude: #{latitude}" if latitude < -90 || latitude > 90
-    raise ArgumentError, "Invalid longitude: #{longitude}" if longitude < -180 || longitude > 180
-
-    # Update current location attributes
-    self.current_latitude = latitude
-    self.current_longitude = longitude
-    save!
-
-    # Track in location history
-    update_location!(latitude, longitude)
-  end
-
-  # Calculate distance to a saved location
-  def distance_to_saved_location(saved_location)
-    return nil unless current_location && saved_location
-
-    current_location.distance_to(saved_location.latitude, saved_location.longitude)
-  end
-
-  # Check if user is at a saved location
-  def at_saved_location?(saved_location)
-    return false unless current_location && saved_location
-
-    distance = distance_to_saved_location(saved_location)
-    distance && distance <= saved_location.radius_meters
-  end
-
   private
 
   def valid_timezone
@@ -285,31 +146,10 @@ class User < ApplicationRecord
 
     begin
       Time.zone = timezone
-      # If we can set the timezone, it's valid
       Time.zone
     rescue ArgumentError
       errors.add(:timezone, "is not a valid timezone")
     end
-  end
-
-  # Calculate distance between two points using Haversine formula
-  def calculate_distance(lat1, lon1, lat2, lon2)
-    # Earth's radius in meters
-    earth_radius = 6_371_000
-
-    # Convert degrees to radians
-    lat1_rad = lat1 * Math::PI / 180
-    lat2_rad = lat2 * Math::PI / 180
-    delta_lat = (lat2 - lat1) * Math::PI / 180
-    delta_lon = (lon2 - lon1) * Math::PI / 180
-
-    # Haversine formula
-    a = Math.sin(delta_lat / 2) ** 2 +
-        Math.cos(lat1_rad) * Math.cos(lat2_rad) *
-        Math.sin(delta_lon / 2) ** 2
-    c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-    earth_radius * c
   end
 
   def set_default_role

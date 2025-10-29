@@ -1,5 +1,5 @@
 class Task < ApplicationRecord
-  # == Associations
+  # Associations
   belongs_to :list
   belongs_to :creator, class_name: "User", foreign_key: :creator_id
   belongs_to :assigned_to, class_name: "User", optional: true
@@ -15,7 +15,7 @@ class Task < ApplicationRecord
   has_many :notification_logs, foreign_key: :task_id, dependent: :destroy
   belongs_to :missed_reason_reviewed_by, class_name: "User", optional: true
 
-  # == Enums
+  # Enums
   enum :status,     { pending: 0, in_progress: 1, done: 2, deleted: 3 }, default: :pending
   enum :visibility, { visible_to_all: 0, private_task: 1, hidden_from_coaches: 2, coaching_only: 3 }
 
@@ -40,37 +40,35 @@ class Task < ApplicationRecord
     end
   end
 
-  # == Soft delete
+  # Soft deletion
   default_scope { where(deleted_at: nil) }
 
-  # == Validations
+  # Validations
   validates :title, presence: true, length: { maximum: 255 }
   validates :note, length: { maximum: 1000 }
   validates :due_at, presence: true
   validates :strict_mode, inclusion: { in: [ true, false ] }
-
-  # Set default values
-  after_initialize :set_defaults
   validates :notification_interval_minutes, numericality: { greater_than: 0 }
   validates :recurrence_pattern, inclusion: { in: %w[daily weekly monthly yearly] }, allow_nil: true
   validates :recurrence_interval, numericality: { greater_than: 0 }, allow_nil: true
+  validates :location_radius_meters, numericality: { greater_than: 0 }, allow_nil: true
 
   validate :recurrence_interval_not_blank
   validate :recurrence_time_format
-  validates :location_radius_meters, numericality: { greater_than: 0 }, allow_nil: true
+  validate :due_at_not_in_past_on_create
+  validate :prevent_circular_subtask_relationship
+  validate :recurrence_constraints
+  validate :location_requirements
 
   validate do
     errors.add(:status, "is not included in the list")     if _invalid_status_value
     errors.add(:visibility, "is not included in the list") if _invalid_visibility_value
   end
 
-  validate :due_at_not_in_past_on_create
-  validate :prevent_circular_subtask_relationship
-  validate :subtask_due_date_not_after_parent # relaxed / no-op
-  validate :recurrence_constraints
-  validate :location_requirements
+  # Set default values
+  after_initialize :set_defaults
 
-  # == Scopes
+  # Scopes
   scope :completed,     -> { where(status: :done) }
   scope :pending,       -> { where(status: :pending) }
   scope :in_progress,   -> { where(status: :in_progress) }
@@ -110,12 +108,11 @@ class Task < ApplicationRecord
     where("recurring_template_id IS NOT NULL OR is_template = false")
   end
 
-  # == Callbacks (kept lightweight)
-  after_create :create_task_event
-  after_update :create_status_change_event, if: :saved_change_to_status?
-  after_update :check_parent_completion,    if: :saved_change_to_status?
+  # Callbacks
+  after_create :record_creation_event
+  after_update :handle_status_change_callbacks, if: :saved_change_to_status?
 
-  # == Business logic
+  # Business logic
   def complete!
     update!(status: :done, completed_at: Time.current)
     escalation&.update!(
@@ -216,64 +213,6 @@ class Task < ApplicationRecord
   def is_recurring?         = !!self[:is_recurring]
   def recurring?            = is_recurring?
 
-  # Accept virtual :is_template on build/create (used by specs/factories)
-  def is_template=(value)
-    @is_template_flag = ActiveModel::Type::Boolean.new.cast(value)
-    self[:is_template] = @is_template_flag
-  end
-
-  def is_template
-    @is_template_flag || self[:is_template]
-  end
-
-  def is_template?
-    # Consider a task a template if either:
-    # - it was flagged via the virtual setter, OR
-    # - it's recurring and not an instance (no recurring_template_id)
-    (@is_template_flag == true) || (is_recurring? && recurring_template_id.nil?) || (self[:is_template] == true)
-  end
-  alias_method :template?, :is_template?
-
-  def is_instance?
-    recurring_template_id.present? || (self[:is_template] == false)
-  end
-  alias_method :instance?, :is_instance?
-
-  def age_hours
-    return 0.0 unless created_at
-    (Time.current - created_at) / 3600.0
-  end
-
-  def recent?
-    created_at && created_at >= 1.hour.ago
-  end
-
-  def priority
-    return "medium" unless due_at
-    due_at <= 2.hours.from_now ? "high" : "medium"
-  end
-
-  def coordinates
-    return nil unless location_based?
-    [ location_latitude, location_longitude ]
-  end
-
-  def distance_to_user(user)
-    return Float::INFINITY unless user&.latitude && user&.longitude && location_latitude && location_longitude
-    calculate_distance(location_latitude, location_longitude, user.latitude, user.longitude)
-  end
-
-  def user_at_location?(user_latitude, user_longitude)
-    return false unless location_based?
-    return false if user_latitude.blank? || user_longitude.blank?
-    calculate_distance(location_latitude, location_longitude, user_latitude, user_longitude) <= location_radius_meters.to_i
-  end
-
-  def user_within_geofence?(user)
-    return false unless location_based? && location_radius_meters.to_i > 0
-    distance_to_user(user) <= location_radius_meters.to_i
-  end
-
   def visible_to?(user)
     return false unless user
     return false if list.deleted?
@@ -283,26 +222,21 @@ class Task < ApplicationRecord
 
     case visibility
     when "visible_to_all"
-      # visible_to_all tasks are visible to everyone, regardless of list access
       true
     when "private_task"
-      # Private tasks require list access and ownership
       list.accessible_by?(user) && (creator == user || list.user == user)
     when "hidden_from_coaches"
-      # Hidden from coaches requires list access and ownership
       list.accessible_by?(user) && (creator == user || list.user == user)
     when "coaching_only"
-      # Coaching only requires list access and either ownership or coach role
       list.accessible_by?(user) && (creator == user || list.user == user || user.coach?)
     else
-      # For other visibility levels, check if user has access to the list
       list.accessible_by?(user)
     end
   end
 
-  # == Recurrence (public: specs call this)
+  # Recurrence
   def calculate_next_due_date
-    return nil unless is_template?
+    return nil unless is_recurring?
     case recurrence_pattern
     when "daily"   then calculate_daily_recurrence
     when "weekly"  then calculate_weekly_recurrence
@@ -313,70 +247,18 @@ class Task < ApplicationRecord
   end
 
   def generate_next_instance
-    return nil unless is_template?
-    return nil if recurrence_end_date.present? && recurrence_end_date < Time.current
-
-    next_due_at = calculate_next_due_date
-    return nil unless next_due_at
-
-    instance = list.tasks.build(
-      title: title,
-      note: note,
-      due_at: next_due_at,
-      strict_mode: strict_mode,
-      can_be_snoozed: can_be_snoozed,
-      notification_interval_minutes: notification_interval_minutes,
-      requires_explanation_if_missed: requires_explanation_if_missed,
-      location_based: location_based,
-      location_latitude: location_latitude,
-      location_longitude: location_longitude,
-      location_radius_meters: location_radius_meters,
-      location_name: location_name,
-      notify_on_arrival: notify_on_arrival,
-      notify_on_departure: notify_on_departure,
-      is_recurring: false,
-      recurring_template_id: id,
-      is_template: false,
-      creator: creator,
-      status: :pending
-    )
-    instance.save ? instance : nil
+    TaskRecurrenceService.new(self).generate_next_instance
   end
 
-  # When all subtasks done, allow parent to complete explicitly (used by spec)
-  def check_completion
-    if subtasks.exists? && subtasks.where.not(status: :done).none?
-      update!(status: :done, completed_at: Time.current)
-    end
-  end
 
-  # Who can change a task's visibility?
-  # - task creator
-  # - list owner
-  # - a coach of the list owner (specs build a coaching relationship)
-  def can_change_visibility?(user)
-    return false unless user
-    return true  if creator_id == user.id
-    return true  if list.user_id == user.id
-    return true  if list.respond_to?(:coach?) && list.coach?(user)
-    false
-  end
-
-  # == Callback helpers
   private
 
   def set_defaults
     self.strict_mode ||= false
   end
 
-  def create_task_event(kind: nil, reason: nil, user: nil, occurred_at: nil, metadata: nil)
-    task_events.create!(
-      user:        user || list&.user || self.creator, # whichever makes sense in your app
-      kind:        kind || "created",
-      reason:      reason,
-      occurred_at: occurred_at || Time.current,
-      metadata:    metadata
-    )
+  def record_creation_event
+    TaskEventRecorder.new(self).record_creation
   end
 
   def recurrence_interval_not_blank
@@ -388,28 +270,18 @@ class Task < ApplicationRecord
   def recurrence_time_format
     return unless recurrence_time.present?
 
-    # Check if it's a valid time format (HH:MM)
     time_str = recurrence_time.is_a?(Time) ? recurrence_time.strftime("%H:%M") : recurrence_time.to_s
     unless time_str.match?(/\A([01]?[0-9]|2[0-3]):[0-5][0-9]\z/)
       errors.add(:recurrence_time, "must be in HH:MM format")
     end
   end
 
-  def create_status_change_event
-    kind = case status
-    when "done"    then :completed
-    when "pending" then :created
-    else :created
-    end
-    create_task_event(kind: kind)
+  def handle_status_change_callbacks
+    recorder = TaskEventRecorder.new(self)
+    recorder.record_status_change
+    recorder.check_parent_completion
   end
 
-  def check_parent_completion
-    return unless parent_task && parent_task.subtasks.pending.empty?
-    parent_task.update!(status: :done) if parent_task.status == "pending"
-  end
-
-  # == Validation helpers
   def due_at_not_in_past_on_create
     return unless new_record?
     return unless due_at.present?
@@ -433,12 +305,6 @@ class Task < ApplicationRecord
     end
   end
 
-  # relaxed per spec (do not block)
-  def subtask_due_date_not_after_parent
-    nil unless parent_task_id.present? && parent_task && due_at && parent_task.due_at
-    # no-op on purpose to satisfy spec
-  end
-
   def recurrence_constraints
     return if recurrence_pattern.blank?
     errors.add(:recurrence_time, "is required for daily recurring tasks")  if recurrence_pattern == "daily"  && recurrence_time.blank?
@@ -454,61 +320,20 @@ class Task < ApplicationRecord
     end
   end
 
-  # == Recurrence calculators used by specs
+  # Recurrence calculators delegated to service
   def calculate_daily_recurrence
-    base_time = recurrence_time || (due_at || Time.current)
-    day_anchor = (due_at || Time.current).beginning_of_day
-    next_time  = day_anchor + base_time.seconds_since_midnight
-    next_time += 1.day if next_time <= Time.current
-    next_time
+    TaskRecurrenceService.new(self).send(:calculate_daily_recurrence)
   end
 
   def calculate_weekly_recurrence
-    return nil unless recurrence_days.present?
-    base_time = recurrence_time || (due_at || Time.current)
-    days      = recurrence_days.map(&:to_i).sort
-    now       = Time.current
-    days.each do |wday|
-      candidate = now.beginning_of_week + wday.days
-      candidate = candidate.change(hour: base_time.hour, min: base_time.min, sec: base_time.sec)
-      return candidate if candidate > now
-    end
-    # next week
-    first = days.first
-    (now.beginning_of_week + 1.week + first.days).change(
-      hour: base_time.hour, min: base_time.min, sec: base_time.sec
-    )
+    TaskRecurrenceService.new(self).send(:calculate_weekly_recurrence)
   end
 
   def calculate_monthly_recurrence
-    base_time = recurrence_time || (due_at || Time.current)
-    now       = Time.current
-    candidate = now.change(day: (due_at || now).day, hour: base_time.hour, min: base_time.min, sec: base_time.sec) rescue nil
-    candidate = (now.beginning_of_month + base_time.seconds_since_midnight) unless candidate
-    candidate = candidate.next_month if candidate <= now
-    candidate
+    TaskRecurrenceService.new(self).send(:calculate_monthly_recurrence)
   end
 
   def calculate_yearly_recurrence
-    base_time = recurrence_time || (due_at || Time.current)
-    now       = Time.current
-    candidate = now.change(month: (due_at || now).month, day: (due_at || now).day,
-                           hour: base_time.hour, min: base_time.min, sec: base_time.sec) rescue nil
-    candidate ||= now.beginning_of_year + base_time.seconds_since_midnight
-    candidate = candidate.next_year if candidate <= now
-    candidate
-  end
-
-  # == Utilities
-  def calculate_distance(lat1, lon1, lat2, lon2)
-    return 0 if lat1 == lat2 && lon1 == lon2
-    to_rad = Math::PI / 180.0
-    lat1 *= to_rad; lon1 *= to_rad
-    lat2 *= to_rad; lon2 *= to_rad
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    a = Math.sin(dlat / 2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlon / 2)**2
-    c = 2 * Math.asin(Math.sqrt(a))
-    6_371_000 * c
+    TaskRecurrenceService.new(self).send(:calculate_yearly_recurrence)
   end
 end

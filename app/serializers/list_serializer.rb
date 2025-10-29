@@ -21,7 +21,7 @@ class ListSerializer
       updated_at: list.updated_at.iso8601
     }.tap do |hash|
       if options[:include_tasks]
-        hash[:tasks] = list.tasks_visible_to(current_user).map do |task|
+        hash[:tasks] = list.tasks.select { |task| task.visible_to?(current_user) }.map do |task|
           TaskSerializer.new(task, current_user: current_user).as_json
         end
       end
@@ -41,16 +41,16 @@ class ListSerializer
   end
 
   def shared_coaches
-    return [] unless list.user == current_user
+    return [] if list.user != current_user
 
     list.coaches.map { |coach| UserSerializer.new(coach).as_json }
   end
 
   def tasks_count
-    list.tasks_visible_to(current_user).count
+    list.tasks.select { |task| task.visible_to?(current_user) }.count
   end
 
   def overdue_tasks_count
-    list.tasks_visible_to(current_user).overdue.count
+    list.tasks.select { |task| task.visible_to?(current_user) && task.overdue? }.count
   end
 end

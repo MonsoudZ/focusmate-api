@@ -21,7 +21,7 @@ class ApplicationController < ActionController::API
       if e.message.include?("Error occurred while parsing request parameters")
         log_error(e, severity: :warn)
         render_bad_request("Invalid JSON format")
-        return false # Prevent further processing
+        false # Prevent further processing
       else
         raise e
       end

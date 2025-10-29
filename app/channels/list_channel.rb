@@ -16,17 +16,17 @@ class ListChannel < ApplicationCable::Channel
   # Handle incoming messages from clients
   def receive(data)
     log_message_received(data)
-    
-    case data['action']
-    when 'ping'
-      transmit({ type: 'pong', timestamp: Time.current.iso8601 })
-    when 'typing'
+
+    case data["action"]
+    when "ping"
+      transmit({ type: "pong", timestamp: Time.current.iso8601 })
+    when "typing"
       handle_typing_indicator(data)
-    when 'presence'
+    when "presence"
       handle_presence_update(data)
     else
-      log_unknown_action(data['action'])
-      transmit({ type: 'error', message: 'Unknown action' })
+      log_unknown_action(data["action"])
+      transmit({ type: "error", message: "Unknown action" })
     end
   end
 
@@ -34,7 +34,7 @@ class ListChannel < ApplicationCable::Channel
 
   def find_authorized_list
     list_id = params[:list_id]
-    
+
     if list_id.blank?
       log_subscription_rejected("No list_id provided")
       reject_subscription("List ID is required")
@@ -87,20 +87,20 @@ class ListChannel < ApplicationCable::Channel
 
   def list_active?(list)
     return false unless list.present?
-    
+
     # Add any additional list status checks here
     # For example: list.active?, !list.archived?, etc.
     true
   end
 
   def handle_typing_indicator(data)
-    return unless data['user_id'] == current_user.id
+    return unless data["user_id"] == current_user.id
 
     # Broadcast typing indicator to other subscribers
     ActionCable.server.broadcast(
       "list_#{@list.id}",
       {
-        type: 'typing',
+        type: "typing",
         user_id: current_user.id,
         user_name: current_user.name || current_user.email,
         timestamp: Time.current.iso8601
@@ -109,16 +109,16 @@ class ListChannel < ApplicationCable::Channel
   end
 
   def handle_presence_update(data)
-    return unless data['user_id'] == current_user.id
+    return unless data["user_id"] == current_user.id
 
     # Broadcast presence update to other subscribers
     ActionCable.server.broadcast(
       "list_#{@list.id}",
       {
-        type: 'presence',
+        type: "presence",
         user_id: current_user.id,
         user_name: current_user.name || current_user.email,
-        status: data['status'] || 'online',
+        status: data["status"] || "online",
         timestamp: Time.current.iso8601
       }
     )
@@ -126,7 +126,7 @@ class ListChannel < ApplicationCable::Channel
 
   def reject_subscription(message)
     reject
-    transmit({ type: 'error', message: message })
+    transmit({ type: "error", message: message })
   end
 
   def log_subscription_established

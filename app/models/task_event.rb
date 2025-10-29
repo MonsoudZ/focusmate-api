@@ -17,16 +17,6 @@ class TaskEvent < ApplicationRecord
     assigned: 6
   }
 
-  # Override setter to handle invalid values gracefully for tests
-  def kind=(value)
-    if value.is_a?(String) && !self.class.kinds.key?(value)
-      @invalid_kind_value = value
-      super(nil)
-    else
-      super
-    end
-  end
-
   # ------------------------------------------------------------------
   # Virtual attributes (work even if DB column is absent in test schema)
   # ------------------------------------------------------------------
@@ -59,10 +49,6 @@ class TaskEvent < ApplicationRecord
   validates :reason, length: { maximum: 1000 }, allow_nil: true
   validate  :metadata_is_valid_json
 
-  validate do
-    errors.add(:kind, "is not included in the list") if @invalid_kind_value
-  end
-
   # ------------------------------------------------------------------
   # Callbacks (removed - handled by Task#create_task_event)
   # ------------------------------------------------------------------
@@ -89,7 +75,7 @@ class TaskEvent < ApplicationRecord
   end
 
   def self.reassignments_for(task)
-    for_task(task).by_kind("reassigned").recent.includes(:user)
+    for_task(task).by_kind(:reassigned).recent.includes(:user)
   end
 
   # ------------------------------------------------------------------
@@ -116,7 +102,7 @@ class TaskEvent < ApplicationRecord
   end
 
   def age_hours
-    return 0 unless occurred_at
+    return 0 if !occurred_at
     ((Time.current - occurred_at) / 3600.0).round(2)
   end
 
@@ -190,7 +176,7 @@ class TaskEvent < ApplicationRecord
 
 
   def occurred_at=(value)
-    @occurred_at_explicitly_set = true unless value.nil?
+    @occurred_at_explicitly_set = true if !value.nil?
     super
   end
 

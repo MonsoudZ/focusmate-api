@@ -7,141 +7,99 @@ module Api
 
       # GET /api/v1/recurring_templates
       def index
-        begin
-          templates = build_templates_query
-          render json: templates.map { |t| serialize_template(t) }, status: :ok
-        rescue => e
-          Rails.logger.error "RecurringTemplatesController#index error: #{e.message}"
-          render json: { error: { message: "Failed to retrieve recurring templates" } },
-                 status: :internal_server_error
-        end
+        templates = build_templates_query
+        render json: templates.map { |t| serialize_template(t) }, status: :ok
       end
 
       # GET /api/v1/recurring_templates/:id
       def show
-        begin
-          return not_found unless @template
-          render json: serialize_template(@template, include_instances: true), status: :ok
-        rescue => e
-          Rails.logger.error "RecurringTemplatesController#show error: #{e.message}"
-          render json: { error: { message: "Failed to retrieve recurring template" } },
-                 status: :internal_server_error
-        end
+        return not_found unless @template
+        render json: serialize_template(@template, include_instances: true), status: :ok
       end
 
       # POST /api/v1/recurring_templates
       def create
-        begin
-          list = find_authorized_list(params[:list_id])
-          return if performed? # Early return if error was rendered
+        list = find_authorized_list(params[:list_id])
+        return if performed? # Early return if error was rendered
 
-          attrs = prepare_template_attributes(template_params.to_h.symbolize_keys)
-          return if performed? # Early return if error was rendered
+        attrs = prepare_template_attributes(template_params.to_h.symbolize_keys)
+        return if performed? # Early return if error was rendered
 
-          template = list.tasks.new(attrs.merge(creator: current_user))
+        template = list.tasks.new(attrs.merge(creator: current_user))
 
-          if template.save
-            render json: serialize_template(template), status: :created
-          else
-            Rails.logger.error "Template validation failed: #{template.errors.full_messages}"
-            render json: {
-              error: {
-                message: "Validation failed",
-                details: template.errors.as_json
-              }
-            }, status: :unprocessable_entity
-          end
-        rescue => e
-          Rails.logger.error "RecurringTemplatesController#create error: #{e.message}"
-          render json: { error: { message: "Failed to create recurring template" } },
-                 status: :internal_server_error
+        if template.save
+          render json: serialize_template(template), status: :created
+        else
+          Rails.logger.error "Template validation failed: #{template.errors.full_messages}"
+          render json: {
+            error: {
+              message: "Validation failed",
+              details: template.errors.as_json
+            }
+          }, status: :unprocessable_entity
         end
       end
 
       # PATCH /api/v1/recurring_templates/:id
       def update
-        begin
-          return not_found unless @template
+        return not_found unless @template
 
-          attrs = prepare_template_attributes(template_params.to_h.symbolize_keys)
-          return if performed? # Early return if error was rendered
+        attrs = prepare_template_attributes(template_params.to_h.symbolize_keys)
+        return if performed? # Early return if error was rendered
 
-          if @template.update(attrs)
-            # Propagate only fields that were provided, to FUTURE, INCOMPLETE instances
-            changed_fields = {}
-            changed_fields[:title] = @template.title if attrs.key?(:title)
-            changed_fields[:note]  = @template.note  if attrs.key?(:note)
+        if @template.update(attrs)
+          # Propagate only fields that were provided, to FUTURE, INCOMPLETE instances
+          changed_fields = {}
+          changed_fields[:title] = @template.title if attrs.key?(:title)
+          changed_fields[:note]  = @template.note  if attrs.key?(:note)
 
-            if changed_fields.present?
-              Task.where(recurring_template_id: @template.id)
-                  .where("due_at > ?", Time.current)
-                  .where.not(status: Task.statuses[:done])
-                  .find_each { |inst| inst.update!(changed_fields) }
-            end
-
-            render json: serialize_template(@template), status: :ok
-          else
-            Rails.logger.error "Template update validation failed: #{@template.errors.full_messages}"
-            render json: {
-              error: {
-                message: "Validation failed",
-                details: @template.errors.as_json
-              }
-            }, status: :unprocessable_entity
+          if changed_fields.present?
+            Task.where(recurring_template_id: @template.id)
+                .where("due_at > ?", Time.current)
+                .where.not(status: Task.statuses[:done])
+                .find_each { |inst| inst.update!(changed_fields) }
           end
-        rescue => e
-          Rails.logger.error "RecurringTemplatesController#update error: #{e.message}"
-          render json: { error: { message: "Failed to update recurring template" } },
-                 status: :internal_server_error
+
+          render json: serialize_template(@template), status: :ok
+        else
+          Rails.logger.error "Template update validation failed: #{@template.errors.full_messages}"
+          render json: {
+            error: {
+              message: "Validation failed",
+              details: @template.errors.as_json
+            }
+          }, status: :unprocessable_entity
         end
       end
 
       # DELETE /api/v1/recurring_templates/:id
       def destroy
-        begin
-          return not_found unless @template
+        return not_found unless @template
 
-          if ActiveModel::Type::Boolean.new.cast(params[:delete_instances])
-            Task.where(recurring_template_id: @template.id).find_each(&:destroy!)
-          end
-          @template.destroy!
-          head :no_content
-        rescue => e
-          Rails.logger.error "RecurringTemplatesController#destroy error: #{e.message}"
-          render json: { error: { message: "Failed to delete recurring template" } },
-                 status: :internal_server_error
+        if ActiveModel::Type::Boolean.new.cast(params[:delete_instances])
+          Task.where(recurring_template_id: @template.id).find_each(&:destroy!)
         end
+        @template.destroy!
+        head :no_content
       end
 
       # POST /api/v1/recurring_templates/:id/generate_instance
       def generate_instance
-        begin
-          return not_found unless @template
-          instance = @template.generate_next_instance
-          unless instance
-            render json: { error: { message: "Could not generate instance" } },
-                   status: :unprocessable_entity
-            return
-          end
-          render json: serialize_instance(instance), status: :created
-        rescue => e
-          Rails.logger.error "RecurringTemplatesController#generate_instance error: #{e.message}"
-          render json: { error: { message: "Failed to generate instance" } },
-                 status: :internal_server_error
+        return not_found unless @template
+        instance = @template.generate_next_instance
+        unless instance
+          render json: { error: { message: "Could not generate instance" } },
+                 status: :unprocessable_entity
+          return
         end
+        render json: serialize_instance(instance), status: :created
       end
 
       # GET /api/v1/recurring_templates/:id/instances
       def instances
-        begin
-          return not_found unless @template
-          instances = Task.where(recurring_template_id: @template.id).order(due_at: :desc)   # spec expects ordering by due_at descending
-          render json: instances.map { |i| serialize_instance(i) }, status: :ok
-        rescue => e
-          Rails.logger.error "RecurringTemplatesController#instances error: #{e.message}"
-          render json: { error: { message: "Failed to retrieve instances" } },
-                 status: :internal_server_error
-        end
+        return not_found unless @template
+        instances = Task.where(recurring_template_id: @template.id).order(due_at: :desc)   # spec expects ordering by due_at descending
+        render json: instances.map { |i| serialize_instance(i) }, status: :ok
       end
 
       private

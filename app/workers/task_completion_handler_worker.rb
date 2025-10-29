@@ -29,8 +29,8 @@ class TaskCompletionHandlerWorker
     end
 
     # Check if parent task should be completed (all subtasks done)
-    if task.parent_item_id.present?
-      parent = task.parent_item
+    if task.parent_task_id.present?
+      parent = task.parent_task
       if parent.all_subtasks_completed? && parent.completed_at.nil?
         parent.complete!
         Rails.logger.info "[TaskCompletionHandlerWorker] Auto-completed parent task ##{parent.id}"
