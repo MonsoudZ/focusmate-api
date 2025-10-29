@@ -48,6 +48,8 @@ class NotificationLog < ApplicationRecord
   scope :delivered,   -> { where(delivered: true) }
   scope :undelivered, -> { where(delivered: false) }
   scope :by_type, ->(type) { where(notification_type: type) }
+  scope :read, -> { where("metadata->>'read' = 'true'") }
+  scope :unread, -> { where("metadata->>'read' IS NULL OR metadata->>'read' != 'true'") }
 
   # --- Metadata: always a Hash with string keys ---
   def metadata

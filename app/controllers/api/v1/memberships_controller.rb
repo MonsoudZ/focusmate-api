@@ -135,7 +135,7 @@ module Api
       def membership_params
         # Only permit user_identifier, handle role separately for security
         permitted = params.require(:membership).permit(:user_identifier)
-        
+
         # Handle role separately with explicit validation
         if params[:membership][:role].present?
           role = params[:membership][:role].to_s.downcase
@@ -147,7 +147,7 @@ module Api
         else
           permitted[:role] = "viewer" # Default role
         end
-        
+
         permitted
       end
 

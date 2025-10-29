@@ -8,13 +8,14 @@ class NotificationSerializer
   def as_json
     {
       id: notification.id,
-      type: notification.notification_type,
-      title: notification.title,
+      notification_type: notification.notification_type,
       message: notification.message,
-      read: notification.metadata&.dig("read") || false,
-      priority: notification.priority,
+      delivered: notification.delivered,
+      delivered_at: notification.delivered_at&.iso8601,
+      metadata: notification.metadata || {},
+      read: notification.read?,
       created_at: notification.created_at.iso8601,
-      metadata: notification.metadata || {}
+      updated_at: notification.updated_at.iso8601
     }
   end
 end

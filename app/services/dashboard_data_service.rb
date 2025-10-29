@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'digest'
+require "digest"
 
 class DashboardDataService
   class ValidationError < StandardError
@@ -23,22 +23,22 @@ class DashboardDataService
 
     # Build your payload based on requested sections
     data = {}
-    
-    if @sections.empty? || @sections.include?('inbox')
+
+    if @sections.empty? || @sections.include?("inbox")
       data[:inbox_count] = tasks.where(completed_at: nil).count
     end
-    
-    if @sections.empty? || @sections.include?('overdue')
+
+    if @sections.empty? || @sections.include?("overdue")
       overdue_count = tasks.where("due_at < ? AND completed_at IS NULL", Time.zone.now).count
       data[:overdue_count] = overdue_count
       data[:overdue_tasks_count] = overdue_count # Legacy field
     end
-    
-    if @sections.empty? || @sections.include?('velocity')
+
+    if @sections.empty? || @sections.include?("velocity")
       data[:velocity] = velocity_series(tasks)
     end
-    
-    if @sections.empty? || @sections.include?('streaks')
+
+    if @sections.empty? || @sections.include?("streaks")
       data[:streaks] = streaks(tasks)
     end
 
@@ -50,8 +50,8 @@ class DashboardDataService
     end
 
     # Compute cache helpers
-    lm = [lists.maximum(:updated_at), tasks.maximum(:updated_at)].compact.max
-    dig = Digest::SHA1.hexdigest([@user.id, @window[:from].to_i, @window[:to].to_i, data.hash].join(":"))
+    lm = [ lists.maximum(:updated_at), tasks.maximum(:updated_at) ].compact.max
+    dig = Digest::SHA1.hexdigest([ @user.id, @window[:from].to_i, @window[:to].to_i, data.hash ].join(":"))
 
     { **data, digest: dig, last_modified: lm }
   rescue ActiveRecord::QueryCanceled, ActiveRecord::StatementInvalid
@@ -66,7 +66,7 @@ class DashboardDataService
 
     # Build time series data
     series = build_time_series(tasks, group_by, limit)
-    
+
     # Build legacy stats format for backward compatibility
     stats_data = {
       total_tasks: tasks.count,
@@ -88,10 +88,10 @@ class DashboardDataService
     else
       stats_data.merge!(coach_stats_data(tasks))
     end
-    
+
     # Compute cache helpers
-    lm = [lists.maximum(:updated_at), tasks.maximum(:updated_at)].compact.max
-    dig = Digest::SHA1.hexdigest([@user.id, @window[:from].to_i, @window[:to].to_i, group_by, limit, series.hash].join(":"))
+    lm = [ lists.maximum(:updated_at), tasks.maximum(:updated_at) ].compact.max
+    dig = Digest::SHA1.hexdigest([ @user.id, @window[:from].to_i, @window[:to].to_i, group_by, limit, series.hash ].join(":"))
 
     { **stats_data, series: series, digest: dig, last_modified: lm }
   rescue ActiveRecord::QueryCanceled, ActiveRecord::StatementInvalid
@@ -160,12 +160,12 @@ class DashboardDataService
       if index == 0 || date == completed_dates[index - 1] + 1.day
         temp_streak += 1
       else
-        longest_streak = [longest_streak, temp_streak].max
+        longest_streak = [ longest_streak, temp_streak ].max
         temp_streak = 1
       end
     end
 
-    longest_streak = [longest_streak, temp_streak].max
+    longest_streak = [ longest_streak, temp_streak ].max
 
     # Calculate current streak (from today backwards)
     today = Time.zone.now.to_date
@@ -182,11 +182,11 @@ class DashboardDataService
 
   def build_time_series(tasks, group_by, limit)
     case group_by
-    when 'day'
+    when "day"
       group_by_day(tasks, limit)
-    when 'week'
+    when "week"
       group_by_week(tasks, limit)
-    when 'month'
+    when "month"
       group_by_month(tasks, limit)
     else
       group_by_day(tasks, limit)
@@ -220,12 +220,12 @@ class DashboardDataService
     while current_week <= end_week && weeks.length < limit
       week_start = current_week.to_date
       week_end = (current_week + 6.days).to_date
-      
+
       weeks << {
         period: "#{week_start.iso8601}/#{week_end.iso8601}",
         completed: completed_tasks[current_week] || 0
       }
-      
+
       current_week += 1.week
     end
 
@@ -246,7 +246,7 @@ class DashboardDataService
         period: current_month.strftime("%Y-%m"),
         completed: completed_tasks[current_month] || 0
       }
-      
+
       current_month = current_month.next_month
     end
 
@@ -256,7 +256,7 @@ class DashboardDataService
   def calculate_completion_rate(tasks)
     total = tasks.count
     return 0 if total == 0
-    
+
     completed = tasks.where.not(completed_at: nil).count
     (completed.to_f / total * 100).round(1)
   end

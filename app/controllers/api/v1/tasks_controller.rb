@@ -1,72 +1,94 @@
-# app/controllers/api/v1/tasks_controller.rb
 module Api
   module V1
     class TasksController < ApplicationController
+      before_action :authenticate_user!
       before_action :set_list, only: [ :index, :create ]
       before_action :set_task, only: [ :show, :update, :destroy, :complete, :uncomplete, :reassign, :submit_explanation, :toggle_visibility, :add_subtask, :update_subtask, :delete_subtask, :change_visibility ]
       before_action :authorize_task_access, only: [ :show ]
       before_action :authorize_task_edit, only: [ :update, :destroy ]
       before_action :authorize_task_visibility_change, only: [ :change_visibility ]
+      before_action :validate_params, only: [ :index, :all_tasks, :overdue, :awaiting_explanation, :blocking ]
 
       # GET /api/v1/lists/:list_id/tasks
       def index
-        # Minimal, non-500 implementation; expand as your spec requires.
-        tasks = @list.tasks.where(parent_task_id: nil).not_deleted
-        render json: {
-          tasks: tasks.map { |task|
-            {
-              id: task.id,
-              title: task.title,
-              status: task.status,
-              created_at: task.created_at.iso8601,
-              updated_at: task.updated_at.iso8601
+        begin
+          tasks = build_tasks_query(@list.tasks.where(parent_task_id: nil).not_deleted)
+
+          # Apply pagination
+          page = [ params[:page].to_i, 1 ].max
+          per_page = per_page_limit
+          offset = (page - 1) * per_page
+
+          paginated_tasks = tasks.limit(per_page).offset(offset)
+
+          render json: {
+            tasks: paginated_tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json },
+            tombstones: [],
+            pagination: {
+              page: page,
+              per_page: per_page,
+              total: tasks.count,
+              total_pages: (tasks.count.to_f / per_page).ceil
             }
-          },
-          tombstones: []
-        }, status: :ok
+          }, status: :ok
+        rescue => e
+          Rails.logger.error "TasksController#index error: #{e.message}"
+          render json: { error: { message: "Failed to retrieve tasks" } },
+                 status: :internal_server_error
+        end
       end
 
       # GET /api/v1/tasks - Get all tasks across all lists for current user
       def all_tasks
-        # Minimal, non-500 implementation; expand as your spec requires.
-        tasks = Task.joins(:list).where(lists: { user_id: current_user.id }).where(parent_task_id: nil)
+        begin
+          tasks = build_tasks_query(
+            Task.joins(:list)
+                .where(lists: { user_id: current_user.id })
+                .where(parent_task_id: nil)
+                .not_deleted
+          )
 
-        # Apply simple filters
-        if params[:status].present?
-          case params[:status]
-          when "pending"
-            tasks = tasks.where(status: "pending")
-          when "completed", "done"
-            tasks = tasks.where(status: "done")
-          when "overdue"
-            tasks = tasks.where("due_at < ?", Time.current).where.not(status: "done")
-          end
-        end
+          # Apply pagination
+          page = [ params[:page].to_i, 1 ].max
+          per_page = per_page_limit
+          offset = (page - 1) * per_page
 
-        render json: {
-          tasks: tasks.map { |task|
-            {
-              id: task.id,
-              title: task.title,
-              status: task.status,
-              created_at: task.created_at.iso8601,
-              updated_at: task.updated_at.iso8601
+          paginated_tasks = tasks.limit(per_page).offset(offset)
+
+          render json: {
+            tasks: paginated_tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json },
+            tombstones: [],
+            pagination: {
+              page: page,
+              per_page: per_page,
+              total: tasks.count,
+              total_pages: (tasks.count.to_f / per_page).ceil
             }
-          },
-          tombstones: []
-        }, status: :ok
+          }, status: :ok
+        rescue => e
+          Rails.logger.error "TasksController#all_tasks error: #{e.message}"
+          render json: { error: { message: "Failed to retrieve tasks" } },
+                 status: :internal_server_error
+        end
       end
 
       # GET /api/v1/lists/:list_id/tasks/:id
       def show
-        render json: TaskSerializer.new(@task, current_user: current_user, include_subtasks: true).as_json
+        begin
+          render json: TaskSerializer.new(@task, current_user: current_user, include_subtasks: true).as_json
+        rescue => e
+          Rails.logger.error "TasksController#show error: #{e.message}"
+          render json: { error: { message: "Failed to retrieve task" } },
+                 status: :internal_server_error
+        end
       end
 
-        # POST /api/v1/lists/:list_id/tasks
-        def create
+      # POST /api/v1/lists/:list_id/tasks
+      def create
+        begin
           # Handle empty request body
           if request.content_type&.include?("application/json") && request.raw_post.to_s.strip.empty?
-            return render json: { error: "Bad Request" }, status: :bad_request
+            return render json: { error: { message: "Bad Request" } }, status: :bad_request
           end
 
           # Debug logging for iOS app issues
@@ -80,319 +102,452 @@ module Api
               @list = fallback_list
               Rails.logger.info "Redirected task creation from list #{params[:list_id]} to list #{@list.id} for user #{current_user.id}"
             else
-              return render_forbidden("You do not have permission to add tasks to this list")
+              return render json: { error: { message: "You do not have permission to add tasks to this list" } },
+                     status: :forbidden
             end
           end
 
-          begin
-            @task = TaskCreationService.new(@list, current_user, task_params).call
-            render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :created
-          rescue ActiveRecord::RecordInvalid => e
-            Rails.logger.error "Task creation validation failed: #{e.record.errors.full_messages}"
-            render json: { error: "Validation failed", details: e.record.errors.to_hash }, status: :unprocessable_entity
-          rescue => e
-            Rails.logger.error "Task creation failed: #{e.message}"
-            Rails.logger.error "Task params: #{task_params.inspect}"
-            render_server_error("Failed to create task")
-          end
+          @task = TaskCreationService.new(@list, current_user, task_params).call
+          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :created
+        rescue ActiveRecord::RecordInvalid => e
+          Rails.logger.error "Task creation validation failed: #{e.record.errors.full_messages}"
+          render json: {
+            error: "Validation failed",
+            details: e.record.errors.to_hash
+          }, status: :unprocessable_entity
+        rescue => e
+          Rails.logger.error "Task creation failed: #{e.message}"
+          Rails.logger.error "Task params: #{task_params.inspect}"
+          render json: { error: { message: "Failed to create task" } },
+                 status: :internal_server_error
         end
+      end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id
       def update
-        if @task.update(task_params)
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json
-        else
-          render_validation_errors(@task.errors)
+        begin
+          if @task.update(task_params)
+            render json: TaskSerializer.new(@task, current_user: current_user).as_json
+          else
+            Rails.logger.error "Task update validation failed: #{@task.errors.full_messages}"
+            render json: {
+              error: {
+                message: "Validation failed",
+                details: @task.errors.as_json
+              }
+            }, status: :unprocessable_entity
+          end
+        rescue => e
+          Rails.logger.error "TasksController#update error: #{e.message}"
+          render json: { error: { message: "Failed to update task" } },
+                 status: :internal_server_error
         end
       end
 
       # DELETE /api/v1/lists/:list_id/tasks/:id
       def destroy
-        @task.destroy
-        head :no_content
+        begin
+          @task.destroy
+          head :no_content
+        rescue => e
+          Rails.logger.error "TasksController#destroy error: #{e.message}"
+          render json: { error: { message: "Failed to delete task" } },
+                 status: :internal_server_error
+        end
       end
 
       # POST /api/v1/tasks/:id/complete
       def complete
-        unless can_access_task?(@task)
-          render json: {
-            error: "Unauthorized",
-            message: "You do not have permission to modify this task",
-            task_id: @task.id,
-            user_id: current_user.id,
-            list_owner_id: @task.list.user_id
-          }, status: :forbidden
-          return
-        end
+        begin
+          unless can_access_task?(@task)
+            return render json: {
+              error: {
+                message: "You do not have permission to modify this task",
+                task_id: @task.id,
+                user_id: current_user.id,
+                list_owner_id: @task.list.user_id
+              }
+            }, status: :forbidden
+          end
 
-        # Handle both completion states based on the completed parameter
-        if params[:completed] == false || params[:completed] == "false"
-          @task.uncomplete!
-        else
-          @task.complete!
-        end
+          # Handle both completion states based on the completed parameter
+          if params[:completed] == false || params[:completed] == "false"
+            @task.uncomplete!
+          else
+            @task.complete!
+          end
 
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+        rescue => e
+          Rails.logger.error "TasksController#complete error: #{e.message}"
+          render json: { error: { message: "Failed to complete task" } },
+                 status: :internal_server_error
+        end
       end
 
       # PATCH /api/v1/tasks/:id/uncomplete
       def uncomplete
-        unless can_access_task?(@task)
-          render json: {
-            error: "Unauthorized",
-            message: "You do not have permission to modify this task",
-            task_id: @task.id,
-            user_id: current_user.id,
-            list_owner_id: @task.list.user_id
-          }, status: :forbidden
-          return
+        begin
+          unless can_access_task?(@task)
+            return render json: {
+              error: {
+                message: "You do not have permission to modify this task",
+                task_id: @task.id,
+                user_id: current_user.id,
+                list_owner_id: @task.list.user_id
+              }
+            }, status: :forbidden
+          end
+
+          @task.uncomplete!
+          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+        rescue => e
+          Rails.logger.error "TasksController#uncomplete error: #{e.message}"
+          render json: { error: { message: "Failed to uncomplete task" } },
+                 status: :internal_server_error
         end
-
-        @task.uncomplete!
-
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
       end
 
       # POST /api/v1/tasks/:id/reassign
       # PATCH /api/v1/tasks/:id/reassign
       def reassign
-        unless @task.list.user_id == current_user.id
-          render json: { error: "Forbidden" }, status: :forbidden
-          return
+        begin
+          unless @task.list.user_id == current_user.id
+            return render json: { error: { message: "Forbidden" } }, status: :forbidden
+          end
+
+          uid = params[:assigned_to]
+          unless uid.present?
+            return render json: { error: { message: "assigned_to parameter is required" } },
+                   status: :bad_request
+          end
+
+          if Task.column_names.include?("assigned_to_id")
+            @task.update!(assigned_to_id: uid)
+          elsif Task.column_names.include?("assigned_to")
+            @task.update!(assigned_to: uid)
+          else
+            return render json: { error: { message: "Task does not support assignment" } },
+                   status: :unprocessable_entity
+          end
+
+          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+        rescue ActiveRecord::RecordInvalid => e
+          Rails.logger.error "Task reassignment validation failed: #{e.record.errors.full_messages}"
+          render json: {
+            error: {
+              message: "Validation failed",
+              details: e.record.errors.as_json
+            }
+          }, status: :unprocessable_entity
+        rescue => e
+          Rails.logger.error "TasksController#reassign error: #{e.message}"
+          render json: { error: { message: "Failed to reassign task" } },
+                 status: :internal_server_error
         end
-
-        uid = params[:assigned_to]
-
-        if Task.column_names.include?("assigned_to_id")
-          @task.update!(assigned_to_id: uid)
-        elsif Task.column_names.include?("assigned_to")
-          @task.update!(assigned_to: uid)
-        else
-          render json: { error: { message: "Task does not support assignment" } }, status: :unprocessable_content
-          return
-        end
-
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
       end
 
       # POST /api/v1/tasks/:id/submit_explanation
       def submit_explanation
-        unless @task.list.user_id == current_user.id
-          render json: { error: "Forbidden" }, status: :forbidden
-          return
-        end
+        begin
+          unless @task.list.user_id == current_user.id
+            return render json: { error: { message: "Forbidden" } }, status: :forbidden
+          end
 
-        attrs = {}
-        if Task.column_names.include?("missed_reason")
-          attrs[:missed_reason] = params[:missed_reason].to_s
-        end
-        if Task.column_names.include?("missed_reason_submitted_at")
-          attrs[:missed_reason_submitted_at] = Time.current
-        end
+          attrs = {}
+          if Task.column_names.include?("missed_reason")
+            attrs[:missed_reason] = params[:missed_reason].to_s
+          end
+          if Task.column_names.include?("missed_reason_submitted_at")
+            attrs[:missed_reason_submitted_at] = Time.current
+          end
 
-        if attrs.empty?
-          render json: { error: { message: "Task does not support missed-explanation fields" } }, status: :unprocessable_content
-          return
-        end
+          if attrs.empty?
+            return render json: { error: { message: "Task does not support missed-explanation fields" } },
+                   status: :unprocessable_entity
+          end
 
-        if @task.update(attrs)
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
-        else
-          render json: { errors: @task.errors.to_hash }, status: :unprocessable_content
+          if @task.update(attrs)
+            render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+          else
+            render json: {
+              error: {
+                message: "Validation failed",
+                details: @task.errors.as_json
+              }
+            }, status: :unprocessable_entity
+          end
+        rescue => e
+          Rails.logger.error "TasksController#submit_explanation error: #{e.message}"
+          render json: { error: { message: "Failed to submit explanation" } },
+                 status: :internal_server_error
         end
       end
 
       # PATCH /api/v1/tasks/:id/toggle_visibility
       def toggle_visibility
-        unless @task.list.user_id == current_user.id
-          render json: { error: "Forbidden" }, status: :forbidden
-          return
-        end
-
-        visibility = params[:visibility]
-
-        if visibility.present?
-          # Handle visibility parameter (for change_visibility-style calls)
-          unless Task.visibilities.keys.include?(visibility)
-            return render json: { error: "Invalid visibility setting" }, status: :bad_request
+        begin
+          unless @task.list.user_id == current_user.id
+            return render json: { error: { message: "Forbidden" } }, status: :forbidden
           end
 
-          @task.update!(visibility: visibility)
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
-        else
-          # Handle coach_id/visible parameters (for toggle_visibility-style calls)
-          coach_id = params[:coach_id]
-          visible = params[:visible]
+          visibility = params[:visibility]
 
-          coach = User.find(coach_id)
-          relationship = current_user.relationship_with_coach(coach)
+          if visibility.present?
+            # Handle visibility parameter (for change_visibility-style calls)
+            unless Task.visibilities.keys.include?(visibility)
+              return render json: { error: { message: "Invalid visibility setting" } },
+                     status: :bad_request
+            end
 
-          unless relationship
-            return render json: { error: "Not Found" }, status: :not_found
-          end
-
-          if visible
-            @task.show_to!(relationship)
+            @task.update!(visibility: visibility)
+            render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
           else
-            @task.hide_from!(relationship)
-          end
+            # Handle coach_id/visible parameters (for toggle_visibility-style calls)
+            coach_id = params[:coach_id]
+            visible = params[:visible]
 
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+            unless coach_id.present?
+              return render json: { error: { message: "coach_id parameter is required" } },
+                     status: :bad_request
+            end
+
+            coach = User.find(coach_id)
+            relationship = current_user.relationship_with_coach(coach)
+
+            unless relationship
+              return render json: { error: { message: "Not Found" } }, status: :not_found
+            end
+
+            if visible
+              @task.show_to!(relationship)
+            else
+              @task.hide_from!(relationship)
+            end
+
+            render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+          end
+        rescue ActiveRecord::RecordNotFound => e
+          Rails.logger.error "User not found in toggle_visibility: #{e.message}"
+          render json: { error: { message: "User not found" } }, status: :not_found
+        rescue => e
+          Rails.logger.error "TasksController#toggle_visibility error: #{e.message}"
+          render json: { error: { message: "Failed to toggle visibility" } },
+                 status: :internal_server_error
         end
       end
 
       # PATCH /api/v1/tasks/:id/change_visibility
       def change_visibility
-        visibility = params[:visibility]
+        begin
+          visibility = params[:visibility]
 
-        unless %w[visible hidden coaching_only].include?(visibility)
-          return render_bad_request("Invalid visibility setting")
+          unless %w[visible hidden coaching_only].include?(visibility)
+            return render json: { error: { message: "Invalid visibility setting" } },
+                   status: :bad_request
+          end
+
+          case visibility
+          when "visible"
+            @task.make_visible!
+          when "hidden"
+            @task.make_hidden!
+          when "coaching_only"
+            @task.make_coaching_only!
+          end
+
+          render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        rescue => e
+          Rails.logger.error "TasksController#change_visibility error: #{e.message}"
+          render json: { error: { message: "Failed to change visibility" } },
+                 status: :internal_server_error
         end
-
-        case visibility
-        when "visible"
-          @task.make_visible!
-        when "hidden"
-          @task.make_hidden!
-        when "coaching_only"
-          @task.make_coaching_only!
-        end
-
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
 
       # POST /api/v1/tasks/:id/add_subtask
       def add_subtask
-        unless @task.list.user_id == current_user.id
-          render json: { error: "Forbidden" }, status: :forbidden
-          return
-        end
+        begin
+          unless @task.list.user_id == current_user.id
+            return render json: { error: { message: "Forbidden" } }, status: :forbidden
+          end
 
-        due_time = parse_iso(params[:due_at])
-        if Task.validators_on(:due_at).any? { |v| v.kind == :presence } && due_time.nil?
-          return render json: { errors: { due_at: [ "is invalid or missing" ] } }, status: :unprocessable_content
-        end
+          due_time = parse_iso(params[:due_at])
+          if Task.validators_on(:due_at).any? { |v| v.kind == :presence } && due_time.nil?
+            return render json: {
+              error: {
+                message: "Validation failed",
+                details: { due_at: [ "is invalid or missing" ] }
+              }
+            }, status: :unprocessable_entity
+          end
 
-        sub_attrs = {
-          title:        params.require(:title),
-          note:         params[:note],
-          due_at:       due_time,
-          list_id:      @task.list_id,
-          creator_id:   current_user.id,
-          strict_mode:  true
-        }
+          sub_attrs = {
+            title: params.require(:title),
+            note: params[:note],
+            due_at: due_time,
+            list_id: @task.list_id,
+            creator_id: current_user.id,
+            strict_mode: true
+          }
 
-        # prefer parent_task_id, fall back to parent_task association if you use that
-        if Task.column_names.include?("parent_task_id")
-          sub_attrs[:parent_task_id] = @task.id
-        end
+          # prefer parent_task_id, fall back to parent_task association if you use that
+          if Task.column_names.include?("parent_task_id")
+            sub_attrs[:parent_task_id] = @task.id
+          end
 
-        sub = Task.new(sub_attrs)
+          sub = Task.new(sub_attrs)
 
-        if sub.save
-          render json: TaskSerializer.new(sub, current_user: current_user).as_json.merge(parent_task_id: @task.id), status: :created
-        else
-          render json: { errors: sub.errors.to_hash }, status: :unprocessable_content
+          if sub.save
+            render json: TaskSerializer.new(sub, current_user: current_user).as_json.merge(parent_task_id: @task.id),
+                   status: :created
+          else
+            render json: {
+              error: {
+                message: "Validation failed",
+                details: sub.errors.as_json
+              }
+            }, status: :unprocessable_entity
+          end
+        rescue ActionController::ParameterMissing => e
+          Rails.logger.error "Missing required parameter in add_subtask: #{e.message}"
+          render json: { error: { message: "Title is required" } }, status: :bad_request
+        rescue => e
+          Rails.logger.error "TasksController#add_subtask error: #{e.message}"
+          render json: { error: { message: "Failed to add subtask" } },
+                 status: :internal_server_error
         end
       end
 
       # PATCH /api/v1/tasks/:id/subtasks/:subtask_id
       def update_subtask
-        unless @task.list.user_id == current_user.id
-          render json: { error: "Forbidden" }, status: :forbidden
-          return
-        end
+        begin
+          unless @task.list.user_id == current_user.id
+            return render json: { error: { message: "Forbidden" } }, status: :forbidden
+          end
 
-        if @task.update(task_params)
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
-        else
-          render json: { errors: @task.errors.to_hash }, status: :unprocessable_content
+          if @task.update(task_params)
+            render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+          else
+            render json: {
+              error: {
+                message: "Validation failed",
+                details: @task.errors.as_json
+              }
+            }, status: :unprocessable_entity
+          end
+        rescue => e
+          Rails.logger.error "TasksController#update_subtask error: #{e.message}"
+          render json: { error: { message: "Failed to update subtask" } },
+                 status: :internal_server_error
         end
       end
 
       # DELETE /api/v1/tasks/:id/subtasks/:subtask_id
       def delete_subtask
-        unless @task.list.user_id == current_user.id
-          render json: { error: "Forbidden" }, status: :forbidden
-          return
-        end
+        begin
+          unless @task.list.user_id == current_user.id
+            return render json: { error: { message: "Forbidden" } }, status: :forbidden
+          end
 
-        @task.destroy
-        head :no_content
+          @task.destroy
+          head :no_content
+        rescue => e
+          Rails.logger.error "TasksController#delete_subtask error: #{e.message}"
+          render json: { error: { message: "Failed to delete subtask" } },
+                 status: :internal_server_error
+        end
       end
 
       # GET /api/v1/tasks/blocking
       def blocking
-        @tasks = current_user.owned_lists
-                            .joins(tasks: :escalation)
-                            .where(item_escalations: { blocking_app: true })
-                            .where(tasks: { completed_at: nil })
-                            .includes(:creator, :subtasks)
+        begin
+          @tasks = current_user.owned_lists
+                              .joins(tasks: :escalation)
+                              .where(item_escalations: { blocking_app: true })
+                              .where(tasks: { completed_at: nil })
+                              .includes(:creator, :subtasks)
 
-        render json: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json }
+          render json: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json }
+        rescue => e
+          Rails.logger.error "TasksController#blocking error: #{e.message}"
+          render json: { error: { message: "Failed to retrieve blocking tasks" } },
+                 status: :internal_server_error
+        end
       end
 
       # GET /api/v1/tasks/awaiting_explanation
       def awaiting_explanation
-        @tasks = Task.joins(:list)
-                     .where(lists: { user_id: current_user.id })
-                     .awaiting_explanation
-                     .includes(:creator, :list)
+        begin
+          @tasks = Task.joins(:list)
+                       .where(lists: { user_id: current_user.id })
+                       .awaiting_explanation
+                       .includes(:creator, :list)
 
-        render json: { tasks: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json } }
+          render json: {
+            tasks: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json }
+          }
+        rescue => e
+          Rails.logger.error "TasksController#awaiting_explanation error: #{e.message}"
+          render json: { error: { message: "Failed to retrieve tasks awaiting explanation" } },
+                 status: :internal_server_error
+        end
       end
 
       # GET /api/v1/tasks/overdue
       def overdue
-        @tasks = Task.joins(:list)
-                     .where(lists: { user_id: current_user.id })
-                     .overdue
-                     .includes(:creator, :list, :escalation)
-                     .order(due_at: :asc)
+        begin
+          @tasks = Task.joins(:list)
+                       .where(lists: { user_id: current_user.id })
+                       .overdue
+                       .includes(:creator, :list, :escalation)
+                       .order(due_at: :asc)
 
-        render json: { tasks: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json } }
+          render json: {
+            tasks: @tasks.map { |task| TaskSerializer.new(task, current_user: current_user).as_json }
+          }
+        rescue => e
+          Rails.logger.error "TasksController#overdue error: #{e.message}"
+          render json: { error: { message: "Failed to retrieve overdue tasks" } },
+                 status: :internal_server_error
+        end
       end
 
       private
 
       def set_list
-        list_id = params[:list_id]
-        list_id ||= params[:listId]
-        list_id ||= params.dig(:task, :list_id) if params[:task].is_a?(ActionController::Parameters)
-        list_id ||= params.dig(:task, :listId) if params[:task].is_a?(ActionController::Parameters)
-        list_id ||= params.dig(:list, :id) if params[:list].is_a?(ActionController::Parameters)
+        begin
+          list_id = params[:list_id]
+          list_id ||= params[:listId]
+          list_id ||= params.dig(:task, :list_id) if params[:task].is_a?(ActionController::Parameters)
+          list_id ||= params.dig(:task, :listId) if params[:task].is_a?(ActionController::Parameters)
+          list_id ||= params.dig(:list, :id) if params[:list].is_a?(ActionController::Parameters)
 
-        # Fallback: use user's first list if no list_id provided
-        if list_id.blank?
-          @list = current_user.owned_lists.first
-          if @list.nil?
-            raise ActiveRecord::RecordNotFound, "No list found. Please create a list first or specify a list_id."
-          end
-        else
-          begin
+          # Fallback: use user's first list if no list_id provided
+          if list_id.blank?
+            @list = current_user.owned_lists.first
+            if @list.nil?
+              raise ActiveRecord::RecordNotFound, "No list found. Please create a list first or specify a list_id."
+            end
+          else
             @list = List.find(list_id)
             # Check if user has access to this list
             unless @list.can_view?(current_user)
               render json: { error: { message: "List not found" } }, status: :forbidden
               nil
             end
-          rescue ActiveRecord::RecordNotFound => e
-            Rails.logger.warn "List not found: User #{current_user.id} tried to access list #{list_id}"
-            render json: { error: { message: "List not found" } }, status: :not_found
-            nil
           end
+        rescue ActiveRecord::RecordNotFound => e
+          Rails.logger.warn "List not found: User #{current_user.id} tried to access list #{list_id}"
+          render json: { error: { message: "List not found" } }, status: :not_found
         end
       end
 
       def set_task
         begin
-          if params[:list_id]
-            @task = Task.find(params[:id])
-          else
-            @task = Task.find(params[:id])
-          end
-        rescue ActiveRecord::RecordNotFound
-          render_not_found("Task")
+          @task = Task.find(params[:id])
+        rescue ActiveRecord::RecordNotFound => e
+          Rails.logger.warn "Task not found: User #{current_user.id} tried to access task #{params[:id]}"
+          render json: { error: { message: "Task not found" } }, status: :not_found
         end
       end
 
@@ -463,7 +618,8 @@ module Api
 
       def authorize_task_visibility_change
         unless @task.can_change_visibility?(current_user)
-          render_forbidden("You do not have permission to change task visibility")
+          render json: { error: { message: "You do not have permission to change task visibility" } },
+                 status: :forbidden
         end
       end
 
@@ -472,6 +628,63 @@ module Api
         Time.parse(date_string)
       rescue ArgumentError
         nil
+      end
+
+      def validate_params
+        # Validate pagination parameters
+        if params[:page].present? && params[:page].to_i < 1
+          render json: { error: { message: "Page must be a positive integer" } },
+                 status: :bad_request
+          return
+        end
+
+        if params[:per_page].present? && (params[:per_page].to_i < 1 || params[:per_page].to_i > 100)
+          render json: { error: { message: "Per page must be between 1 and 100" } },
+                 status: :bad_request
+          return
+        end
+
+        # Validate status filter
+        if params[:status].present? && !%w[pending completed done overdue].include?(params[:status])
+          render json: { error: { message: "Invalid status filter" } },
+                 status: :bad_request
+          nil
+        end
+      end
+
+      def build_tasks_query(base_query)
+        # Apply status filtering
+        if params[:status].present?
+          case params[:status]
+          when "pending"
+            base_query = base_query.where(status: "pending")
+          when "completed", "done"
+            base_query = base_query.where(status: "done")
+          when "overdue"
+            base_query = base_query.where("due_at < ?", Time.current).where.not(status: "done")
+          end
+        end
+
+        # Apply list filtering for all_tasks
+        if params[:list_id].present?
+          base_query = base_query.where(list_id: params[:list_id])
+        end
+
+        # Apply sorting
+        sort_by = params[:sort_by] || "created_at"
+        sort_order = params[:sort_order] || "desc"
+
+        if %w[created_at updated_at due_at title].include?(sort_by) && %w[asc desc].include?(sort_order)
+          base_query = base_query.order("#{sort_by} #{sort_order}")
+        else
+          base_query = base_query.order(created_at: :desc)
+        end
+
+        base_query
+      end
+
+      def per_page_limit
+        [ params[:per_page].to_i, 1 ].max.clamp(1, 100)
       end
     end
   end

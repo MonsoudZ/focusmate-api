@@ -54,7 +54,7 @@ module Api
         # specs treat an empty body as 422
         cleaned_params = params.except(:controller, :action, :list).permit(:name, :description, :visibility, :due_date, :strict_mode).to_h
         if cleaned_params.blank? && !params.key?(:name)
-          render json: { error: { message: "Validation failed", details: ["Name can't be blank"] } }, status: :unprocessable_entity
+          render json: { error: { message: "Validation failed", details: [ "Name can't be blank" ] } }, status: :unprocessable_entity
           return
         end
 

@@ -47,15 +47,15 @@ class CoachingRelationshipManager
   def enqueue_notification(event)
     # Map internal events to NotificationService methods
     method = case event
-             when :relationship_requested then :coaching_invitation_sent
-             when :relationship_accepted then :coaching_invitation_accepted
-             when :relationship_declined then :coaching_invitation_declined
-             when :relationship_cancelled then :coaching_invitation_declined
-             when :relationship_terminated then :coaching_invitation_declined
-             else
+    when :relationship_requested then :coaching_invitation_sent
+    when :relationship_accepted then :coaching_invitation_accepted
+    when :relationship_declined then :coaching_invitation_declined
+    when :relationship_cancelled then :coaching_invitation_declined
+    when :relationship_terminated then :coaching_invitation_declined
+    else
                Rails.logger.warn "Unknown coaching relationship event: #{event}"
                return
-             end
+    end
 
     NotificationJob.perform_later(method.to_s, @rel.id)
   end

@@ -44,7 +44,7 @@ class NotificationJob < ApplicationJob
   def handle_list_notification(method, list_id, *extra_args)
     list = List.find(list_id)
     # For list_shared, convert coach_id to User object
-    if method == 'list_shared' && extra_args.first.is_a?(Integer)
+    if method == "list_shared" && extra_args.first.is_a?(Integer)
       coach_id = extra_args.first
       coach = User.find(coach_id)
       NotificationService.public_send(method, list, coach)

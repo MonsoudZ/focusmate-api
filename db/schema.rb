@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_28_210429) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -222,6 +222,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_210429) do
     t.datetime "updated_at", null: false
     t.string "delivery_method"
     t.datetime "deleted_at"
+    t.index "((metadata ->> 'read'::text))", name: "idx_notification_logs_read_status"
+    t.index "((metadata ->> 'read'::text))", name: "index_notification_logs_on_read_status"
     t.index ["created_at"], name: "index_notification_logs_on_created_at"
     t.index ["deleted_at"], name: "index_notification_logs_on_deleted_at"
     t.index ["delivered"], name: "index_notification_logs_on_delivered"
@@ -229,7 +231,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_210429) do
     t.index ["notification_type"], name: "index_notification_logs_on_notification_type"
     t.index ["task_id", "created_at"], name: "index_notification_logs_on_task_created_at"
     t.index ["task_id"], name: "index_notification_logs_on_task_id"
+    t.index ["user_id", "created_at"], name: "idx_notification_logs_user_created_at"
     t.index ["user_id", "created_at"], name: "index_notification_logs_on_user_created_at"
+    t.index ["user_id", "created_at"], name: "index_notification_logs_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_notification_logs_on_user_id"
     t.check_constraint "delivery_method IS NULL OR (delivery_method::text = ANY (ARRAY['email'::character varying, 'push'::character varying, 'sms'::character varying, 'in_app'::character varying]::text[]))", name: "chk_notification_log_delivery_method"
   end
@@ -304,7 +308,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_210429) do
     t.bigint "assigned_to_id"
     t.boolean "is_template"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
-    t.index ["completed_at", "list_id"], name: "index_tasks_on_completed_at_and_list_id"
     t.index ["completed_at"], name: "index_tasks_on_completed_at"
     t.index ["creator_id", "status"], name: "index_tasks_on_creator_status"
     t.index ["creator_id"], name: "index_tasks_on_creator_id"

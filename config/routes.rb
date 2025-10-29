@@ -87,8 +87,6 @@ Rails.application.routes.draw do
         post "share", to: "list_shares#create"
       end
 
-      # Global list share accept endpoint (for email links)
-      post "list_shares/accept", to: "list_shares_global#accept"
 
 
       # iOS app compatibility - global /tasks routes
@@ -106,6 +104,14 @@ Rails.application.routes.draw do
         end
 
         member do
+          # Task completion actions
+          patch :complete
+          patch :uncomplete
+          patch :reassign
+          post :submit_explanation
+          patch :toggle_visibility
+          patch :change_visibility
+
           # Subtask management
           post   :add_subtask
           patch  :update_subtask
@@ -153,14 +159,6 @@ Rails.application.routes.draw do
       # ===== DASHBOARD / STATS =====
       get "dashboard", to: "dashboard#show"
       get "dashboard/stats", to: "dashboard#stats"
-
-      # ===== STAGING / TESTING =====
-      if Rails.env.development? || Rails.env.test?
-        post "staging/test_push", to: "staging#test_push"
-        post "staging/test_push_immediate", to: "staging#test_push_immediate"
-        get "staging/push_status", to: "staging#push_status"
-        post "staging/cleanup_test_data", to: "staging#cleanup_test_data"
-      end
     end
   end
 
@@ -172,7 +170,7 @@ Rails.application.routes.draw do
 
   # Health check endpoints
   get "up" => "rails/health#show", as: :rails_health_check
-  
+
   namespace :health do
     get :live
     get :ready

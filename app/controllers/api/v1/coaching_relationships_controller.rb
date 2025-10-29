@@ -151,7 +151,7 @@ module Api
       end
 
       def daily_error(field, msg)
-        { field => [msg] }
+        { field => [ msg ] }
       end
 
       # ----- Prefs storage helpers -----

@@ -47,11 +47,11 @@ class SavedLocation < ApplicationRecord
     lat = lat.to_f
     lng = lng.to_f
     radius = radius.to_f
-    
+
     # Ensure lat/lng are within valid ranges
-    lat = [[lat, -90].max, 90].min
-    lng = [[lng, -180].max, 180].min
-    
+    lat = [ [ lat, -90 ].max, 90 ].min
+    lng = [ [ lng, -180 ].max, 180 ].min
+
     dist_sql = <<~SQL.squish
       2 * 6371000 * ASIN(
         SQRT(
@@ -61,7 +61,7 @@ class SavedLocation < ApplicationRecord
         )
       )
     SQL
-    
+
     select("#{table_name}.*, (#{dist_sql}) AS distance_m", lat, lat, lng)
       .where("(#{dist_sql}) <= ?", lat, lat, lng, radius)
       .order(Arel.sql("distance_m ASC"))

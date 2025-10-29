@@ -47,7 +47,7 @@ class UserLocation < ApplicationRecord
   }
 
   # ----- Simple data accessors -----
-  def coordinates = [latitude, longitude]
+  def coordinates = [ latitude, longitude ]
 
   def accurate? = accuracy.present? && accuracy <= ACCURACY_THRESHOLDS[:medium]
   def recent? = recorded_at.present? && recorded_at >= RECENT_WINDOW.ago

@@ -1,8 +1,8 @@
 class CoachingRelationship < ApplicationRecord
-  enum :status, { pending: 'pending', active: 'active', inactive: 'inactive', declined: 'declined' }
+  enum :status, { pending: "pending", active: "active", inactive: "inactive", declined: "declined" }
 
-  belongs_to :coach, class_name: 'User'
-  belongs_to :client, class_name: 'User'
+  belongs_to :coach, class_name: "User"
+  belongs_to :client, class_name: "User"
   has_many :memberships, dependent: :destroy
   has_many :lists, through: :memberships
   has_many :daily_summaries, dependent: :destroy

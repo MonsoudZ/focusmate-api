@@ -26,7 +26,7 @@ end
 
 # Configure global job options
 Sidekiq.default_job_options = {
-  'retry' => 3,
-  'backtrace' => true,
-  'dead' => true
+  "retry" => 3,
+  "backtrace" => true,
+  "dead" => true
 }

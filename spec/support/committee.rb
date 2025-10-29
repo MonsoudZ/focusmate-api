@@ -14,18 +14,18 @@ RSpec.configure do |config|
     # Skip validation for certain test patterns
     next if example.metadata[:skip_committee_validation]
     next unless response&.status && response.status >= 200 && response.status < 300
-    
+
     # Only validate JSON responses
     next unless response.content_type&.include?('application/json')
-    
+
     # Get the path and method from the example
     path = example.metadata[:request_path] || request.path
     method = example.metadata[:request_method] || request.method.downcase
-    
+
     # Find the corresponding OpenAPI operation
     operation = find_operation(path, method)
     next unless operation
-    
+
     # Validate response against schema
     begin
       Committee::ResponseValidator.new(operation).call(
@@ -43,27 +43,27 @@ RSpec.configure do |config|
   def find_operation(path, method)
     # Convert Rails path to OpenAPI path
     openapi_path = convert_rails_path_to_openapi(path)
-    
+
     # Find the operation in the schema
     return nil unless @committee_schema&.paths
-    
+
     @committee_schema.paths.each do |schema_path, path_item|
       if matches_path?(openapi_path, schema_path)
         return path_item.send(method.to_sym)
       end
     end
-    
+
     nil
   end
 
   def convert_rails_path_to_openapi(path)
     # Remove /api/v1 prefix
     path = path.gsub(/^\/api\/v1/, '')
-    
+
     # Convert Rails route parameters to OpenAPI format
     # e.g., /tasks/123 -> /tasks/{id}
     path = path.gsub(/\/\d+/, '/{id}')
-    
+
     path
   end
 

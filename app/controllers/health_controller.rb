@@ -13,11 +13,11 @@ class HealthController < ApplicationController
       redis: redis_healthy?,
       queue: queue_healthy?
     }
-    
+
     if checks.values.all?
-      render json: { status: 'ok', checks: checks }
+      render json: { status: "ok", checks: checks }
     else
-      render json: { status: 'degraded', checks: checks }, status: :service_unavailable
+      render json: { status: "degraded", checks: checks }, status: :service_unavailable
     end
   end
 
@@ -31,7 +31,7 @@ class HealthController < ApplicationController
   end
 
   def redis_healthy?
-    Redis.new.ping == 'PONG'
+    Redis.new.ping == "PONG"
   rescue => e
     Rails.logger.error "Redis health check failed: #{e.message}"
     false

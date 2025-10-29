@@ -15,7 +15,7 @@ module Api
         data = DashboardDataService.new(user: current_user, window:, sections:).call
 
         # ETag/Last-Modified for cheap conditional GETs
-        etag = ["dash-show", current_user.id, data[:digest], window[:from]&.to_i, window[:to]&.to_i, sections.sort].join(":")
+        etag = [ "dash-show", current_user.id, data[:digest], window[:from]&.to_i, window[:to]&.to_i, sections.sort ].join(":")
         fresh_when etag:, last_modified: data[:last_modified] || Time.current, public: false
 
         # Small private cache; iOS will still revalidate via ETag
@@ -36,11 +36,11 @@ module Api
       def stats
         window = extract_window(params, current_user)
         group_by = %w[day week month].include?(params[:group_by]) ? params[:group_by] : "day"
-        limit = [[params[:limit].to_i, 1].max, 365].min rescue 30
+        limit = [ [ params[:limit].to_i, 1 ].max, 365 ].min rescue 30
 
         stats = DashboardDataService.new(user: current_user, window:).stats(group_by:, limit:)
 
-        etag = ["dash-stats", current_user.id, stats[:digest], window[:from]&.to_i, window[:to]&.to_i, group_by, limit].join(":")
+        etag = [ "dash-stats", current_user.id, stats[:digest], window[:from]&.to_i, window[:to]&.to_i, group_by, limit ].join(":")
         fresh_when etag:, last_modified: stats[:last_modified] || Time.current, public: false
         response.set_header("Cache-Control", "private, max-age=60")
 
@@ -67,7 +67,7 @@ module Api
           { from:, to:, tz: }
         end
       rescue ArgumentError
-        raise DashboardDataService::ValidationError.new(details: { tz: ["invalid timezone"] })
+        raise DashboardDataService::ValidationError.new(details: { tz: [ "invalid timezone" ] })
       end
 
       def parse_time(val)

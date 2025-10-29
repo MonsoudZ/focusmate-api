@@ -48,7 +48,7 @@ class Task < ApplicationRecord
   validates :note, length: { maximum: 1000 }
   validates :due_at, presence: true
   validates :strict_mode, inclusion: { in: [ true, false ] }
-  
+
   # Set default values
   after_initialize :set_defaults
   validates :notification_interval_minutes, numericality: { greater_than: 0 }

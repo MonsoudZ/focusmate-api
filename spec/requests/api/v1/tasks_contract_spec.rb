@@ -5,13 +5,13 @@ require 'rails_helper'
 RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: true do
   let(:user) { create(:user) }
   let(:list) { create(:list, user: user) }
-  
+
   def auth_headers_for(u)
     controller = Api::V1::AuthenticationController.new
     token = controller.send(:generate_jwt_token, u)
     { 'Authorization' => "Bearer #{token}" }
   end
-  
+
   let(:auth_headers) { auth_headers_for(user) }
 
   describe 'GET /api/v1/tasks' do
@@ -22,16 +22,16 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
 
       it 'returns tasks that match OpenAPI schema' do
         get '/api/v1/tasks', headers: auth_headers
-        
+
         expect(response).to have_http_status(:ok)
         expect(response.content_type).to include('application/json')
-        
+
         json = JSON.parse(response.body)
         expect(json).to have_key('tasks')
         expect(json).to have_key('tombstones')
         expect(json['tasks']).to be_an(Array)
         expect(json['tombstones']).to be_an(Array)
-        
+
         # Validate task structure matches schema
         if json['tasks'].any?
           task = json['tasks'].first
@@ -51,19 +51,19 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
 
       it 'handles list_id filter' do
         get '/api/v1/tasks', params: { list_id: list.id }, headers: auth_headers
-        
+
         expect(response).to have_http_status(:ok)
       end
 
       it 'handles status filter' do
         get '/api/v1/tasks', params: { status: 'pending' }, headers: auth_headers
-        
+
         expect(response).to have_http_status(:ok)
       end
 
       it 'handles pagination' do
         get '/api/v1/tasks', params: { page: 1, per_page: 10 }, headers: auth_headers
-        
+
         expect(response).to have_http_status(:ok)
       end
     end
@@ -71,10 +71,10 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
     context 'without authentication' do
       it 'returns 401 Unauthorized' do
         get '/api/v1/tasks'
-        
+
         expect(response).to have_http_status(:unauthorized)
         expect(response.content_type).to include('application/json')
-        
+
         json = JSON.parse(response.body)
         expect(json).to have_key('error')
         expect(json['error']).to have_key('message')
@@ -96,10 +96,10 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
     context 'with valid parameters' do
       it 'creates task and returns schema-compliant response' do
         post '/api/v1/tasks', params: task_params, headers: auth_headers
-        
+
         expect(response).to have_http_status(:created)
         expect(response.content_type).to include('application/json')
-        
+
         json = JSON.parse(response.body)
         expect(json).to have_key('id')
         expect(json).to have_key('title')
@@ -113,10 +113,10 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
     context 'with invalid parameters' do
       it 'returns validation error' do
         post '/api/v1/tasks', params: { title: '', list_id: list.id }, headers: auth_headers
-        
+
         expect(response).to have_http_status(:unprocessable_entity)
         expect(response.content_type).to include('application/json')
-        
+
         json = JSON.parse(response.body)
         expect(json).to have_key('error')
       end
@@ -129,10 +129,10 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
     context 'with valid task ID' do
       it 'returns task details' do
         get "/api/v1/tasks/#{task.id}", headers: auth_headers
-        
+
         expect(response).to have_http_status(:ok)
         expect(response.content_type).to include('application/json')
-        
+
         json = JSON.parse(response.body)
         expect(json).to have_key('id')
         expect(json).to have_key('title')
@@ -144,10 +144,10 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
     context 'with non-existent task ID' do
       it 'returns 404 Not Found' do
         get '/api/v1/tasks/99999', headers: auth_headers
-        
+
         expect(response).to have_http_status(:not_found)
         expect(response.content_type).to include('application/json')
-        
+
         json = JSON.parse(response.body)
         expect(json).to have_key('error')
       end
