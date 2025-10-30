@@ -33,7 +33,7 @@ class TaskReassignmentService
   def validate_assignment_support!
     return if Task.column_names.include?("assigned_to_id") || Task.column_names.include?("assigned_to")
 
-    raise ValidationError.new("Task does not support assignment", { assigned_to: ["not supported"] })
+    raise ValidationError.new("Task does not support assignment", { assigned_to: [ "not supported" ] })
   end
 
   def perform_reassignment(assigned_to_id)

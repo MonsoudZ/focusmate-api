@@ -146,13 +146,13 @@ module Api
         end
 
         # Convert string booleans to actual booleans
-        [:notify_on_completion, :notify_on_missed_deadline, :send_daily_summary].each do |key|
+        [ :notify_on_completion, :notify_on_missed_deadline, :send_daily_summary ].each do |key|
           if changes.key?(key)
             val = changes[key]
             # Handle string boolean values
             if val.is_a?(String)
               val_lower = val.downcase.strip
-              changes[key] = !["false", "0", "no", "off", "f", "n", ""].include?(val_lower)
+              changes[key] = ![ "false", "0", "no", "off", "f", "n", "" ].include?(val_lower)
             else
               changes[key] = ActiveModel::Type::Boolean.new.cast(val)
             end

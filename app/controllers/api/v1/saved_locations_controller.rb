@@ -136,7 +136,7 @@ module Api
 
         if errors.any?
           render json: { errors: errors }, status: :unprocessable_entity
-          return
+          nil
         end
       end
 

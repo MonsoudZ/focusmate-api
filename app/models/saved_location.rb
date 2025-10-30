@@ -59,8 +59,8 @@ class SavedLocation < ApplicationRecord
     SQL
 
     # Use bind parameters instead of string interpolation
-    select(Arel.sql("#{table_name}.*, (#{sanitize_sql([dist_sql, lat, lat, lng])}) AS distance_m"))
-      .where("(#{sanitize_sql([dist_sql, lat, lat, lng])}) <= ?", radius)
+    select(Arel.sql("#{table_name}.*, (#{sanitize_sql([ dist_sql, lat, lat, lng ])}) AS distance_m"))
+      .where("(#{sanitize_sql([ dist_sql, lat, lat, lng ])}) <= ?", radius)
       .order(Arel.sql("distance_m ASC"))
   }
 

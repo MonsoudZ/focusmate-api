@@ -7,7 +7,7 @@ class JwtHelper
       exp: 1.hour.from_now.to_i,
       iat: Time.current.to_i
     }
-    
-    JWT.encode(payload, Rails.application.secret_key_base, 'HS256')
+
+    JWT.encode(payload, Rails.application.secret_key_base, "HS256")
   end
 end

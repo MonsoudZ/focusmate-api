@@ -161,7 +161,7 @@ class CoachingRelationship < ApplicationRecord
   end
 
   def overdue_tasks
-    all_tasks.where("due_at < ? AND status NOT IN (?)", Time.current, [Task.statuses[:done], Task.statuses[:deleted]])
+    all_tasks.where("due_at < ? AND status NOT IN (?)", Time.current, [ Task.statuses[:done], Task.statuses[:deleted] ])
   end
 
   # Class methods

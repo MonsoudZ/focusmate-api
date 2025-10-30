@@ -373,7 +373,7 @@ class DashboardDataService
                             .pluck(Arel.sql("lists.user_id, COUNT(*) as total_count, SUM(CASE WHEN tasks.status = 2 THEN 1 ELSE 0 END) as completed_count"))
 
     # Convert to hash for lookup
-    task_counts = task_counts_array.to_h { |user_id, total, completed| [user_id, { total: total.to_i, completed: completed.to_i }] }
+    task_counts = task_counts_array.to_h { |user_id, total, completed| [ user_id, { total: total.to_i, completed: completed.to_i } ] }
 
     # Eager load users and build summary
     User.where(id: client_ids).map do |client|

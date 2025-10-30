@@ -3,7 +3,7 @@ module Api
     class ListSharesController < ApplicationController
       include Paginatable
 
-      before_action :authenticate_user!, except: [:accept_invitation]
+      before_action :authenticate_user!, except: [ :accept_invitation ]
       before_action :set_list, only: %i[index create show update destroy update_permissions accept decline]
       before_action :set_list_share, only: %i[show update destroy update_permissions accept decline]
       before_action :authorize_list_user, only: %i[index create update update_permissions]
@@ -326,7 +326,6 @@ module Api
           end
         end
       end
-
     end
   end
 end

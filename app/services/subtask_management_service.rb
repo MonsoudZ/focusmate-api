@@ -57,7 +57,7 @@ class SubtaskManagementService
     if Task.validators_on(:due_at).any? { |v| v.kind == :presence } && due_at.nil?
       raise ValidationError.new(
         "Validation failed",
-        { due_at: ["is invalid or missing"] }
+        { due_at: [ "is invalid or missing" ] }
       )
     end
   end

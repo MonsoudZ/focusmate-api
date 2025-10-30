@@ -9,7 +9,7 @@ module Paginatable
   # @param max_per_page [Integer] Maximum items per page (default: 50)
   # @return [Hash] { paginated_query:, pagination_metadata: }
   def apply_pagination(query, default_per_page: 25, max_per_page: 50)
-    page = [params[:page].to_i, 1].max
+    page = [ params[:page].to_i, 1 ].max
     per_page = calculate_per_page(default_per_page, max_per_page)
     offset = (page - 1) * per_page
 
@@ -96,6 +96,6 @@ module Paginatable
   def calculate_per_page(default_per_page, max_per_page)
     per_page = params[:per_page].to_i
     per_page = default_per_page if per_page <= 0
-    [per_page, max_per_page].min
+    [ per_page, max_per_page ].min
   end
 end

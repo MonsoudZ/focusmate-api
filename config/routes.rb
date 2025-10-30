@@ -35,7 +35,7 @@ Rails.application.routes.draw do
       post "register", to: "authentication#register"
       delete "logout", to: "authentication#logout"
       get "profile", to: "authentication#profile"
-      
+
       # iOS app compatibility routes
       post "auth/sign_in", to: "authentication#login"
       post "auth/sign_up", to: "authentication#register"

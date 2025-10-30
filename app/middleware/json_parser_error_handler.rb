@@ -11,9 +11,7 @@ class JsonParserErrorHandler
     [
       400,
       { "Content-Type" => "application/json" },
-      [{ error: { message: "Invalid JSON format" } }.to_json]
+      [ { error: { message: "Invalid JSON format" } }.to_json ]
     ]
   end
 end
-
-
