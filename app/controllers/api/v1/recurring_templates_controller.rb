@@ -19,67 +19,49 @@ module Api
 
       # POST /api/v1/recurring_templates
       def create
-        list = find_authorized_list(params[:list_id])
-        return if performed? # Early return if error was rendered
-
-        attrs = prepare_template_attributes(template_params.to_h.symbolize_keys)
-        return if performed? # Early return if error was rendered
-
-        template = list.tasks.new(attrs.merge(creator: current_user))
-
-        if template.save
-          render json: serialize_template(template), status: :created
-        else
-          Rails.logger.error "Template validation failed: #{template.errors.full_messages}"
-          render json: {
-            error: {
-              message: "Validation failed",
-              details: template.errors.as_json
-            }
-          }, status: :unprocessable_content
-        end
+        # Merge list_id with template params for the service
+        service_params = template_params.to_h.merge(list_id: params[:list_id])
+        service = RecurringTemplateCreationService.new(user: current_user, params: service_params)
+        template = service.create!
+        render json: serialize_template(template), status: :created
+      rescue RecurringTemplateCreationService::NotFoundError => e
+        render json: { error: { message: e.message } }, status: :not_found
+      rescue RecurringTemplateCreationService::ValidationError => e
+        Rails.logger.error "Template validation failed: #{e.details}"
+        render json: {
+          error: {
+            message: e.message,
+            details: e.details
+          }
+        }, status: :unprocessable_content
       end
 
       # PATCH /api/v1/recurring_templates/:id
       def update
         return not_found unless @template
 
-        attrs = prepare_template_attributes(template_params.to_h.symbolize_keys)
-        return if performed? # Early return if error was rendered
-
-        if @template.update(attrs)
-          # Propagate only fields that were provided, to FUTURE, INCOMPLETE instances
-          changed_fields = {}
-          changed_fields[:title] = @template.title if attrs.key?(:title)
-          changed_fields[:note]  = @template.note  if attrs.key?(:note)
-
-          if changed_fields.present?
-            Task.where(recurring_template_id: @template.id)
-                .where("due_at > ?", Time.current)
-                .where.not(status: Task.statuses[:done])
-                .find_each { |inst| inst.update!(changed_fields) }
-          end
-
-          render json: serialize_template(@template), status: :ok
-        else
-          Rails.logger.error "Template update validation failed: #{@template.errors.full_messages}"
-          render json: {
-            error: {
-              message: "Validation failed",
-              details: @template.errors.as_json
-            }
-          }, status: :unprocessable_content
-        end
+        service = RecurringTemplateUpdateService.new(template: @template, params: template_params)
+        template = service.update!
+        render json: serialize_template(template), status: :ok
+      rescue RecurringTemplateUpdateService::ValidationError => e
+        Rails.logger.error "Template update validation failed: #{e.details}"
+        render json: {
+          error: {
+            message: e.message,
+            details: e.details
+          }
+        }, status: :unprocessable_content
       end
 
       # DELETE /api/v1/recurring_templates/:id
       def destroy
         return not_found unless @template
 
-        if ActiveModel::Type::Boolean.new.cast(params[:delete_instances])
-          Task.where(recurring_template_id: @template.id).find_each(&:destroy!)
-        end
-        @template.destroy!
+        service = RecurringTemplateDeletionService.new(
+          template: @template,
+          delete_instances: params[:delete_instances]
+        )
+        service.delete!
         head :no_content
       end
 

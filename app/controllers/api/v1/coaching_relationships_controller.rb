@@ -32,146 +32,59 @@ module Api
 
       # POST /api/v1/coaching_relationships
       def create
-        attrs = create_params
-        coach_email  = normalize_email(attrs[:coach_email])
-        client_email = normalize_email(attrs[:client_email])
-        invited_by   = attrs[:invited_by].presence
-
-        if coach_email.blank? && client_email.blank?
-          return render_unprocessable_content("Must provide coach_email or client_email")
-        end
-
-        # Decide inviter/invitee
-        if invited_by == "coach" || (invited_by.blank? && client_email.present?)
-          coach  = current_user
-          client = find_user_ci(client_email || coach_email)
-          unless client
-            return render json: { error: { message: "Client not found with that email" } }, status: :not_found
-          end
-          return render_unprocessable_content("You cannot invite yourself") if client.id == coach.id
-          invited_by = "coach"
-        else
-          client = current_user
-          coach  = find_user_ci(coach_email || client_email)
-          unless coach
-            return render json: { error: { message: "Coach not found with that email" } }, status: :not_found
-          end
-          return render_unprocessable_content("You cannot invite yourself") if coach.id == client.id
-          invited_by = "client"
-        end
-
-        # Check for existing relationship
-        existing = CoachingRelationship.where(coach_id: coach.id, client_id: client.id).first
-        if existing
-          return render_unprocessable_content("Relationship already exists")
-        end
-
-        rel = CoachingRelationship.new(coach:, client:, invited_by:, status: "pending")
-        rel.save!
-
-        # Reload with associations
-        rel = CoachingRelationship.includes(:coach, :client).find(rel.id)
-
-        # Send notification asynchronously
-        begin
-          NotificationJob.perform_later("coaching_invitation_sent", rel.id)
-        rescue => e
-          Rails.logger.error "[CoachingRelationshipsController] Error queueing invitation notification: #{e.message}"
-        end
-
+        service = CoachingRelationshipCreationService.new(current_user: current_user, params: create_params)
+        rel = service.create!
         render json: serialize(rel), status: :created
+      rescue CoachingRelationshipCreationService::NotFoundError => e
+        render json: { error: { message: e.message } }, status: :not_found
+      rescue CoachingRelationshipCreationService::ValidationError => e
+        render_unprocessable_content(e.message)
       end
 
       # PATCH /api/v1/coaching_relationships/:id/accept
       def accept
         return render_not_found("Coaching relationship") unless @relationship
-        return render_forbidden("You cannot accept this invitation") unless invitee?(@relationship, current_user) && @relationship.status.to_s == "pending"
 
-        @relationship.update!(status: "active", accepted_at: Time.current)
-
-        # Reload with associations
-        @relationship = CoachingRelationship.includes(:coach, :client).find(@relationship.id)
-
-        # Send notification asynchronously
-        begin
-          NotificationJob.perform_later("coaching_invitation_accepted", @relationship.id)
-        rescue => e
-          Rails.logger.error "[CoachingRelationshipsController] Error queueing acceptance notification: #{e.message}"
-        end
-
-        render json: serialize(@relationship), status: :ok
+        service = CoachingRelationshipAcceptanceService.new(relationship: @relationship, current_user: current_user)
+        relationship = service.accept!
+        render json: serialize(relationship), status: :ok
+      rescue CoachingRelationshipAcceptanceService::UnauthorizedError => e
+        render_forbidden(e.message)
       end
 
       # PATCH /api/v1/coaching_relationships/:id/decline
       def decline
         return render_not_found("Coaching relationship") unless @relationship
-        return render_forbidden("You cannot decline this invitation") unless invitee?(@relationship, current_user) && @relationship.status.to_s == "pending"
 
-        @relationship.update!(status: "declined")
-
-        # Send notification asynchronously
-        begin
-          NotificationJob.perform_later("coaching_invitation_declined", @relationship.id)
-        rescue => e
-          Rails.logger.error "[CoachingRelationshipsController] Error queueing decline notification: #{e.message}"
-        end
-
+        service = CoachingRelationshipDeclineService.new(relationship: @relationship, current_user: current_user)
+        service.decline!
         head :no_content
+      rescue CoachingRelationshipDeclineService::UnauthorizedError => e
+        render_forbidden(e.message)
       end
 
       # PATCH /api/v1/coaching_relationships/:id/update_preferences
       def update_preferences
         return render_not_found("Coaching relationship") unless @relationship
-        return render_forbidden("Only coaches can update preferences") unless current_user.id == @relationship.coach_id
 
-        changes = prefs_params.to_h.symbolize_keys
-
-        # Remove timezone - it's accepted but not stored (for future use)
-        changes.delete(:timezone)
-
-        # Convert HH:MM string to Time object if provided
-        if changes.key?(:daily_summary_time)
-          val = changes[:daily_summary_time]
-          if val.blank?
-            changes[:daily_summary_time] = nil
-          elsif val.is_a?(String)
-            # Validate HH:MM format
-            if val.match?(/\A([01]?\d|2[0-3]):[0-5]\d\z/)
-              # Parse as time today (Rails will store just the time part)
-              changes[:daily_summary_time] = Time.zone.parse(val)
-            elsif val.present?
-              return render_unprocessable_content("Validation failed")
-            end
-          end
-        end
-
-        # Convert string booleans to actual booleans
-        [ :notify_on_completion, :notify_on_missed_deadline, :send_daily_summary ].each do |key|
-          if changes.key?(key)
-            val = changes[key]
-            # Handle string boolean values
-            if val.is_a?(String)
-              val_lower = val.downcase.strip
-              changes[key] = ![ "false", "0", "no", "off", "f", "n", "" ].include?(val_lower)
-            else
-              changes[key] = ActiveModel::Type::Boolean.new.cast(val)
-            end
-          end
-        end
-
-        begin
-          @relationship.update!(changes)
-        rescue ActiveRecord::RecordInvalid => e
-          return render_unprocessable_content("Validation failed")
-        end
+        service = CoachingRelationshipPreferencesService.new(
+          relationship: @relationship,
+          current_user: current_user,
+          params: prefs_params
+        )
+        relationship = service.update!
 
         render json: {
-          id: @relationship.id,
-          notify_on_completion:      @relationship.notify_on_completion,
-          notify_on_missed_deadline: @relationship.notify_on_missed_deadline,
-          send_daily_summary:        @relationship.send_daily_summary,
-          daily_summary_time:        @relationship.daily_summary_time&.strftime("%H:%M")
+          id: relationship.id,
+          notify_on_completion: relationship.notify_on_completion,
+          notify_on_missed_deadline: relationship.notify_on_missed_deadline,
+          send_daily_summary: relationship.send_daily_summary,
+          daily_summary_time: relationship.daily_summary_time&.strftime("%H:%M")
         }, status: :ok
+      rescue CoachingRelationshipPreferencesService::UnauthorizedError => e
+        render_forbidden(e.message)
+      rescue CoachingRelationshipPreferencesService::ValidationError => e
+        render_unprocessable_content(e.message)
       end
 
       # DELETE /api/v1/coaching_relationships/:id

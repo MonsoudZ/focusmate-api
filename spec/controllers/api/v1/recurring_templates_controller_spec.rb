@@ -464,7 +464,7 @@ RSpec.describe Api::V1::RecurringTemplatesController, type: :request do
         strict_mode: false
       )
 
-      delete "/api/v1/recurring_templates/#{template.id}", headers: user_headers
+      delete "/api/v1/recurring_templates/#{template.id}?delete_instances=true", headers: user_headers
 
       expect(response).to have_http_status(:no_content)
 

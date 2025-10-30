@@ -51,30 +51,22 @@ module Api
 
       # POST /api/v1/lists
       def create
-        # specs treat an empty body as 422
-        cleaned_params = params.except(:controller, :action, :list).permit(:name, :description, :visibility, :due_date, :strict_mode).to_h
-        if cleaned_params.blank? && !params.key?(:name)
-          render json: { error: { message: "Validation failed", details: [ "Name can't be blank" ] } }, status: :unprocessable_content
-          return
-        end
-
-        list = current_user.owned_lists.new(list_params_flat)
-        list.visibility = "private" # default
-
-        if list.save
-          render json: serialize_list(list), status: :created
-        else
-          validation_error!(list)
-        end
+        service = ListCreationService.new(user: current_user, params: list_params_flat)
+        list = service.create!
+        render json: serialize_list(list), status: :created
+      rescue ListCreationService::ValidationError => e
+        render json: { errors: e.details }, status: :unprocessable_content
       end
 
       # PATCH /api/v1/lists/:id
       def update
-        if @list.update(list_params_flat)
-          render json: serialize_list(@list), status: :ok
-        else
-          validation_error!(@list)
-        end
+        service = ListUpdateService.new(list: @list, user: current_user)
+        service.update!(attributes: list_params_flat)
+        render json: serialize_list(@list), status: :ok
+      rescue ListUpdateService::UnauthorizedError => e
+        render json: { error: { message: e.message } }, status: :forbidden
+      rescue ListUpdateService::ValidationError => e
+        render json: { errors: e.details }, status: :unprocessable_content
       end
 
       # DELETE /api/v1/lists/:id
@@ -86,58 +78,45 @@ module Api
       # POST /api/v1/lists/:id/share
       # params: user_id or email (required), can_edit (optional)
       def share
-        target_id = params[:user_id]
-        target_email = params[:email]
+        service = ListSharingService.new(list: @list, user: current_user)
+        permissions = {
+          can_view: params[:can_view],
+          can_edit: params[:can_edit],
+          can_add_items: params[:can_add_items],
+          can_delete_items: params[:can_delete_items]
+        }
+        share = service.share!(user_id: params[:user_id], email: params[:email], permissions: permissions)
 
-        # Check if both user_id and email are missing
-        if target_id.blank? && target_email.blank?
-          return render json: { errors: { email: [ "is required" ] } }, status: :unprocessable_content
-        end
-
-        # If email is provided, find user by email
-        if target_email.present?
-          user = User.find_by(email: target_email)
-          return render json: { errors: { email: [ "User not found" ] } }, status: :unprocessable_content unless user
-          target_id = user.id
-        end
-
-        # Get user's email for ListShare model
-        user = User.find(target_id)
-        share = ListShare.find_or_initialize_by(list_id: @list.id, email: user.email)
-        share.user_id = target_id
-        share.status   = :accepted
-        share.can_view = ActiveModel::Type::Boolean.new.cast(params[:can_view])
-        share.can_edit = ActiveModel::Type::Boolean.new.cast(params[:can_edit])
-        share.can_add_items = ActiveModel::Type::Boolean.new.cast(params[:can_add_items])
-        share.can_delete_items = ActiveModel::Type::Boolean.new.cast(params[:can_delete_items])
-
-        if share.save
-          render json: {
-            id: share.id,
-            user_id: share.user_id,
-            email: share.email,
-            can_view: share.can_view,
-            can_edit: share.can_edit,
-            can_add_items: share.can_add_items,
-            can_delete_items: share.can_delete_items,
-            status: share.status,
-            created_at: share.created_at,
-            updated_at: share.updated_at
-          }, status: :created
-        else
-          validation_error!(share)
-        end
+        render json: {
+          id: share.id,
+          user_id: share.user_id,
+          email: share.email,
+          can_view: share.can_view,
+          can_edit: share.can_edit,
+          can_add_items: share.can_add_items,
+          can_delete_items: share.can_delete_items,
+          status: share.status,
+          created_at: share.created_at,
+          updated_at: share.updated_at
+        }, status: :created
+      rescue ListSharingService::UnauthorizedError => e
+        render json: { error: { message: e.message } }, status: :forbidden
+      rescue ListSharingService::ValidationError => e
+        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_content
+      rescue ListSharingService::NotFoundError => e
+        render json: { error: { message: e.message } }, status: :not_found
       end
 
       # PATCH /api/v1/lists/:id/unshare
       # params: user_id (required)
       def unshare
-        target_id = params[:user_id]
-        return validation_error_message!("user_id is required") if target_id.blank?
-
-        share = ListShare.find_by(list_id: @list.id, user_id: target_id)
-        share&.destroy!
+        service = ListSharingService.new(list: @list, user: current_user)
+        service.unshare!(user_id: params[:user_id])
         render json: serialize_list(@list), status: :ok
+      rescue ListSharingService::UnauthorizedError => e
+        render json: { error: { message: e.message } }, status: :forbidden
+      rescue ListSharingService::ValidationError => e
+        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_content
       end
 
       # GET /api/v1/lists/:id/members

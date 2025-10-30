@@ -469,7 +469,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Validation failed")
+      expect(json["error"]["message"]).to eq("Invalid time format")
     end
   end
 
@@ -663,7 +663,7 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
 
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Validation failed")
+      expect(json["error"]["message"]).to eq("Invalid time format")
     end
 
     it "should handle relationship with empty time" do

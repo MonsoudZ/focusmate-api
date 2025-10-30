@@ -50,43 +50,19 @@ module Api
       # POST /api/v1/lists/:list_id/shares
       def create
         begin
-          # ---- Spec: empty body / missing email -> 400 Bad Request with { error: { message: "Email is required" } }
-          if params.blank? || params[:email].to_s.strip.blank?
-            return render json: { error: { message: "Email is required" } }, status: :bad_request
-          end
+          service = ListShareCreationService.new(list: @list, current_user: current_user)
+          result = service.create!(
+            email: params[:email],
+            role: params[:role],
+            permissions: share_params
+          )
 
-          email = params[:email].to_s.downcase.strip
-          role  = params[:role].presence || "viewer"
-
-          # Validate role before proceeding
-          unless %w[viewer editor admin].include?(role)
-            return render json: { error: { message: "Validation failed" } },
-                   status: :unprocessable_content
-          end
-
-          # If already shared, return the existing share (spec expects OK rather than error)
-          if (existing_share = @list.list_shares.find_by(email: email))
-            return render json: ListShareSerializer.new(existing_share).as_json, status: :ok
-          end
-
-          invited_user = User.find_by(email: email)
-
-          @list_share =
-            if invited_user
-              # existing user -> create accepted/pending based on your model logic
-              @list.share_with!(invited_user, share_params.merge(role: role))
-            else
-              # non-existent user -> pending invite
-              @list.invite_by_email!(email, role, share_params)
-            end
-
-          if @list_share.persisted?
-            render json: ListShareSerializer.new(@list_share).as_json, status: :created
-          else
-            Rails.logger.error "Share creation validation failed: #{@list_share.errors.full_messages}"
-            render json: { error: { message: "Validation failed", details: @list_share.errors.as_json } },
-                   status: :unprocessable_content
-          end
+          status = result[:created] ? :created : :ok
+          render json: ListShareSerializer.new(result[:share]).as_json, status: status
+        rescue ListShareCreationService::BadRequestError => e
+          render json: { error: { message: e.message } }, status: :bad_request
+        rescue ListShareCreationService::ValidationError => e
+          render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_content
         rescue => e
           Rails.logger.error "Create share failed: #{e.class}: #{e.message}"
           render json: { error: { message: "Failed to create share" } },
@@ -143,23 +119,11 @@ module Api
       # POST /api/v1/lists/:list_id/shares/:id/accept
       def accept
         begin
-          # If a token is provided but doesn't match, spec expects this exact error:
-          if params.key?(:invitation_token)
-            given = params[:invitation_token].to_s
-            expected = @list_share.invitation_token.to_s
-            if given.blank? || given != expected
-              return render json: { error: { message: "Invitation is not pending" } }, status: :unprocessable_content
-            end
-          end
-
-          # If the share has no token or is not pending, return error
-          if @list_share.invitation_token.blank? || !@list_share.pending?
-            return render json: { error: { message: "Invitation is not pending" } }, status: :unprocessable_content
-          end
-
-          @list_share.accept!(current_user)
-          @list_share.reload
-          render json: ListShareSerializer.new(@list_share).as_json, status: :ok
+          service = ListShareAcceptanceService.new(list_share: @list_share, current_user: current_user)
+          list_share = service.accept!(invitation_token: params[:invitation_token])
+          render json: ListShareSerializer.new(list_share).as_json, status: :ok
+        rescue ListShareAcceptanceService::ValidationError => e
+          render json: { error: { message: e.message } }, status: :unprocessable_content
         rescue => e
           Rails.logger.error "Share acceptance failed: #{e.message}"
           render json: { error: { message: "Failed to accept invitation" } },
@@ -170,12 +134,11 @@ module Api
       # POST /api/v1/lists/:list_id/shares/:id/decline
       def decline
         begin
-          unless @list_share.pending?
-            return render json: { error: { message: "Invitation is not pending" } }, status: :unprocessable_content
-          end
-
-          @list_share.decline!
+          service = ListShareDeclineService.new(list_share: @list_share)
+          service.decline!
           render json: { message: "Invitation declined" }
+        rescue ListShareDeclineService::ValidationError => e
+          render json: { error: { message: e.message } }, status: :unprocessable_content
         rescue => e
           Rails.logger.error "Share decline failed: #{e.message}"
           render json: { error: { message: "Failed to decline invitation" } },
@@ -187,35 +150,12 @@ module Api
       # Public endpoint for accepting invitations via email link (no authentication required)
       def accept_invitation
         begin
-          token = params[:token]
-
-          if token.blank?
-            return render json: { error: { message: "Token is required" } }, status: :bad_request
-          end
-
-          # Find the share by invitation token
-          list_share = ListShare.find_by(invitation_token: token, status: "pending")
-
-          unless list_share
-            return render json: { error: { message: "Invalid or expired invitation token" } }, status: :not_found
-          end
-
-          # Find the user by email
-          user = User.find_by(email: list_share.email)
-
-          unless user
-            return render json: { error: { message: "User not found. Please register first." } }, status: :not_found
-          end
-
-          # Accept the invitation
-          list_share.update!(
-            user_id: user.id,
-            status: "accepted",
-            accepted_at: Time.current,
-            invitation_token: nil
-          )
-
+          ListShareAcceptanceService.accept_by_token!(token: params[:token])
           head :no_content
+        rescue ListShareAcceptanceService::ValidationError => e
+          render json: { error: { message: e.message } }, status: :bad_request
+        rescue ListShareAcceptanceService::NotFoundError => e
+          render json: { error: { message: e.message } }, status: :not_found
         rescue => e
           Rails.logger.error "Accept invitation failed: #{e.message}"
           render json: { error: { message: "Failed to accept invitation" } },
