@@ -14,8 +14,7 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
 
   def auth_headers_for(u)
     # Use the real token generator to ensure claims don't drift
-    controller = Api::V1::AuthenticationController.new
-    token = controller.send(:generate_jwt_token, u)
+    token = JwtHelper.access_for(u)
     { "Authorization" => "Bearer #{token}" }
   end
 
@@ -60,7 +59,7 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
 
     it "rejects missing fields" do
       post_json path, {}
-      expect(response).to have_http_status(:unauthorized)
+      expect(response).to have_http_status(:bad_request)
       expect(json.dig("error", "message")).to be_present
     end
   end
@@ -106,24 +105,24 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
 
   describe "POST /api/v1/register" do
     def register!(attrs)
-      post_json "/api/v1/register", { user: attrs }
+      post_json "/api/v1/register", attrs
     end
 
     it "registers with valid attributes" do
-      register!(email: "newuser@example.com", password: password, password_confirmation: password, name: "New User", role: "client")
+      register!(email: "newuser@example.com", password: password, password_confirmation: password, name: "New User", timezone: "UTC")
       expect(response).to have_http_status(:created)
       expect(json).to include("user", "token")
       expect(json.dig("user", "email")).to eq("newuser@example.com")
     end
 
     it "supports /auth/sign_up alias" do
-      post_json "/api/v1/auth/sign_up", { user: { email: "a@b.com", password: password, password_confirmation: password, name: "A" } }
+      post_json "/api/v1/auth/sign_up", { email: "a@b.com", password: password, password_confirmation: password, name: "A", timezone: "UTC" }
       expect(response).to have_http_status(:created)
       expect(json).to include("user", "token")
     end
 
     it "normalizes email whitespace" do
-      register!(email: " spaced@example.com ", password: password, password_confirmation: password)
+      register!(email: " spaced@example.com ", password: password, password_confirmation: password, timezone: "UTC")
       expect(response).to have_http_status(:created)
       expect(json.dig("user", "email")).to eq("spaced@example.com")
     end
@@ -137,32 +136,32 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
 
     context "invalid" do
       it "rejects invalid email" do
-        register!(email: "invalid", password: password, password_confirmation: password)
+        register!(email: "invalid", password: password, password_confirmation: password, timezone: "UTC")
         expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to eq("application/json; charset=utf-8")
-        expect(json.dig("error", "message")).to be_present
+        expect(json["message"]).to be_present
       end
 
       it "rejects duplicate email" do
-        register!(email: user.email, password: password, password_confirmation: password)
+        register!(email: user.email, password: password, password_confirmation: password, timezone: "UTC")
         expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to eq("application/json; charset=utf-8")
       end
 
       it "rejects mismatched passwords" do
-        register!(email: "x@y.com", password: password, password_confirmation: "nope")
+        register!(email: "x@y.com", password: password, password_confirmation: "nope", timezone: "UTC")
         expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to eq("application/json; charset=utf-8")
       end
 
       it "rejects too-short password" do
-        register!(email: "x@y.com", password: "123", password_confirmation: "123")
+        register!(email: "x@y.com", password: "123", password_confirmation: "123", timezone: "UTC")
         expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to eq("application/json; charset=utf-8")
       end
 
       it "rejects extreme input sizes (defense-in-depth)" do
-        register!(email: "#{'a' * 200}@example.com", password: "a" * 1000, password_confirmation: "a" * 1000)
+        register!(email: "#{'a' * 200}@example.com", password: "a" * 1000, password_confirmation: "a" * 1000, timezone: "UTC")
         expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to eq("application/json; charset=utf-8")
       end

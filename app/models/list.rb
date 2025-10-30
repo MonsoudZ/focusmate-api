@@ -57,6 +57,16 @@ class List < ApplicationRecord
   scope :privately_visible, -> { where(visibility: "private") }
   scope :shared_visible, -> { where(visibility: "shared") }
 
+  # Visibility scopes (using send to avoid naming conflict with Ruby keyword)
+  scope :public_records, -> { where(visibility: "public") }
+  scope :private_records, -> { where(visibility: "private") }
+  scope :shared, -> { where(visibility: "shared") }
+
+  class << self
+    alias_method :public, :public_records
+    alias_method :private, :private_records
+  end
+
   # Roles & permissions
   def role_for(user)
     return "owner" if self.user == user
@@ -157,6 +167,54 @@ class List < ApplicationRecord
 
   def member?(user)
     memberships.exists?(user: user)
+  end
+
+  # Task statistics and activity methods
+  def task_count
+    tasks.count
+  end
+
+  def completed_task_count
+    tasks.where(status: :done).count
+  end
+
+  def completion_rate
+    return 0.0 if task_count.zero?
+    (completed_task_count.to_f / task_count * 100).round(2)
+  end
+
+  def overdue_task_count
+    tasks.where(status: :pending).where("due_at < ?", Time.current).count
+  end
+
+  def recent_activity(limit = 10)
+    tasks.order(created_at: :desc).limit(limit)
+  end
+
+  def summary
+    {
+      id: id,
+      name: name,
+      description: description,
+      task_count: task_count,
+      completed_task_count: completed_task_count,
+      completion_rate: completion_rate
+    }
+  end
+
+  def statistics
+    total = task_count
+    completed = completed_task_count
+    pending = tasks.where(status: :pending).count
+    overdue = overdue_task_count
+
+    {
+      total_tasks: total,
+      completed_tasks: completed,
+      pending_tasks: pending,
+      overdue_tasks: overdue,
+      completion_rate: total.zero? ? 0.0 : (completed.to_f / total * 100).round(2)
+    }
   end
 
   # Access checks

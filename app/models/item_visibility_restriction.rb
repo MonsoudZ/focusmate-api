@@ -67,6 +67,75 @@ class ItemVisibilityRestriction < ApplicationRecord
     !active? # When restriction is active, the item is *hidden*; otherwise visible
   end
 
+  # ----------------------------
+  # Information methods
+  # ----------------------------
+  def summary
+    {
+      id: id,
+      task_id: task_id,
+      coaching_relationship_id: coaching_relationship_id,
+      active: active
+    }
+  end
+
+  def details
+    {
+      id: id,
+      task_id: task_id,
+      coaching_relationship_id: coaching_relationship_id,
+      active: active,
+      created_at: created_at,
+      updated_at: updated_at
+    }
+  end
+
+  def age_hours
+    return 0 unless created_at
+    ((Time.current - created_at) / 1.hour).round(2)
+  end
+
+  def recent?(threshold_hours = 1)
+    age_hours < threshold_hours
+  end
+
+  def priority
+    active? ? "high" : "low"
+  end
+
+  def restriction_type
+    "visibility"
+  end
+
+  def category
+    "visibility"
+  end
+
+  def level
+    active? ? "high" : "low"
+  end
+
+  def actionable?
+    active?
+  end
+
+  def restriction_data
+    {
+      task_id: task_id,
+      coaching_relationship_id: coaching_relationship_id,
+      active: active
+    }
+  end
+
+  def generate_report
+    {
+      restriction_type: restriction_type,
+      active: active,
+      task_id: task_id,
+      coaching_relationship_id: coaching_relationship_id
+    }
+  end
+
   private
 
   def coaching_relationship_must_be_active

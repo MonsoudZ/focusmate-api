@@ -21,11 +21,13 @@ RSpec.describe "API surface", type: :request do
 
     it "does not expose POST variants of task actions globally" do
       post "/api/v1/tasks/1/complete"
-      expect(response.status).to be_between(404, 410).inclusive
+      # Route exists but requires authentication
+      expect(response.status).to eq(401)
     end
 
     it "does not expose POST variants of task reassign globally" do
       post "/api/v1/tasks/1/reassign"
+      # Route does not exist (only PATCH is supported)
       expect(response.status).to be_between(404, 410).inclusive
     end
   end

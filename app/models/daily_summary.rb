@@ -72,7 +72,7 @@ class DailySummary < ApplicationRecord
   end
 
   def total_tasks
-    tasks_completed + tasks_missed + tasks_overdue
+    tasks_completed + tasks_missed
   end
 
   def has_tasks?
@@ -95,6 +95,64 @@ class DailySummary < ApplicationRecord
 
   def high_performance?
     tasks_completed > (tasks_missed + tasks_overdue)
+  end
+
+  def positive?
+    tasks_completed > tasks_missed
+  end
+
+  def negative?
+    tasks_missed > tasks_completed
+  end
+
+  def title
+    "Daily Summary - #{formatted_date}"
+  end
+
+  def description
+    "#{tasks_completed} completed, #{tasks_missed} missed, #{tasks_overdue} overdue"
+  end
+
+  def details
+    {
+      id: id,
+      summary_date: summary_date,
+      tasks_completed: tasks_completed,
+      tasks_missed: tasks_missed,
+      tasks_overdue: tasks_overdue,
+      completion_rate: completion_rate,
+      summary_data: summary_data
+    }
+  end
+
+  def age_days
+    (Date.current - summary_date).to_i
+  end
+
+  def recent?
+    summary_date > 7.days.ago.to_date
+  end
+
+  def priority
+    rate = completion_rate
+    if rate >= 70
+      "high"
+    elsif rate >= 50
+      "medium"
+    else
+      "low"
+    end
+  end
+
+  def generate_report
+    {
+      date: summary_date,
+      completion_rate: completion_rate,
+      tasks_completed: tasks_completed,
+      tasks_missed: tasks_missed,
+      tasks_overdue: tasks_overdue,
+      notes: summary_data&.dig("notes")
+    }
   end
 
   # Data access helpers

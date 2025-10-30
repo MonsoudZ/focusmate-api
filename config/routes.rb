@@ -5,14 +5,10 @@ Rails.application.routes.draw do
   # Protect Sidekiq web UI in production
   if Rails.env.production?
     Sidekiq::Web.use Rack::Auth::Basic do |username, password|
-      ActiveSupport::SecurityUtils.secure_compare(
-        ::Digest::SHA256.hexdigest(username),
-        ::Digest::SHA256.hexdigest(ENV["SIDEKIQ_USERNAME"])
-      ) &
-      ActiveSupport::SecurityUtils.secure_compare(
-        ::Digest::SHA256.hexdigest(password),
-        ::Digest::SHA256.hexdigest(ENV["SIDEKIQ_PASSWORD"])
-      )
+      # Compare raw credentials securely (don't hash before comparing)
+      # The secure_compare method already prevents timing attacks
+      ActiveSupport::SecurityUtils.secure_compare(username, ENV["SIDEKIQ_USERNAME"].to_s) &
+      ActiveSupport::SecurityUtils.secure_compare(password, ENV["SIDEKIQ_PASSWORD"].to_s)
     end
   end
 
@@ -34,10 +30,16 @@ Rails.application.routes.draw do
       # Device token management for iOS push notifications (legacy)
       patch "users/device_token", to: "users#update_device_token"  # iOS also uses this
 
-      # iOS app expected auth routes
+      # Authentication routes
+      post "login", to: "authentication#login"
+      post "register", to: "authentication#register"
+      delete "logout", to: "authentication#logout"
+      get "profile", to: "authentication#profile"
+      
+      # iOS app compatibility routes
       post "auth/sign_in", to: "authentication#login"
       post "auth/sign_up", to: "authentication#register"
-      delete "auth/sign_out", to: "authentication#logout", defaults: { format: :json }
+      delete "auth/sign_out", to: "authentication#logout"
 
       # Test routes (available in test and development)
       if Rails.env.development? || Rails.env.test?
@@ -52,11 +54,6 @@ Rails.application.routes.draw do
         collection do
           get :validate_access, path: "validate/:id"  # Check if user can access a specific list
         end
-        member do
-          patch :unshare
-          post :share
-          get :members
-        end
         # EXISTING
         resources :memberships, except: [ :new, :edit ]
         resources :tasks, except: [ :new, :edit ] do
@@ -65,6 +62,8 @@ Rails.application.routes.draw do
             patch :reassign              # Also support PATCH for iOS compatibility
 
             # NEW - Accountability features
+            post :complete              # Complete task (POST for compatibility)
+            patch :complete             # Complete task (PATCH for REST)
             patch :uncomplete           # Undo completion
             post :submit_explanation    # Submit reason for missing task
             patch :toggle_visibility    # Hide/show from specific coach
@@ -85,12 +84,23 @@ Rails.application.routes.draw do
 
         # iOS compatibility - singular share route
         post "share", to: "list_shares#create"
+
+        # Member routes - these use :id and won't conflict with nested :list_id routes
+        member do
+          patch :unshare
+          post :share
+          get :members
+          get :tasks
+        end
       end
+
+      # List share invitation acceptance (public endpoint, no auth required)
+      post "list_shares/accept", to: "list_shares#accept_invitation"
 
 
 
       # iOS app compatibility - global /tasks routes
-      get "tasks", to: "tasks#index"
+      get "tasks", to: "tasks#all_tasks"
       post "tasks", to: "tasks#create"
 
       # ===== NEW - TASK SPECIAL ENDPOINTS =====
@@ -105,7 +115,8 @@ Rails.application.routes.draw do
 
         member do
           # Task completion actions
-          patch :complete
+          post :complete              # Complete task (POST for compatibility)
+          patch :complete             # Complete task (PATCH for REST)
           patch :uncomplete
           patch :reassign
           post :submit_explanation

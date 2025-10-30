@@ -459,7 +459,7 @@ module Api
             :is_recurring, :recurrence_pattern, :recurrence_interval, :recurrence_time, :recurrence_end_date,
             :location_based, :location_latitude, :location_longitude, :location_radius_meters,
             :location_name, :notify_on_arrival, :notify_on_departure,
-            :list_id, :creator_id, :visibility,
+            :list_id, :visibility,
             { recurrence_days: [] }
           )
         else
@@ -471,7 +471,7 @@ module Api
               :is_recurring, :recurrence_pattern, :recurrence_interval, :recurrence_time, :recurrence_end_date,
               :location_based, :location_latitude, :location_longitude, :location_radius_meters,
               :location_name, :notify_on_arrival, :notify_on_departure,
-              :list_id, :creator_id, :name, :dueDate, :description, :due_date, :visibility,
+              :list_id, :name, :dueDate, :description, :due_date, :visibility,
               { recurrence_days: [] }
             )
           rescue ActionController::UnpermittedParameters => e
@@ -483,7 +483,7 @@ module Api
               :is_recurring, :recurrence_pattern, :recurrence_interval, :recurrence_time, :recurrence_end_date,
               :location_based, :location_latitude, :location_longitude, :location_radius_meters,
               :location_name, :notify_on_arrival, :notify_on_departure,
-              :list_id, :creator_id, :name, :dueDate, :description, :due_date, :visibility,
+              :list_id, :name, :dueDate, :description, :due_date, :visibility,
               { recurrence_days: [] }
             )
           end
@@ -557,12 +557,17 @@ module Api
           base_query = base_query.where(list_id: params[:list_id])
         end
 
-        # Apply sorting
+        # Apply sorting - use hash syntax to prevent SQL injection
         sort_by = params[:sort_by] || "created_at"
         sort_order = params[:sort_order] || "desc"
 
-        if %w[created_at updated_at due_at title].include?(sort_by) && %w[asc desc].include?(sort_order)
-          base_query = base_query.order("#{sort_by} #{sort_order}")
+        # Whitelist valid columns and directions
+        valid_columns = %w[created_at updated_at due_at title]
+        valid_directions = %w[asc desc]
+
+        if valid_columns.include?(sort_by) && valid_directions.include?(sort_order)
+          # Use hash syntax instead of string interpolation
+          base_query = base_query.order(sort_by.to_sym => sort_order.to_sym)
         else
           base_query = base_query.order(created_at: :desc)
         end
@@ -571,7 +576,9 @@ module Api
       end
 
       def per_page_limit
-        [ params[:per_page].to_i, 1 ].max.clamp(1, 100)
+        per_page = params[:per_page].to_i
+        per_page = 25 if per_page == 0 # Default to 25 if not specified
+        per_page.clamp(1, 100)
       end
     end
   end

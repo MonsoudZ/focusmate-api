@@ -11,13 +11,13 @@ module Api
       #   before: cursor string "YYYY-MM-DD:ID" for keyset pagination
       #   date_from, date_to: ISO dates to bound the window (inclusive)
       def index
-        limit  = [ [ params[:limit].to_i, 1 ].max, 100 ].min
+        limit  = params[:limit].present? ? [ [ params[:limit].to_i, 1 ].max, 100 ].min : 30
         before = params[:before].to_s.presence
         df     = parse_date(params[:date_from])
         dt     = parse_date(params[:date_to])
 
         scope = @relationship.daily_summaries
-                             .includes(:relationship) # preloads minimal assoc if serializer needs it
+                             .includes(:coaching_relationship) # preloads minimal assoc if serializer needs it
                              .order(summary_date: :desc, id: :desc)
 
         scope = scope.where(summary_date: df..Date::Infinity.new) if df

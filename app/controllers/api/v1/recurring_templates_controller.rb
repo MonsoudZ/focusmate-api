@@ -127,7 +127,10 @@ module Api
       end
 
       def find_authorized_list(list_id)
-        return nil if list_id.blank?
+        if list_id.blank?
+          render json: { error: { message: "List not found" } }, status: :not_found
+          return nil
+        end
 
         list = current_user&.owned_lists&.find_by(id: list_id) ||
                List.find_by(id: list_id, user_id: current_user.id)
@@ -171,9 +174,12 @@ module Api
       end
 
       def validate_params
+        # Get the params hash (either nested or flat)
+        param_source = params[:recurring_template] || params
+
         # Validate recurrence_time format if present
-        if params[:recurrence_time].present?
-          time_str = params[:recurrence_time].to_s
+        if param_source[:recurrence_time].present?
+          time_str = param_source[:recurrence_time].to_s
           unless time_str.match?(/\A([01]?[0-9]|2[0-3]):[0-5][0-9]\z/)
             render json: {
               error: {
@@ -186,8 +192,8 @@ module Api
         end
 
         # Validate recurrence_days if present
-        if params[:recurrence_days].present?
-          days = Array(params[:recurrence_days])
+        if param_source[:recurrence_days].present?
+          days = Array(param_source[:recurrence_days])
           valid_days = (0..6).to_a
           day_map = { "sunday" => 0, "monday" => 1, "tuesday" => 2, "wednesday" => 3, "thursday" => 4, "friday" => 5, "saturday" => 6 }
 

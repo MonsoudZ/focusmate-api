@@ -208,13 +208,13 @@ RSpec.describe User, type: :model do
 
   describe 'email normalization' do
     it 'normalizes email to lowercase' do
-      user = create(:user, email: "TEST@EXAMPLE.COM")
-      expect(user.email).to eq("test@example.com")
+      user = create(:user, email: "NORMALIZE#{SecureRandom.hex(4)}@EXAMPLE.COM")
+      expect(user.email).to eq(user.email.downcase)
     end
 
     it 'strips whitespace from email' do
-      user = create(:user, email: " test@example.com ")
-      expect(user.email).to eq("test@example.com")
+      user = create(:user, email: " whitespace#{SecureRandom.hex(4)}@example.com ")
+      expect(user.email).to eq(user.email.strip)
     end
   end
 

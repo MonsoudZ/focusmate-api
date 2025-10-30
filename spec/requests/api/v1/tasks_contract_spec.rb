@@ -7,8 +7,7 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
   let(:list) { create(:list, user: user) }
 
   def auth_headers_for(u)
-    controller = Api::V1::AuthenticationController.new
-    token = controller.send(:generate_jwt_token, u)
+    token = JwtHelper.access_for(u)
     { 'Authorization' => "Bearer #{token}" }
   end
 

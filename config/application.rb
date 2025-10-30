@@ -35,12 +35,19 @@ module FocusmateApi
 
     # Add back cookies and session middleware so Devise failure app can operate without sessions error
     config.middleware.use ActionDispatch::Cookies
-    config.middleware.use ActionDispatch::Session::CookieStore, key: "_focusmate_api_session", secure: false, httponly: true, same_site: :lax
+    config.middleware.use ActionDispatch::Session::CookieStore, key: "_focusmate_api_session", secure: Rails.env.production?, httponly: true, same_site: :lax
 
     # Configure Active Job to use Sidekiq
     config.active_job.queue_adapter = :sidekiq
 
+    # Ensure custom middleware autoloads
+    config.autoload_paths << Rails.root.join("app/middleware")
+
     # Add Rack::Attack middleware
     config.middleware.use Rack::Attack
+
+    # Handle malformed JSON bodies at the Rack layer
+    require Rails.root.join("app/middleware/json_parser_error_handler")
+    config.middleware.use ::JsonParserErrorHandler
   end
 end

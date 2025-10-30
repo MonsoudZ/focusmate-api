@@ -2,8 +2,8 @@
 module Api
   module V1
     class ListsController < ApplicationController
-      before_action :set_list, only: [ :show, :update, :destroy, :members, :share, :unshare ]
-      before_action :authorize_list_view!, only: [ :show, :members ]
+      before_action :set_list, only: [ :show, :update, :destroy, :members, :share, :unshare, :tasks ]
+      before_action :authorize_list_view!, only: [ :show, :members, :tasks ]
       before_action :authorize_list_edit!, only: [ :update ]
       before_action :authorize_list_owner!, only: [ :destroy, :share, :unshare ]
 
@@ -143,10 +143,29 @@ module Api
       # GET /api/v1/lists/:id/members
       def members
         owner = { id: @list.user_id, role: "owner" }
-        members = @list.list_shares.includes(:user).map do |s|
+        shared_members = @list.list_shares.includes(:user).map do |s|
           { id: s.user_id, role: "member", can_edit: s.can_edit }
         end
-        render json: { owner: owner, members: members }, status: :ok
+        all_members = [ owner ] + shared_members
+        render json: { members: all_members }, status: :ok
+      end
+
+      # GET /api/v1/lists/:id/tasks
+      def tasks
+        tasks = @list.tasks.where(deleted_at: nil).order(:due_at)
+        render json: {
+          tasks: tasks.map do |t|
+            {
+              id: t.id,
+              title: t.title,
+              note: t.note,
+              due_at: t.due_at,
+              status: t.status,
+              created_at: t.created_at,
+              updated_at: t.updated_at
+            }
+          end
+        }, status: :ok
       end
 
       private

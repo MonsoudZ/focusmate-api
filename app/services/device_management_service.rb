@@ -81,7 +81,7 @@ class DeviceManagementService
     rescue => e
       {
         success: false,
-        error: "Failed to send test push"
+        error: "Failed to send test push: #{e.message}"
       }
     end
   end

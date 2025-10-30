@@ -400,7 +400,7 @@ RSpec.describe Api::V1::NotificationsController, type: :request do
             params: "invalid json",
             headers: user_headers.merge("Content-Type" => "application/json")
 
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "should handle very large notification lists" do

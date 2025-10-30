@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -32,10 +32,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
     t.index ["coach_id", "status"], name: "index_coaching_relationships_on_coach_status"
     t.index ["coach_id"], name: "index_coaching_relationships_on_coach_id"
     t.index ["status"], name: "index_coaching_relationships_on_status"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'inactive'::character varying, 'declined'::character varying]::text[])", name: "check_coaching_relationships_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'active'::character varying::text, 'inactive'::character varying::text, 'declined'::character varying::text])", name: "check_coaching_relationships_status"
   end
 
-  add_check_constraint "coaching_relationships", "status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'inactive'::character varying, 'declined'::character varying]::text[])", name: "coaching_relationships_status_check", validate: false
+  add_check_constraint "coaching_relationships", "status::text = ANY (ARRAY['pending'::character varying::text, 'active'::character varying::text, 'inactive'::character varying::text, 'declined'::character varying::text])", name: "coaching_relationships_status_check", validate: false
 
   create_table "daily_summaries", force: :cascade do |t|
     t.bigint "coaching_relationship_id", null: false
@@ -79,7 +79,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
     t.index ["user_id"], name: "index_devices_on_user_id"
   end
 
-  add_check_constraint "devices", "platform::text = ANY (ARRAY['ios'::character varying, 'android'::character varying]::text[])", name: "devices_platform_enum", validate: false
+  add_check_constraint "devices", "platform::text = ANY (ARRAY['ios'::character varying::text, 'android'::character varying::text])", name: "devices_platform_enum", validate: false
 
   create_table "examples", force: :cascade do |t|
     t.string "name"
@@ -123,7 +123,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
     t.index ["escalation_level"], name: "index_item_escalations_on_escalation_level"
     t.index ["task_id", "escalation_level"], name: "index_item_escalations_on_task_level"
     t.index ["task_id"], name: "index_item_escalations_on_task_id"
-    t.check_constraint "escalation_level::text = ANY (ARRAY['normal'::character varying, 'warning'::character varying, 'critical'::character varying, 'blocking'::character varying]::text[])", name: "check_item_escalations_escalation_level"
+    t.check_constraint "escalation_level::text = ANY (ARRAY['normal'::character varying::text, 'warning'::character varying::text, 'critical'::character varying::text, 'blocking'::character varying::text])", name: "check_item_escalations_escalation_level"
   end
 
   create_table "item_visibility_restrictions", force: :cascade do |t|
@@ -168,13 +168,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
     t.datetime "accepted_at"
     t.index ["email"], name: "index_list_shares_on_email"
     t.index ["invitation_token"], name: "index_list_shares_on_invitation_token", unique: true
+    t.index ["list_id", "status"], name: "index_list_shares_on_list_status"
     t.index ["list_id", "user_id"], name: "index_list_shares_on_list_id_and_user_id", unique: true
     t.index ["list_id"], name: "index_list_shares_on_list_id"
     t.index ["permissions"], name: "index_list_shares_on_permissions", using: :gin
     t.index ["role"], name: "index_list_shares_on_role"
     t.index ["status"], name: "index_list_shares_on_status"
     t.index ["user_id"], name: "index_list_shares_on_user_id"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'accepted'::character varying, 'declined'::character varying]::text[])", name: "list_shares_status_check"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'accepted'::character varying::text, 'declined'::character varying::text])", name: "list_shares_status_check"
   end
 
   create_table "lists", force: :cascade do |t|
@@ -190,7 +191,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
     t.index ["user_id", "deleted_at"], name: "index_lists_on_user_deleted_at"
     t.index ["user_id"], name: "index_lists_on_user_id"
     t.index ["visibility"], name: "index_lists_on_visibility"
-    t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying, 'shared'::character varying, 'public'::character varying]::text[])", name: "lists_visibility_check"
+    t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying::text, 'shared'::character varying::text, 'public'::character varying::text])", name: "lists_visibility_check"
   end
 
   create_table "memberships", force: :cascade do |t|
@@ -207,7 +208,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
     t.index ["list_id"], name: "index_memberships_on_list_id"
     t.index ["user_id", "list_id"], name: "index_memberships_on_user_list"
     t.index ["user_id"], name: "index_memberships_on_user_id"
-    t.check_constraint "role::text = ANY (ARRAY['editor'::character varying, 'viewer'::character varying]::text[])", name: "memberships_role_check"
+    t.check_constraint "role::text = ANY (ARRAY['editor'::character varying::text, 'viewer'::character varying::text])", name: "memberships_role_check"
   end
 
   create_table "notification_logs", force: :cascade do |t|
@@ -235,7 +236,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
     t.index ["user_id", "created_at"], name: "index_notification_logs_on_user_created_at"
     t.index ["user_id", "created_at"], name: "index_notification_logs_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_notification_logs_on_user_id"
-    t.check_constraint "delivery_method IS NULL OR (delivery_method::text = ANY (ARRAY['email'::character varying, 'push'::character varying, 'sms'::character varying, 'in_app'::character varying]::text[]))", name: "chk_notification_log_delivery_method"
+    t.check_constraint "delivery_method IS NULL OR (delivery_method::text = ANY (ARRAY['email'::character varying::text, 'push'::character varying::text, 'sms'::character varying::text, 'in_app'::character varying::text]))", name: "chk_notification_log_delivery_method"
   end
 
   create_table "saved_locations", force: :cascade do |t|
@@ -307,8 +308,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
     t.datetime "deleted_at"
     t.bigint "assigned_to_id"
     t.boolean "is_template"
+    t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["completed_at"], name: "index_tasks_on_completed_at"
+    t.index ["creator_id", "completed_at"], name: "index_tasks_on_creator_completed_at"
     t.index ["creator_id", "status"], name: "index_tasks_on_creator_status"
     t.index ["creator_id"], name: "index_tasks_on_creator_id"
     t.index ["deleted_at"], name: "index_tasks_on_deleted_at"
@@ -351,6 +354,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
     t.index ["deleted_at"], name: "index_user_locations_on_deleted_at"
     t.index ["recorded_at"], name: "index_user_locations_on_recorded_at"
     t.index ["source"], name: "index_user_locations_on_source"
+    t.index ["user_id", "created_at"], name: "index_user_locations_on_user_created_at"
     t.index ["user_id", "recorded_at"], name: "index_user_locations_on_user_id_and_recorded_at"
     t.index ["user_id", "recorded_at"], name: "index_user_locations_on_user_recorded_at"
     t.index ["user_id"], name: "index_user_locations_on_user_id"
@@ -384,8 +388,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_034107) do
     t.index ["jti"], name: "index_users_on_jti"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role"], name: "index_users_on_role"
-    t.check_constraint "role::text = ANY (ARRAY['client'::character varying, 'coach'::character varying, 'admin'::character varying]::text[])", name: "users_role_check"
-    t.check_constraint "role::text = ANY (ARRAY['client'::character varying, 'coach'::character varying]::text[])", name: "check_users_role"
+    t.check_constraint "role::text = ANY (ARRAY['client'::character varying::text, 'coach'::character varying::text, 'admin'::character varying::text])", name: "users_role_check"
+    t.check_constraint "role::text = ANY (ARRAY['client'::character varying::text, 'coach'::character varying::text])", name: "check_users_role"
   end
 
   add_foreign_key "coaching_relationships", "users", column: "client_id"

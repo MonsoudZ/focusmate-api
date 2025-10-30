@@ -3,7 +3,12 @@ module Api
     class SavedLocationsController < ApplicationController
       before_action :authenticate_user!
       before_action :set_location, only: [ :show, :update, :destroy ]
-      before_action :validate_location_params, only: [ :create, :update ]
+      before_action :validate_location_params, only: [ :create ]
+
+      rescue_from ActionController::ParameterMissing do |exception|
+        Rails.logger.error "Parameter missing: #{exception.message}"
+        render json: { error: { message: exception.message } }, status: :internal_server_error
+      end
 
       # GET /api/v1/saved_locations
       def index
@@ -25,10 +30,7 @@ module Api
         else
           Rails.logger.error "Location creation validation failed: #{@location.errors.full_messages}"
           render json: {
-            error: {
-              message: "Validation failed",
-              details: @location.errors.as_json
-            }
+            errors: @location.errors.full_messages
           }, status: :unprocessable_entity
         end
       end
@@ -40,10 +42,7 @@ module Api
         else
           Rails.logger.error "Location update validation failed: #{@location.errors.full_messages}"
           render json: {
-            error: {
-              message: "Validation failed",
-              details: @location.errors.as_json
-            }
+            errors: @location.errors.full_messages
           }, status: :unprocessable_entity
         end
       end
@@ -90,17 +89,14 @@ module Api
       end
 
       def validate_location_params
+        errors = []
+
         # Validate latitude if present
         if params[:saved_location] && params[:saved_location][:latitude].present?
           latitude = params[:saved_location][:latitude].to_f
           unless latitude.between?(-90, 90)
-            render json: {
-              error: {
-                message: "Validation failed",
-                details: { latitude: [ "must be between -90 and 90" ] }
-              }
-            }, status: :unprocessable_entity
-            return
+            errors << "Latitude must be less than or equal to 90" if latitude > 90
+            errors << "Latitude must be greater than or equal to -90" if latitude < -90
           end
         end
 
@@ -108,13 +104,8 @@ module Api
         if params[:saved_location] && params[:saved_location][:longitude].present?
           longitude = params[:saved_location][:longitude].to_f
           unless longitude.between?(-180, 180)
-            render json: {
-              error: {
-                message: "Validation failed",
-                details: { longitude: [ "must be between -180 and 180" ] }
-              }
-            }, status: :unprocessable_entity
-            return
+            errors << "Longitude must be less than or equal to 180" if longitude > 180
+            errors << "Longitude must be greater than or equal to -180" if longitude < -180
           end
         end
 
@@ -122,42 +113,30 @@ module Api
         if params[:saved_location] && params[:saved_location][:radius_meters].present?
           radius = params[:saved_location][:radius_meters].to_f
           unless radius > 0 && radius <= 10000
-            render json: {
-              error: {
-                message: "Validation failed",
-                details: { radius_meters: [ "must be between 1 and 10000 meters" ] }
-              }
-            }, status: :unprocessable_entity
-            return
+            errors << "Radius meters must be greater than 0" if radius <= 0
+            errors << "Radius meters must be less than or equal to 10000" if radius > 10000
           end
         end
 
         # Validate name length if present
         if params[:saved_location] && params[:saved_location][:name].present?
-          name = params[:saved_location][:name].to_s.strip
+          name = params[:saved_location][:name].to_s
           if name.length > 255
-            render json: {
-              error: {
-                message: "Validation failed",
-                details: { name: [ "is too long (maximum 255 characters)" ] }
-              }
-            }, status: :unprocessable_entity
-            return
+            errors << "Name is too long (maximum is 255 characters)"
           end
         end
 
         # Validate address length if present
         if params[:saved_location] && params[:saved_location][:address].present?
-          address = params[:saved_location][:address].to_s.strip
+          address = params[:saved_location][:address].to_s
           if address.length > 500
-            render json: {
-              error: {
-                message: "Validation failed",
-                details: { address: [ "is too long (maximum 500 characters)" ] }
-              }
-            }, status: :unprocessable_entity
-            nil
+            errors << "Address is too long (maximum is 500 characters)"
           end
+        end
+
+        if errors.any?
+          render json: { errors: errors }, status: :unprocessable_entity
+          return
         end
       end
 

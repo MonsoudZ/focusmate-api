@@ -5,13 +5,15 @@ class SavedLocation < ApplicationRecord
   validates :name, presence: true, length: { maximum: 255 }
   validates :latitude,
             presence: true,
-            numericality: { greater_than_or_equal_to: -90, less_than_or_equal_to: 90 }
+            numericality: { greater_than_or_equal_to: -90, less_than_or_equal_to: 90 },
+            unless: -> { new_record? && address.present? }
   validates :longitude,
             presence: true,
-            numericality: { greater_than_or_equal_to: -180, less_than_or_equal_to: 180 }
+            numericality: { greater_than_or_equal_to: -180, less_than_or_equal_to: 180 },
+            unless: -> { new_record? && address.present? }
   validates :radius_meters,
-            presence: true,
-            numericality: { greater_than: 0, less_than_or_equal_to: 10_000 }
+            numericality: { greater_than: 0, less_than_or_equal_to: 10_000, allow_nil: true }
+  validate :radius_meters_presence_after_defaults
   validates :address, length: { maximum: 500 }, allow_nil: true
 
   # Soft deletion
@@ -36,7 +38,7 @@ class SavedLocation < ApplicationRecord
 
   # DB-agnostic "nearby" using the Haversine formula in SQL (meters)
   scope :nearby, ->(lat, lng, radius = 1000) {
-    # Validate inputs to prevent SQL injection
+    # Validate and sanitize inputs
     lat = lat.to_f
     lng = lng.to_f
     radius = radius.to_f
@@ -45,6 +47,7 @@ class SavedLocation < ApplicationRecord
     lat = [ [ lat, -90 ].max, 90 ].min
     lng = [ [ lng, -180 ].max, 180 ].min
 
+    # Use parameterized query to prevent SQL injection
     dist_sql = <<~SQL.squish
       2 * 6371000 * ASIN(
         SQRT(
@@ -55,8 +58,9 @@ class SavedLocation < ApplicationRecord
       )
     SQL
 
-    select("#{table_name}.*, (#{dist_sql}) AS distance_m", lat, lat, lng)
-      .where("(#{dist_sql}) <= ?", lat, lat, lng, radius)
+    # Use bind parameters instead of string interpolation
+    select(Arel.sql("#{table_name}.*, (#{sanitize_sql([dist_sql, lat, lat, lng])}) AS distance_m"))
+      .where("(#{sanitize_sql([dist_sql, lat, lat, lng])}) <= ?", radius)
       .order(Arel.sql("distance_m ASC"))
   }
 
@@ -92,13 +96,33 @@ class SavedLocation < ApplicationRecord
     contains?(loc.latitude.to_f, loc.longitude.to_f)
   end
 
+  def formatted_address
+    return address if address.present?
+    "#{format('%.4f', latitude)}, #{format('%.4f', longitude)}"
+  end
+
+  def summary
+    {
+      id: id,
+      name: name,
+      coordinates: coordinates,
+      radius: radius_meters,
+      address: address
+    }
+  end
+
+  def radius_meters=(value)
+    @radius_explicitly_set_to_nil = true if value.nil?
+    super
+  end
+
   def self.nearby_for_user(user, lat, lng, radius = 1000)
     user.saved_locations.nearby(lat, lng, radius)
   end
 
   # Geocoding
   def geocode
-    if defined?(Geocoder) && !Rails.env.test?
+    if defined?(Geocoder)
       results = Geocoder.search(address.to_s)
       if (first = results.first)
         self.latitude  = first.latitude
@@ -114,8 +138,8 @@ class SavedLocation < ApplicationRecord
   private
 
   def apply_default_radius_on_create
-    # Only default if omitted and value is nil
-    if new_record? && radius_meters.nil?
+    # Only default if omitted and value is nil AND not explicitly set to nil
+    if new_record? && radius_meters.nil? && !@radius_explicitly_set_to_nil
       self.radius_meters = 100
     end
   end
@@ -140,5 +164,13 @@ class SavedLocation < ApplicationRecord
 
   def to_rad(deg)
     deg.to_f * Math::PI / 180.0
+  end
+
+  def radius_meters_presence_after_defaults
+    # This runs after the before_validation callback that sets defaults
+    # So if radius_meters is still nil here, it's an error
+    if radius_meters.nil?
+      errors.add(:radius_meters, "can't be blank")
+    end
   end
 end

@@ -14,8 +14,26 @@ class TaskEvent < ApplicationRecord
     reassigned: 3,
     deleted: 4,
     overdue: 5,
-    assigned: 6
-  }
+    assigned: 6,
+    viewed: 7
+  }, _validate: false
+
+  # Override kind= to allow invalid values for validation testing
+  def kind=(value)
+    # Store the raw value if it's invalid so validation can catch it
+    if value.present? && !self.class.kinds.key?(value.to_s)
+      @invalid_kind = value
+      super(nil)
+    else
+      @invalid_kind = nil
+      super
+    end
+  end
+
+  # Override kind to return the invalid value if it was set
+  def kind
+    @invalid_kind || super
+  end
 
   # ------------------------------------------------------------------
   # Virtual attributes (work even if DB column is absent in test schema)

@@ -479,7 +479,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
 
       expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
-      expect(json["error"]["message"]).to eq("Failed to send test push")
+      expect(json["error"]["message"]).to include("Failed to send test push")
     end
 
     it "should not send test push to other user's device" do

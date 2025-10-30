@@ -16,9 +16,16 @@ class Rack::Attack
     req.ip if req.path.start_with?("/api/")
   end
 
-  # Rate limiting for authentication endpoints
+  # Rate limiting for authentication endpoints (API routes and iOS aliases)
   Rack::Attack.throttle("auth/ip", limit: 5, period: 1.minute) do |req|
-    req.ip if req.path.start_with?("/users/sign_in") || req.path.start_with?("/users/sign_up")
+    next unless req.post?
+    path = req.path
+    req.ip if [
+      "/api/v1/login",
+      "/api/v1/register",
+      "/api/v1/auth/sign_in",
+      "/api/v1/auth/sign_up"
+    ].any? { |p| path == p }
   end
 
   # Rate limiting for password reset

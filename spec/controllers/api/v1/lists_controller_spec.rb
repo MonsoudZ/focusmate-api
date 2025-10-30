@@ -39,7 +39,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
       shared_list = create(:list, user: other_user, name: "Shared List")
 
       # Share list with current user
-      create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner")
+      create(:list_share, list: shared_list, user: user, status: "accepted")
 
       get "/api/v1/lists", headers: auth_headers
 
@@ -98,7 +98,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
     it 'should show shared list' do
       other_user = create(:user)
       shared_list = create(:list, user: other_user)
-      create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner")
+      create(:list_share, list: shared_list, user: user, status: "accepted")
 
       get "/api/v1/lists/#{shared_list.id}", headers: auth_headers
 
@@ -202,7 +202,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
     it 'should update shared list if user has edit permission' do
       other_user = create(:user)
       shared_list = create(:list, user: other_user)
-      create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner", can_edit: true)
+      create(:list_share, list: shared_list, user: user, status: "accepted", can_edit: true)
 
       update_params = {
         name: "Updated Shared List"
@@ -242,7 +242,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
     it 'should not delete shared list' do
       other_user = create(:user)
       shared_list = create(:list, user: other_user)
-      create(:list_share, list: shared_list, user: user, status: "accepted", invited_by: "owner")
+      create(:list_share, list: shared_list, user: user, status: "accepted")
 
       delete "/api/v1/lists/#{shared_list.id}", headers: auth_headers
 
@@ -306,11 +306,11 @@ RSpec.describe Api::V1::ListsController, type: :request do
         can_view: true
       }
 
-      post "/api/v1/lists/#{list.id}/share", params: share_params.to_json, headers: auth_headers.merge("Content-Type" => "application/json")
+      post "/api/v1/lists/#{list.id}/share", params: share_params, headers: auth_headers
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:bad_request)
       json = JSON.parse(response.body)
-      expect(json["errors"]).to have_key("email")
+      expect(json["error"]["message"]).to eq("Email is required")
     end
   end
 
@@ -320,7 +320,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
       list # This forces the let(:list) to be evaluated
 
       other_user = create(:user, email: "shared@example.com")
-      create(:list_share, list: list, user: other_user, status: "accepted", invited_by: "owner")
+      create(:list_share, list: list, user: other_user, status: "accepted")
 
       unshare_params = {
         user_id: other_user.id
@@ -347,7 +347,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
     it 'should not unshare list from other user' do
       other_user = create(:user)
       other_list = create(:list, user: other_user)
-      create(:list_share, list: other_list, user: user, status: "accepted", invited_by: "owner")
+      create(:list_share, list: other_list, user: user, status: "accepted")
 
       unshare_params = {
         user_id: user.id
@@ -365,7 +365,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
       list # This forces the let(:list) to be evaluated
 
       other_user = create(:user, email: "member@example.com")
-      create(:list_share, list: list, user: other_user, status: "accepted", invited_by: "owner")
+      create(:list_share, list: list, user: other_user, status: "accepted")
 
       get "/api/v1/lists/#{list.id}/members", headers: auth_headers
 
@@ -401,6 +401,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json).to have_key("tasks")
+      expect(json).to have_key("tombstones")
       expect(json["tasks"]).to be_a(Array)
       expect(json["tasks"].length).to eq(2)
     end

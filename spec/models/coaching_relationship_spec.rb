@@ -14,7 +14,12 @@ RSpec.describe CoachingRelationship, type: :model do
 
   describe 'validations' do
     it { should validate_presence_of(:status) }
-    it { should validate_inclusion_of(:status).in_array(%w[pending active inactive declined]) }
+    it 'should accept valid status values' do
+      %w[pending active inactive declined].each do |status|
+        relationship = create(:coaching_relationship, status: status)
+        expect(relationship).to be_valid, "Expected status '#{status}' to be valid"
+      end
+    end
     it { should validate_presence_of(:invited_by) }
     it 'should validate coach_id uniqueness scoped to client_id' do
       coach = create(:user, :coach)

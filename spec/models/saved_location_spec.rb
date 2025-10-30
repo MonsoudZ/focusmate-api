@@ -310,6 +310,9 @@ RSpec.describe SavedLocation, type: :model do
     end
 
     it 'creates location with address' do
+      # Mock geocoding to provide coordinates
+      allow(Geocoder).to receive(:search).and_return([ double(latitude: 40.7580, longitude: -73.9855) ])
+
       location = SavedLocation.create!(
         user: user,
         name: "Test Location",

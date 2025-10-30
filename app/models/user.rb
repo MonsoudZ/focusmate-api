@@ -139,7 +139,41 @@ class User < ApplicationRecord
     )
   end
 
+  # Check if user is at a specific saved location
+  def at_location?(saved_location, lat = nil, lon = nil)
+    # Use provided coordinates or get from current location
+    if lat.nil? || lon.nil?
+      location = current_location
+      return false unless location
+      lat = location.latitude
+      lon = location.longitude
+    end
+
+    # Calculate distance from saved location
+    distance = calculate_distance(lat, lon, saved_location.latitude, saved_location.longitude)
+
+    # Check if within radius
+    distance <= saved_location.radius_meters
+  end
+
   private
+
+  def calculate_distance(lat1, lon1, lat2, lon2)
+    # Haversine formula - returns distance in meters
+    earth_radius = 6371000 # meters
+
+    lat1_rad = lat1 * Math::PI / 180
+    lat2_rad = lat2 * Math::PI / 180
+    delta_lat = (lat2 - lat1) * Math::PI / 180
+    delta_lon = (lon2 - lon1) * Math::PI / 180
+
+    a = Math.sin(delta_lat / 2) ** 2 +
+        Math.cos(lat1_rad) * Math.cos(lat2_rad) *
+        Math.sin(delta_lon / 2) ** 2
+    c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    earth_radius * c
+  end
 
   def valid_timezone
     return if timezone.blank?

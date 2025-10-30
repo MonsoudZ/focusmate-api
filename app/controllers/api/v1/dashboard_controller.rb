@@ -36,7 +36,9 @@ module Api
       def stats
         window = extract_window(params, current_user)
         group_by = %w[day week month].include?(params[:group_by]) ? params[:group_by] : "day"
-        limit = [ [ params[:limit].to_i, 1 ].max, 365 ].min rescue 30
+        limit = params[:limit].to_i
+        limit = 30 if limit <= 0
+        limit = [ [ limit, 1 ].max, 365 ].min
 
         stats = DashboardDataService.new(user: current_user, window:).stats(group_by:, limit:)
 
@@ -72,12 +74,13 @@ module Api
 
       def parse_time(val)
         return nil if val.blank?
-        Time.zone.iso8601(val) rescue Time.zone.parse(val) rescue nil
+        t = (Time.iso8601(val) rescue nil) || (Time.zone.parse(val) rescue nil)
+        t&.in_time_zone(Time.zone)
       end
 
       def parse_sections(raw)
         return [] if raw.blank?
-        raw.to_s.split(",").map!(&:strip).reject!(&:blank?) || []
+        raw.to_s.split(",").map(&:strip).reject(&:blank?)
       end
     end
   end

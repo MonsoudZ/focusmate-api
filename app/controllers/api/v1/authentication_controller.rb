@@ -6,6 +6,11 @@ module Api
       # Only these are public
       skip_before_action :authenticate_user!, only: %i[login register]
 
+      # Skip authentication for test endpoints in dev/test environments
+      if Rails.env.development? || Rails.env.test?
+        skip_before_action :authenticate_user!, only: %i[test_profile test_lists test_logout]
+      end
+
       # POST /api/v1/auth/sign_in
       def login
         creds = auth_params # { email, password }
@@ -15,7 +20,7 @@ module Api
           return unauth!("Invalid email or password")
         end
 
-        token = Jwt.access_for(user) # { sub, exp } signed with dedicated secret
+        token = JwtHelper.access_for(user)
         render json: auth_payload(user, token), status: :ok
       end
 
@@ -28,7 +33,7 @@ module Api
                          name: attrs[:name], timezone: attrs[:timezone])
 
         if user.save
-          token = Jwt.access_for(user)
+          token = JwtHelper.access_for(user)
           render json: auth_payload(user, token), status: :created
         else
           render json: { code: "validation_error", message: "Validation failed", details: user.errors.to_hash },
@@ -54,6 +59,28 @@ module Api
       def logout
         # Stateless JWT: client deletes token. Return 204.
         head :no_content
+      end
+
+      # ----- DEV/TEST helpers (do NOT expose in prod) -----
+      if Rails.env.development? || Rails.env.test?
+        # GET /api/v1/test-profile
+        def test_profile
+          user = User.first or return render json: { code: "not_found", message: "No users" }, status: :not_found
+          render json: { id: user.id, email: user.email, name: user.name, role: user.role, timezone: user.timezone }
+        end
+
+        # GET /api/v1/test-lists
+        def test_lists
+          user = User.first or return render json: { code: "not_found", message: "No users" }, status: :not_found
+          render json: user.owned_lists.map { |l|
+            { id: l.id, name: l.name, description: l.description, created_at: l.created_at.iso8601 }
+          }
+        end
+
+        # DELETE /api/v1/test-logout
+        def test_logout
+          head :no_content
+        end
       end
 
       private
@@ -89,29 +116,7 @@ module Api
       # Uniform 401 with WWW-Authenticate for clients
       def unauth!(message)
         response.set_header("WWW-Authenticate", 'Bearer realm="Application"')
-        render json: { code: "unauthenticated", message: message }, status: :unauthorized
-      end
-
-      # ----- DEV/TEST helpers (do NOT expose in prod) -----
-      if Rails.env.development? || Rails.env.test?
-        # GET /api/v1/test-profile
-        def test_profile
-          user = User.first or return render json: { code: "not_found", message: "No users" }, status: :not_found
-          render json: { id: user.id, email: user.email, name: user.name, role: user.role, timezone: user.timezone }
-        end
-
-        # GET /api/v1/test-lists
-        def test_lists
-          user = User.first or return render json: { code: "not_found", message: "No users" }, status: :not_found
-          render json: user.owned_lists.map { |l|
-            { id: l.id, name: l.name, description: l.description, created_at: l.created_at.iso8601 }
-          }
-        end
-
-        # DELETE /api/v1/test-logout
-        def test_logout
-          head :no_content
-        end
+        render json: { error: { message: message } }, status: :unauthorized
       end
     end
   end

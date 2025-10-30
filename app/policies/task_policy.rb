@@ -66,8 +66,21 @@ class TaskPolicy < ApplicationPolicy
   def change_visibility?
     return false unless user
     return false unless record
-    # User can change visibility if they can change it
-    record.can_change_visibility?(user)
+
+    # Task creator can change visibility
+    return true if record.creator == user
+
+    # List owner can change visibility
+    return true if record.list.user == user
+
+    # Coach can change visibility of client's tasks
+    if user.coach?
+      # Check if there's a coaching relationship with the task creator or list owner
+      return true if record.creator && user.clients.include?(record.creator)
+      return true if record.list.user && user.clients.include?(record.list.user)
+    end
+
+    false
   end
 
   class Scope < ApplicationPolicy::Scope

@@ -7,8 +7,22 @@ class NotificationLog < ApplicationRecord
   validates :message, presence: true, length: { maximum: 5000 }
   validates :delivered, inclusion: { in: [ true, false ], message: "must be a boolean value" }
   validates :delivery_method, inclusion: { in: %w[email push sms in_app], allow_nil: true }
+  validate :validate_metadata_json
 
   before_validation { self.delivered = false if delivered.nil? }
+
+  def validate_metadata_json
+    return if read_attribute(:metadata).nil?
+    return if read_attribute(:metadata).is_a?(Hash)
+
+    if read_attribute(:metadata).is_a?(String)
+      begin
+        JSON.parse(read_attribute(:metadata))
+      rescue JSON::ParserError
+        errors.add(:metadata, "is not a valid JSON")
+      end
+    end
+  end
 
   # Soft deletion
   default_scope { where(deleted_at: nil) }
@@ -76,5 +90,100 @@ class NotificationLog < ApplicationRecord
 
   def mark_delivered!
     update!(delivered: true, delivered_at: Time.current)
+  end
+
+  # Summary and detail methods
+  def summary
+    {
+      id: id,
+      notification_type: notification_type,
+      message: message,
+      delivered: delivered,
+      metadata: metadata
+    }
+  end
+
+  def details
+    {
+      id: id,
+      notification_type: notification_type,
+      message: message,
+      delivered: delivered,
+      delivery_method: delivery_method,
+      metadata: metadata
+    }
+  end
+
+  # Age and recency methods
+  def age_hours
+    return 0 unless created_at
+    ((Time.current - created_at) / 1.hour).round(2)
+  end
+
+  def recent?
+    return false unless created_at
+    created_at > 1.hour.ago
+  end
+
+  # Priority based on notification type
+  def priority
+    case notification_type
+    when "urgent_alert"
+      "high"
+    when "task_reminder", "coaching_message"
+      "medium"
+    when "system_announcement"
+      "low"
+    else
+      "medium"
+    end
+  end
+
+  # Category based on notification type
+  def category
+    case notification_type
+    when "task_reminder"
+      "task"
+    when "system_announcement"
+      "system"
+    when "coaching_message"
+      "coaching"
+    when "urgent_alert"
+      "alert"
+    else
+      "other"
+    end
+  end
+
+  # Check if notification requires action
+  def actionable?
+    case notification_type
+    when "task_reminder", "coaching_message", "urgent_alert"
+      true
+    when "system_announcement"
+      false
+    else
+      false
+    end
+  end
+
+  # Notification data structure
+  def notification_data
+    {
+      type: notification_type,
+      message: message,
+      delivered: delivered,
+      metadata: metadata
+    }
+  end
+
+  # Generate comprehensive report
+  def generate_report
+    {
+      type: notification_type,
+      message: message,
+      delivered: delivered,
+      priority: priority
+    }
   end
 end

@@ -3,10 +3,12 @@
 module Api
   module V1
     class DevicesController < ApplicationController
+      include Paginatable
+
       before_action :authenticate_user!
       before_action :set_device, only: [ :show, :update, :destroy ]
       before_action :validate_device_params, only: [ :create, :register, :update ]
-      before_action :validate_pagination_params, only: [ :index ]
+      before_action -> { validate_pagination_params(valid_order_fields: %w[created_at device_name platform last_seen_at]) }, only: [ :index ]
 
       # GET /api/v1/devices
       def index
@@ -14,21 +16,11 @@ module Api
 
           # Check if pagination is requested
           if params[:page].present? || params[:per_page].present?
-            # Apply pagination
-            page = [ params[:page].to_i, 1 ].max
-            per_page = [ params[:per_page].to_i, 1 ].max.clamp(1, 50)
-            offset = (page - 1) * per_page
-
-            paginated_devices = devices.limit(per_page).offset(offset)
+            result = apply_pagination(devices, default_per_page: 25, max_per_page: 50)
 
             render json: {
-              devices: paginated_devices.map { |device| DeviceSerializer.new(device).as_json },
-              pagination: {
-                page: page,
-                per_page: per_page,
-                total: devices.count,
-                total_pages: (devices.count.to_f / per_page).ceil
-              }
+              devices: result[:paginated_query].map { |device| DeviceSerializer.new(device).as_json },
+              pagination: result[:pagination_metadata]
             }
           else
             # Return simple array for backward compatibility
@@ -136,7 +128,6 @@ module Api
         rescue ActiveRecord::RecordNotFound
           render json: { error: { message: "Resource not found" } }, status: :not_found
       end
-    end
 
       private
 
@@ -204,64 +195,12 @@ module Api
           )
         end
 
-        # Apply ordering
-        order_by = params[:order_by] || "created_at"
-        order_direction = params[:order_direction]&.downcase == "asc" ? "asc" : "desc"
-
-        case order_by
-        when "device_name"
-          devices = devices.order("device_name #{order_direction}")
-        when "platform"
-          devices = devices.order("platform #{order_direction}")
-        when "last_seen_at"
-          devices = devices.order("last_seen_at #{order_direction}")
-        else
-          devices = devices.order("created_at #{order_direction}")
-        end
+        # Apply ordering using concern
+        valid_columns = %w[device_name platform last_seen_at created_at]
+        devices = apply_ordering(devices, valid_columns: valid_columns, default_column: "created_at", default_direction: :desc)
 
         devices
       end
-
-      def validate_pagination_params
-        # Validate page parameter
-        if params[:page].present? && params[:page].to_i < 1
-          render json: { error: { message: "Page parameter must be a positive integer" } },
-                 status: :bad_request
-          return
-        end
-
-        # Validate per_page parameter
-        if params[:per_page].present? && (params[:per_page].to_i < 1 || params[:per_page].to_i > 50)
-          render json: { error: { message: "Per page parameter must be between 1 and 50" } },
-                 status: :bad_request
-          return
-        end
-
-        # Validate order_by parameter
-        if params[:order_by].present?
-          valid_order_fields = %w[created_at device_name platform last_seen_at]
-          unless valid_order_fields.include?(params[:order_by])
-            render json: { error: { message: "Invalid order_by parameter" } },
-                   status: :bad_request
-            return
-          end
-        end
-
-        # Validate order_direction parameter
-        if params[:order_direction].present?
-          unless %w[asc desc].include?(params[:order_direction].downcase)
-            render json: { error: { message: "Order direction must be 'asc' or 'desc'" } },
-                   status: :bad_request
-            return
-          end
-        end
-
-        # Validate search parameter length
-        if params[:search].present? && params[:search].length > 100
-          render json: { error: { message: "Search term too long (maximum 100 characters)" } },
-                 status: :bad_request
-          nil
-        end
-      end
+    end
   end
 end

@@ -96,8 +96,8 @@ RSpec.describe UserLocation, type: :model do
     end
 
     it 'has recent scope' do
-      recent_location = create(:user_location, user: user, recorded_at: 1.hour.ago)
-      old_location = create(:user_location, user: user, recorded_at: 1.week.ago)
+      recent_location = create(:user_location, user: user, recorded_at: 30.minutes.ago)
+      old_location = create(:user_location, user: user, recorded_at: 2.hours.ago)
 
       expect(UserLocation.recent).to include(recent_location)
       expect(UserLocation.recent).not_to include(old_location)
@@ -341,8 +341,8 @@ RSpec.describe UserLocation, type: :model do
     end
 
     it 'returns recent locations for user' do
-      recent_location = create(:user_location, user: user, recorded_at: 1.hour.ago)
-      old_location = create(:user_location, user: user, recorded_at: 1.week.ago)
+      recent_location = create(:user_location, user: user, recorded_at: 30.minutes.ago)
+      old_location = create(:user_location, user: user, recorded_at: 2.hours.ago)
 
       recent_locations = UserLocation.for_user(user).recent
       expect(recent_locations).to include(recent_location)
