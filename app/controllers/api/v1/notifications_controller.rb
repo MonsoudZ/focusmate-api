@@ -1,58 +1,65 @@
 module Api
   module V1
     class NotificationsController < ApplicationController
+      before_action :authenticate_user!
       before_action :validate_page_params, only: [ :index ]
       # GET /api/v1/notifications
       def index
-        begin
-          logs = build_notifications_query
+        logs = build_notifications_query
 
-          # Apply pagination at database level
-          page = [ params[:page].to_i, 1 ].max
-          per_page = per_page_limit
-          offset = (page - 1) * per_page
+        # Apply pagination at database level
+        page = [ params[:page].to_i, 1 ].max
+        per_page = per_page_limit
+        offset = (page - 1) * per_page
 
-          paginated_logs = logs.limit(per_page).offset(offset)
+        paginated_logs = logs.limit(per_page).offset(offset)
 
-          render json: paginated_logs.map { |notification|
-            NotificationSerializer.new(notification).as_json
-          }
-        rescue => e
-          Rails.logger.error "NotificationsController#index error: #{e.message}"
-          render json: { error: { message: "Failed to retrieve notifications" } },
-                 status: :internal_server_error
-        end
+        render json: paginated_logs.map { |notification|
+          NotificationSerializer.new(notification).as_json
+        }
+      rescue ActiveRecord::StatementInvalid => e
+        Rails.logger.error "NotificationsController#index database error: #{e.message}"
+        render json: { error: { message: "Failed to retrieve notifications" } },
+               status: :internal_server_error
+      rescue StandardError => e
+        Rails.logger.error "NotificationsController#index error: #{e.message}"
+        render json: { error: { message: "Failed to retrieve notifications" } },
+               status: :internal_server_error
       end
 
       # PATCH /api/v1/notifications/:id/mark_read
       def mark_read
-        begin
-          notification = current_user.notification_logs.find(params[:id])
-          notification.mark_read!
-          head :no_content
-        rescue ActiveRecord::RecordNotFound
-          render json: { error: { message: "Resource not found" } }, status: :not_found
-        rescue => e
-          Rails.logger.error "NotificationsController#mark_read error: #{e.message}"
-          render json: { error: { message: "Failed to mark notification as read" } },
-                 status: :internal_server_error
-        end
+        notification = current_user.notification_logs.find(params[:id])
+        notification.mark_read!
+        head :no_content
+      rescue ActiveRecord::RecordNotFound
+        render json: { error: { message: "Resource not found" } }, status: :not_found
+      rescue ActiveRecord::RecordInvalid => e
+        Rails.logger.error "NotificationsController#mark_read validation error: #{e.message}"
+        render json: { error: { message: "Failed to mark notification as read" } },
+               status: :unprocessable_content
+      rescue StandardError => e
+        Rails.logger.error "NotificationsController#mark_read error: #{e.message}"
+        render json: { error: { message: "Failed to mark notification as read" } },
+               status: :internal_server_error
       end
 
       # PATCH /api/v1/notifications/mark_all_read
       def mark_all_read
-        begin
-          # Use bulk update for better performance
-          NotificationLog.for_user(current_user)
-                        .where("metadata->>'read' IS NULL OR metadata->>'read' != 'true'")
-                        .update_all("metadata = jsonb_set(metadata, '{read}', 'true')")
+        # Use bulk update for better performance
+        NotificationLog.for_user(current_user)
+                      .where("metadata->>'read' IS NULL OR metadata->>'read' != 'true'")
+                      .update_all("metadata = jsonb_set(metadata, '{read}', 'true')")
 
-          head :no_content
-        rescue => e
-          Rails.logger.error "NotificationsController#mark_all_read error: #{e.message}"
-          render json: { error: { message: "Failed to mark all notifications as read" } },
-                 status: :internal_server_error
-        end
+        head :no_content
+      rescue ActiveRecord::StatementInvalid => e
+        Rails.logger.error "NotificationsController#mark_all_read database error: #{e.message}"
+        render json: { error: { message: "Failed to mark all notifications as read" } },
+               status: :internal_server_error
+      rescue StandardError => e
+        Rails.logger.error "NotificationsController#mark_all_read error: #{e.message}"
+        render json: { error: { message: "Failed to mark all notifications as read" } },
+               status: :internal_server_error
       end
 
       private

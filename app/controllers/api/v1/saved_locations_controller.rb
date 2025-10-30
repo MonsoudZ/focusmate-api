@@ -66,15 +66,15 @@ module Api
 
         # Apply ordering
         order_by = params[:order_by] || "created_at"
-        order_direction = params[:order_direction]&.downcase == "asc" ? "asc" : "desc"
+        order_direction = params[:order_direction]&.downcase == "asc" ? :asc : :desc
 
         case order_by
         when "name"
-          locations = locations.order("name #{order_direction}")
+          locations = locations.order(name: order_direction)
         when "updated_at"
-          locations = locations.order("updated_at #{order_direction}")
+          locations = locations.order(updated_at: order_direction)
         else
-          locations = locations.order("created_at #{order_direction}")
+          locations = locations.order(created_at: order_direction)
         end
 
         locations

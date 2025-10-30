@@ -3,6 +3,8 @@
 module Api
   module V1
     class DashboardController < ApplicationController
+      before_action :authenticate_user!
+
       # GET /api/v1/dashboard
       # Params:
       #   from, to: ISO8601 dates/times (optional)

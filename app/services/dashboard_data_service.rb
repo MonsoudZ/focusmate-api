@@ -261,19 +261,21 @@ class DashboardDataService
   end
 
   # Coach dashboard methods
+  def active_client_ids
+    @active_client_ids ||= CoachingRelationship.where(coach_id: @user.id, status: "active").pluck(:client_id)
+  end
+
   def clients_count
-    CoachingRelationship.where(coach_id: @user.id, status: "active").count
+    active_client_ids.count
   end
 
   def total_overdue_tasks
-    client_ids = CoachingRelationship.where(coach_id: @user.id, status: "active").pluck(:client_id)
-    Task.joins(:list).where(lists: { user_id: client_ids }).overdue.count
+    Task.joins(:list).where(lists: { user_id: active_client_ids }).overdue.count
   end
 
   def pending_client_explanations
-    client_ids = CoachingRelationship.where(coach_id: @user.id, status: "active").pluck(:client_id)
     Task.joins(:list)
-        .where(lists: { user_id: client_ids })
+        .where(lists: { user_id: active_client_ids })
         .where(requires_explanation_if_missed: true)
         .where("due_at < ?", Time.current)
         .where(status: :pending)
@@ -281,14 +283,13 @@ class DashboardDataService
   end
 
   def active_relationships_count
-    CoachingRelationship.where(coach_id: @user.id, status: "active").count
+    active_client_ids.count
   end
 
   def recent_client_activity
-    client_ids = CoachingRelationship.where(coach_id: @user.id, status: "active").pluck(:client_id)
     TaskEvent.joins(task: { list: :user })
              .includes(task: { list: :user })
-             .where(lists: { user_id: client_ids })
+             .where(lists: { user_id: active_client_ids })
              .order(created_at: :desc)
              .limit(10)
              .map do |event|
@@ -329,24 +330,21 @@ class DashboardDataService
   end
 
   def total_client_tasks
-    client_ids = CoachingRelationship.where(coach_id: @user.id, status: "active").pluck(:client_id)
-    Task.joins(:list).where(lists: { user_id: client_ids }).count
+    Task.joins(:list).where(lists: { user_id: active_client_ids }).count
   end
 
   def completed_client_tasks
-    client_ids = CoachingRelationship.where(coach_id: @user.id, status: "active").pluck(:client_id)
-    Task.joins(:list).where(lists: { user_id: client_ids }).completed.count
+    Task.joins(:list).where(lists: { user_id: active_client_ids }).completed.count
   end
 
   def average_client_completion_rate
-    client_ids = CoachingRelationship.where(coach_id: @user.id, status: "active").pluck(:client_id)
-    return 0.0 if client_ids.empty?
+    return 0.0 if active_client_ids.empty?
 
     # Get all task counts in a single query using GROUP BY
     # status enum: pending: 0, in_progress: 1, done: 2, deleted: 3
     # Use pluck to avoid instantiating Task objects
     task_counts = Task.joins(:list)
-                      .where(lists: { user_id: client_ids })
+                      .where(lists: { user_id: active_client_ids })
                       .group("lists.user_id")
                       .pluck(Arel.sql("lists.user_id, COUNT(*) as total_count, SUM(CASE WHEN tasks.status = 2 THEN 1 ELSE 0 END) as completed_count"))
 
@@ -362,13 +360,11 @@ class DashboardDataService
   end
 
   def client_performance_summary
-    client_ids = CoachingRelationship.where(coach_id: @user.id, status: "active").pluck(:client_id)
-
     # Get all task counts in a single query
     # status enum: pending: 0, in_progress: 1, done: 2, deleted: 3
     # Use pluck to avoid instantiating Task objects
     task_counts_array = Task.joins(:list)
-                            .where(lists: { user_id: client_ids })
+                            .where(lists: { user_id: active_client_ids })
                             .group("lists.user_id")
                             .pluck(Arel.sql("lists.user_id, COUNT(*) as total_count, SUM(CASE WHEN tasks.status = 2 THEN 1 ELSE 0 END) as completed_count"))
 
@@ -376,7 +372,7 @@ class DashboardDataService
     task_counts = task_counts_array.to_h { |user_id, total, completed| [ user_id, { total: total.to_i, completed: completed.to_i } ] }
 
     # Eager load users and build summary
-    User.where(id: client_ids).map do |client|
+    User.where(id: active_client_ids).map do |client|
       counts = task_counts[client.id] || { total: 0, completed: 0 }
       total = counts[:total]
       completed = counts[:completed]

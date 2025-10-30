@@ -33,7 +33,7 @@ module Api
           since_time =
             begin
               Time.zone.parse(params[:since])
-            rescue
+            rescue ArgumentError, TypeError
               nil
             end
           scope = scope.where("lists.updated_at >= ?", since_time) if since_time
