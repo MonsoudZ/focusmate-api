@@ -132,7 +132,7 @@ class TaskCreationService
 
   def setup_notifications
     # Notify client if coach created it
-    NotificationService.new_item_assigned(@task) if @task.created_by_coach?
+    NotificationJob.perform_later("new_item_assigned", @task.id) if @task.created_by_coach?
 
     # Set up geofencing if location-based
     # if @task.location_based?

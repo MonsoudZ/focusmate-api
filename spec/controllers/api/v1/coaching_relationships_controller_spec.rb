@@ -166,13 +166,12 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
           client_email: other_client.email
         }
 
-        # Mock notification service
-        allow(NotificationService).to receive(:coaching_invitation_sent)
-
-        post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
+        # Check that notification job is enqueued
+        expect {
+          post "/api/v1/coaching_relationships", params: invite_params, headers: coach_headers
+        }.to have_enqueued_job(NotificationJob).with("coaching_invitation_sent", kind_of(Integer))
 
         expect(response).to have_http_status(:created)
-        expect(NotificationService).to have_received(:coaching_invitation_sent)
       end
 
       it "should not allow inviting same user twice" do
@@ -325,13 +324,12 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
     end
 
     it "should send notification when invitation is accepted" do
-      # Mock notification service
-      allow(NotificationService).to receive(:coaching_invitation_accepted)
-
-      patch "/api/v1/coaching_relationships/#{pending_relationship.id}/accept", headers: auth_headers(other_client)
+      # Check that notification job is enqueued
+      expect {
+        patch "/api/v1/coaching_relationships/#{pending_relationship.id}/accept", headers: auth_headers(other_client)
+      }.to have_enqueued_job(NotificationJob).with("coaching_invitation_accepted", pending_relationship.id)
 
       expect(response).to have_http_status(:success)
-      expect(NotificationService).to have_received(:coaching_invitation_accepted).with(pending_relationship)
     end
   end
 
@@ -372,13 +370,12 @@ RSpec.describe Api::V1::CoachingRelationshipsController, type: :request do
     end
 
     it "should send notification when invitation is declined" do
-      # Mock notification service
-      allow(NotificationService).to receive(:coaching_invitation_declined)
-
-      patch "/api/v1/coaching_relationships/#{pending_relationship.id}/decline", headers: auth_headers(other_client)
+      # Check that notification job is enqueued
+      expect {
+        patch "/api/v1/coaching_relationships/#{pending_relationship.id}/decline", headers: auth_headers(other_client)
+      }.to have_enqueued_job(NotificationJob).with("coaching_invitation_declined", pending_relationship.id)
 
       expect(response).to have_http_status(:no_content)
-      expect(NotificationService).to have_received(:coaching_invitation_declined).with(pending_relationship)
     end
   end
 

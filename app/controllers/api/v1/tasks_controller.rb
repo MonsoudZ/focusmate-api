@@ -121,125 +121,74 @@ module Api
 
       # POST /api/v1/tasks/:id/complete
       def complete
-        unless can_access_task?(@task)
-          return render json: {
-            error: {
-              message: "You do not have permission to modify this task",
-              task_id: @task.id,
-              user_id: current_user.id,
-              list_owner_id: @task.list.user_id
-            }
-          }, status: :forbidden
-        end
-
-        # Handle both completion states based on the completed parameter
-        if params[:completed] == false || params[:completed] == "false"
-          @task.uncomplete!
-        else
-          @task.complete!
-        end
-
+        service = TaskCompletionService.new(task: @task, user: current_user)
+        service.toggle_completion!(completed: params[:completed])
         render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+      rescue TaskCompletionService::UnauthorizedError => e
+        render json: {
+          error: {
+            message: e.message,
+            task_id: @task.id,
+            user_id: current_user.id,
+            list_owner_id: @task.list.user_id
+          }
+        }, status: :forbidden
       end
 
       # PATCH /api/v1/tasks/:id/uncomplete
       def uncomplete
-        unless can_access_task?(@task)
-          return render json: {
-            error: {
-              message: "You do not have permission to modify this task",
-              task_id: @task.id,
-              user_id: current_user.id,
-              list_owner_id: @task.list.user_id
-            }
-          }, status: :forbidden
-        end
-
-        @task.uncomplete!
+        service = TaskCompletionService.new(task: @task, user: current_user)
+        service.uncomplete!
         render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+      rescue TaskCompletionService::UnauthorizedError => e
+        render json: {
+          error: {
+            message: e.message,
+            task_id: @task.id,
+            user_id: current_user.id,
+            list_owner_id: @task.list.user_id
+          }
+        }, status: :forbidden
       end
 
       # POST /api/v1/tasks/:id/reassign
       # PATCH /api/v1/tasks/:id/reassign
       def reassign
-        unless @task.list.user_id == current_user.id
-          return render json: { error: { message: "Forbidden" } }, status: :forbidden
-        end
-
-        uid = params[:assigned_to]
-        unless uid.present?
+        assigned_to_id = params[:assigned_to]
+        unless assigned_to_id.present?
           return render json: { error: { message: "assigned_to parameter is required" } },
                  status: :bad_request
         end
 
-        if Task.column_names.include?("assigned_to_id")
-          @task.update!(assigned_to_id: uid)
-        elsif Task.column_names.include?("assigned_to")
-          @task.update!(assigned_to: uid)
-        else
-          return render json: { error: { message: "Task does not support assignment" } },
-                 status: :unprocessable_entity
-        end
-
+        service = TaskReassignmentService.new(task: @task, user: current_user)
+        service.reassign!(assigned_to_id: assigned_to_id)
         render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
-      rescue ActiveRecord::RecordInvalid => e
-        Rails.logger.error "Task reassignment validation failed: #{e.record.errors.full_messages}"
-        render json: {
-          error: {
-            message: "Validation failed",
-            details: e.record.errors.as_json
-          }
-        }, status: :unprocessable_entity
+      rescue TaskReassignmentService::UnauthorizedError => e
+        render json: { error: { message: e.message } }, status: :forbidden
+      rescue TaskReassignmentService::ValidationError => e
+        Rails.logger.error "Task reassignment validation failed: #{e.message}"
+        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_entity
       end
 
       # POST /api/v1/tasks/:id/submit_explanation
       def submit_explanation
-        unless @task.list.user_id == current_user.id
-          return render json: { error: { message: "Forbidden" } }, status: :forbidden
-        end
-
-        attrs = {}
-        if Task.column_names.include?("missed_reason")
-          attrs[:missed_reason] = params[:missed_reason].to_s
-        end
-        if Task.column_names.include?("missed_reason_submitted_at")
-          attrs[:missed_reason_submitted_at] = Time.current
-        end
-
-        if attrs.empty?
-          return render json: { error: { message: "Task does not support missed-explanation fields" } },
-                 status: :unprocessable_entity
-        end
-
-        if @task.update(attrs)
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
-        else
-          render json: {
-            error: {
-              message: "Validation failed",
-              details: @task.errors.as_json
-            }
-          }, status: :unprocessable_entity
-        end
+        service = TaskVisibilityService.new(task: @task, user: current_user)
+        service.submit_explanation!(missed_reason: params[:missed_reason])
+        render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+      rescue TaskVisibilityService::UnauthorizedError => e
+        render json: { error: { message: e.message } }, status: :forbidden
+      rescue TaskVisibilityService::ValidationError => e
+        render json: { error: { message: e.message } }, status: :unprocessable_entity
       end
 
       # PATCH /api/v1/tasks/:id/toggle_visibility
       def toggle_visibility
-        unless @task.list.user_id == current_user.id
-          return render json: { error: { message: "Forbidden" } }, status: :forbidden
-        end
-
+        service = TaskVisibilityService.new(task: @task, user: current_user)
         visibility = params[:visibility]
 
         if visibility.present?
           # Handle visibility parameter (for change_visibility-style calls)
-          unless Task.visibilities.keys.include?(visibility)
-            return render json: { error: { message: "Invalid visibility setting" } },
-                   status: :bad_request
-          end
-
-          @task.update!(visibility: visibility)
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+          service.change_visibility!(visibility: visibility)
         else
           # Handle coach_id/visible parameters (for toggle_visibility-style calls)
           coach_id = params[:coach_id]
@@ -250,24 +199,17 @@ module Api
                    status: :bad_request
           end
 
-          coach = User.find(coach_id)
-          relationship = current_user.relationship_with_coach(coach)
-
-          unless relationship
-            return render json: { error: { message: "Not Found" } }, status: :not_found
-          end
-
-          if visible
-            @task.show_to!(relationship)
-          else
-            @task.hide_from!(relationship)
-          end
-
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+          service.toggle_for_coach!(coach_id: coach_id, visible: visible)
         end
-      rescue ActiveRecord::RecordNotFound => e
-        Rails.logger.error "User not found in toggle_visibility: #{e.message}"
-        render json: { error: { message: "User not found" } }, status: :not_found
+
+        render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+      rescue TaskVisibilityService::UnauthorizedError => e
+        render json: { error: { message: e.message } }, status: :forbidden
+      rescue TaskVisibilityService::ValidationError => e
+        render json: { error: { message: e.message } }, status: :bad_request
+      rescue TaskVisibilityService::NotFoundError => e
+        Rails.logger.error "Not found in toggle_visibility: #{e.message}"
+        render json: { error: { message: e.message } }, status: :not_found
       end
 
       # PATCH /api/v1/tasks/:id/change_visibility
@@ -293,78 +235,53 @@ module Api
 
       # POST /api/v1/tasks/:id/add_subtask
       def add_subtask
-        unless @task.list.user_id == current_user.id
-          return render json: { error: { message: "Forbidden" } }, status: :forbidden
+        title = params[:title]
+        unless title.present?
+          return render json: { error: { message: "Title is required" } }, status: :bad_request
         end
 
+        service = SubtaskManagementService.new(parent_task: @task, user: current_user)
         due_time = parse_iso(params[:due_at])
-        if Task.validators_on(:due_at).any? { |v| v.kind == :presence } && due_time.nil?
-          return render json: {
-            error: {
-              message: "Validation failed",
-              details: { due_at: [ "is invalid or missing" ] }
-            }
-          }, status: :unprocessable_entity
-        end
-
-        sub_attrs = {
-          title: params.require(:title),
+        subtask = service.create_subtask!(
+          title: title,
           note: params[:note],
-          due_at: due_time,
-          list_id: @task.list_id,
-          creator_id: current_user.id,
-          strict_mode: true
-        }
+          due_at: due_time
+        )
 
-        # prefer parent_task_id, fall back to parent_task association if you use that
-        if Task.column_names.include?("parent_task_id")
-          sub_attrs[:parent_task_id] = @task.id
-        end
-
-        sub = Task.new(sub_attrs)
-
-        if sub.save
-          render json: TaskSerializer.new(sub, current_user: current_user).as_json.merge(parent_task_id: @task.id),
-                 status: :created
-        else
-          render json: {
-            error: {
-              message: "Validation failed",
-              details: sub.errors.as_json
-            }
-          }, status: :unprocessable_entity
-        end
-      rescue ActionController::ParameterMissing => e
-        Rails.logger.error "Missing required parameter in add_subtask: #{e.message}"
-        render json: { error: { message: "Title is required" } }, status: :bad_request
+        render json: TaskSerializer.new(subtask, current_user: current_user).as_json.merge(parent_task_id: @task.id),
+               status: :created
+      rescue SubtaskManagementService::UnauthorizedError => e
+        render json: { error: { message: e.message } }, status: :forbidden
+      rescue SubtaskManagementService::ValidationError => e
+        Rails.logger.error "Subtask creation validation failed: #{e.message}"
+        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_entity
       end
 
       # PATCH /api/v1/tasks/:id/subtasks/:subtask_id
       def update_subtask
-        unless @task.list.user_id == current_user.id
-          return render json: { error: { message: "Forbidden" } }, status: :forbidden
-        end
+        # Note: @task in this context is the subtask being updated
+        # We need to find the parent task to use the service
+        parent_task = @task.parent_task || Task.find_by(id: @task.parent_task_id)
 
-        if @task.update(task_params)
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
-        else
-          render json: {
-            error: {
-              message: "Validation failed",
-              details: @task.errors.as_json
-            }
-          }, status: :unprocessable_entity
-        end
+        service = SubtaskManagementService.new(parent_task: parent_task, user: current_user)
+        service.update_subtask!(subtask: @task, attributes: task_params)
+        render json: TaskSerializer.new(@task, current_user: current_user).as_json, status: :ok
+      rescue SubtaskManagementService::UnauthorizedError => e
+        render json: { error: { message: e.message } }, status: :forbidden
+      rescue SubtaskManagementService::ValidationError => e
+        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_entity
       end
 
       # DELETE /api/v1/tasks/:id/subtasks/:subtask_id
       def delete_subtask
-        unless @task.list.user_id == current_user.id
-          return render json: { error: { message: "Forbidden" } }, status: :forbidden
-        end
+        # Note: @task in this context is the subtask being deleted
+        parent_task = @task.parent_task || Task.find_by(id: @task.parent_task_id)
 
-        @task.destroy
+        service = SubtaskManagementService.new(parent_task: parent_task, user: current_user)
+        service.delete_subtask!(subtask: @task)
         head :no_content
+      rescue SubtaskManagementService::UnauthorizedError => e
+        render json: { error: { message: e.message } }, status: :forbidden
       end
 
       # GET /api/v1/tasks/blocking

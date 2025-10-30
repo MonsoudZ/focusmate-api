@@ -72,11 +72,11 @@ module Api
         # Reload with associations
         rel = CoachingRelationship.includes(:coach, :client).find(rel.id)
 
-        # Call NotificationService if it exists
+        # Send notification asynchronously
         begin
-          NotificationService.coaching_invitation_sent(rel) if defined?(NotificationService) && NotificationService.respond_to?(:coaching_invitation_sent)
+          NotificationJob.perform_later("coaching_invitation_sent", rel.id)
         rescue => e
-          Rails.logger.error "[CoachingRelationshipsController] Error sending invitation notification: #{e.message}"
+          Rails.logger.error "[CoachingRelationshipsController] Error queueing invitation notification: #{e.message}"
         end
 
         render json: serialize(rel), status: :created
@@ -92,11 +92,11 @@ module Api
         # Reload with associations
         @relationship = CoachingRelationship.includes(:coach, :client).find(@relationship.id)
 
-        # Call NotificationService if it exists
+        # Send notification asynchronously
         begin
-          NotificationService.coaching_invitation_accepted(@relationship) if defined?(NotificationService) && NotificationService.respond_to?(:coaching_invitation_accepted)
+          NotificationJob.perform_later("coaching_invitation_accepted", @relationship.id)
         rescue => e
-          Rails.logger.error "[CoachingRelationshipsController] Error sending acceptance notification: #{e.message}"
+          Rails.logger.error "[CoachingRelationshipsController] Error queueing acceptance notification: #{e.message}"
         end
 
         render json: serialize(@relationship), status: :ok
@@ -109,11 +109,11 @@ module Api
 
         @relationship.update!(status: "declined")
 
-        # Call NotificationService if it exists
+        # Send notification asynchronously
         begin
-          NotificationService.coaching_invitation_declined(@relationship) if defined?(NotificationService) && NotificationService.respond_to?(:coaching_invitation_declined)
+          NotificationJob.perform_later("coaching_invitation_declined", @relationship.id)
         rescue => e
-          Rails.logger.error "[CoachingRelationshipsController] Error sending decline notification: #{e.message}"
+          Rails.logger.error "[CoachingRelationshipsController] Error queueing decline notification: #{e.message}"
         end
 
         head :no_content
