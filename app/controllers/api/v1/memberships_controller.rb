@@ -59,12 +59,12 @@ module Api
 
         # Check if user is already a member
         if @list.members.include?(target_user)
-          return render json: { error: "User is already a member of this list" }, status: :unprocessable_entity
+          return render json: { error: "User is already a member of this list" }, status: :unprocessable_content
         end
 
         # Check if user is trying to invite themselves
         if target_user == current_user
-          return render json: { error: "Cannot invite yourself" }, status: :unprocessable_entity
+          return render json: { error: "Cannot invite yourself" }, status: :unprocessable_content
         end
 
         @membership = @list.memberships.build(
@@ -88,7 +88,7 @@ module Api
             }
           }, status: :created
         else
-          render json: { errors: @membership.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @membership.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -110,7 +110,7 @@ module Api
             }
           }
         else
-          render json: { errors: @membership.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @membership.errors.full_messages }, status: :unprocessable_content
         end
       end
 

@@ -19,7 +19,7 @@ module ErrorResponseHelper
   end
 
   # Validation error response with improved error handling
-  def render_validation_errors(errors, status = :unprocessable_entity)
+  def render_validation_errors(errors, status = :unprocessable_content)
     error_details = if errors.is_a?(ActiveModel::Errors)
                       errors.as_json
     elsif errors.respond_to?(:to_hash)
@@ -100,7 +100,7 @@ module ErrorResponseHelper
 
   # Unprocessable entity error response
   def render_unprocessable_entity(message = "Unprocessable entity")
-    render_error(message, :unprocessable_entity)
+    render_error(message, :unprocessable_content)
   end
 
   # Service unavailable error response

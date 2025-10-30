@@ -436,7 +436,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
            params: "",
            headers: auth_headers.merge("Content-Type" => "application/json")
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     it 'should handle very long list names' do

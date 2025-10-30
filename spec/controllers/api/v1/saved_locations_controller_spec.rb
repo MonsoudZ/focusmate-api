@@ -716,7 +716,7 @@ RSpec.describe Api::V1::SavedLocationsController, type: :request do
 
       post "/api/v1/saved_locations", params: location_params, headers: user_headers
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
 
       expect(json).to have_key("errors")

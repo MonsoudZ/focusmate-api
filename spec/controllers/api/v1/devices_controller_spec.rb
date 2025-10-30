@@ -616,7 +616,7 @@ RSpec.describe Api::V1::DevicesController, type: :request do
 
       # Second user tries to register with same token - should fail due to global uniqueness constraint
       post "/api/v1/devices", params: device_params, headers: other_user_headers
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
 
       # Should get validation error about duplicate token
       json = JSON.parse(response.body)

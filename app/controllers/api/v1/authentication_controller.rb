@@ -37,7 +37,7 @@ module Api
           render json: auth_payload(user, token), status: :created
         else
           render json: { code: "validation_error", message: "Validation failed", details: user.errors.to_hash },
-                 status: :unprocessable_entity
+                 status: :unprocessable_content
         end
       end
 

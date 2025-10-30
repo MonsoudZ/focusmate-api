@@ -95,22 +95,24 @@ module Api
         render json: {
           error: "Validation failed",
           details: e.record.errors.to_hash
-        }, status: :unprocessable_entity
+        }, status: :unprocessable_content
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id
       def update
-        if @task.update(task_params)
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json
-        else
-          Rails.logger.error "Task update validation failed: #{@task.errors.full_messages}"
-          render json: {
-            error: {
-              message: "Validation failed",
-              details: @task.errors.as_json
-            }
-          }, status: :unprocessable_entity
-        end
+        service = TaskUpdateService.new(task: @task, user: current_user)
+        service.update!(attributes: task_params)
+        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+      rescue TaskUpdateService::UnauthorizedError => e
+        render json: { error: { message: e.message } }, status: :forbidden
+      rescue TaskUpdateService::ValidationError => e
+        Rails.logger.error "Task update validation failed: #{e.message}"
+        render json: {
+          error: {
+            message: e.message,
+            details: e.details
+          }
+        }, status: :unprocessable_content
       end
 
       # DELETE /api/v1/lists/:list_id/tasks/:id
@@ -167,7 +169,7 @@ module Api
         render json: { error: { message: e.message } }, status: :forbidden
       rescue TaskReassignmentService::ValidationError => e
         Rails.logger.error "Task reassignment validation failed: #{e.message}"
-        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_entity
+        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_content
       end
 
       # POST /api/v1/tasks/:id/submit_explanation
@@ -178,7 +180,7 @@ module Api
       rescue TaskVisibilityService::UnauthorizedError => e
         render json: { error: { message: e.message } }, status: :forbidden
       rescue TaskVisibilityService::ValidationError => e
-        render json: { error: { message: e.message } }, status: :unprocessable_entity
+        render json: { error: { message: e.message } }, status: :unprocessable_content
       end
 
       # PATCH /api/v1/tasks/:id/toggle_visibility
@@ -254,7 +256,7 @@ module Api
         render json: { error: { message: e.message } }, status: :forbidden
       rescue SubtaskManagementService::ValidationError => e
         Rails.logger.error "Subtask creation validation failed: #{e.message}"
-        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_entity
+        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_content
       end
 
       # PATCH /api/v1/tasks/:id/subtasks/:subtask_id
@@ -269,7 +271,7 @@ module Api
       rescue SubtaskManagementService::UnauthorizedError => e
         render json: { error: { message: e.message } }, status: :forbidden
       rescue SubtaskManagementService::ValidationError => e
-        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_entity
+        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_content
       end
 
       # DELETE /api/v1/tasks/:id/subtasks/:subtask_id

@@ -215,7 +215,7 @@ RSpec.describe "API Integration", type: :request do
              due_at: "invalid-date" # Invalid: bad date format
            },
            headers: auth_headers
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]).to eq("Validation failed")
     end

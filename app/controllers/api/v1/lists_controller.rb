@@ -54,7 +54,7 @@ module Api
         # specs treat an empty body as 422
         cleaned_params = params.except(:controller, :action, :list).permit(:name, :description, :visibility, :due_date, :strict_mode).to_h
         if cleaned_params.blank? && !params.key?(:name)
-          render json: { error: { message: "Validation failed", details: [ "Name can't be blank" ] } }, status: :unprocessable_entity
+          render json: { error: { message: "Validation failed", details: [ "Name can't be blank" ] } }, status: :unprocessable_content
           return
         end
 
@@ -91,13 +91,13 @@ module Api
 
         # Check if both user_id and email are missing
         if target_id.blank? && target_email.blank?
-          return render json: { errors: { email: [ "is required" ] } }, status: :unprocessable_entity
+          return render json: { errors: { email: [ "is required" ] } }, status: :unprocessable_content
         end
 
         # If email is provided, find user by email
         if target_email.present?
           user = User.find_by(email: target_email)
-          return render json: { errors: { email: [ "User not found" ] } }, status: :unprocessable_entity unless user
+          return render json: { errors: { email: [ "User not found" ] } }, status: :unprocessable_content unless user
           target_id = user.id
         end
 
@@ -266,12 +266,12 @@ module Api
 
       def validation_error!(record)
         render json: { errors: record.errors.as_json },
-               status: :unprocessable_entity
+               status: :unprocessable_content
       end
 
       def validation_error_message!(msg)
         render json: { error: { message: "Validation failed", details: { base: [ msg ] } } },
-               status: :unprocessable_entity
+               status: :unprocessable_content
       end
     end
   end

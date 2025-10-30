@@ -33,7 +33,7 @@ module Api
           render json: {
             error: { message: "Failed to update device token" },
             details: current_user.errors.full_messages
-          }, status: :unprocessable_entity
+          }, status: :unprocessable_content
         end
       end
 
@@ -80,7 +80,7 @@ module Api
             render json: {
               error: { message: "Failed to update location" },
               details: current_user.errors.full_messages
-            }, status: :unprocessable_entity
+            }, status: :unprocessable_content
           end
         end
       rescue ActiveRecord::RecordInvalid => e
@@ -88,7 +88,7 @@ module Api
         render json: {
           error: { message: "Failed to update location" },
           details: e.record.errors.full_messages
-        }, status: :unprocessable_entity
+        }, status: :unprocessable_content
       end
 
       def update_fcm_token
@@ -111,7 +111,7 @@ module Api
           render json: {
             error: { message: "Failed to update FCM token" },
             details: current_user.errors.full_messages
-          }, status: :unprocessable_entity
+          }, status: :unprocessable_content
         end
       end
 
@@ -138,7 +138,7 @@ module Api
           render json: {
             error: { message: "Failed to update preferences" },
             details: current_user.errors.full_messages
-          }, status: :unprocessable_entity
+          }, status: :unprocessable_content
         end
       end
 

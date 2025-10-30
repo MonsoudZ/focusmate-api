@@ -66,7 +66,7 @@ module Api
         rescue ActiveRecord::RecordInvalid => e
           Rails.logger.error "Device creation validation failed: #{e.record.errors.full_messages}"
           render json: { error: { message: "Validation failed", details: e.record.errors.full_messages } },
-                 status: :unprocessable_entity
+                 status: :unprocessable_content
       end
 
       # POST /api/v1/devices/register (legacy endpoint)
@@ -88,7 +88,7 @@ module Api
         rescue ActiveRecord::RecordInvalid => e
           Rails.logger.error "Device registration validation failed: #{e.record.errors.full_messages}"
           render json: { error: { message: "Validation failed", details: e.record.errors.full_messages } },
-                 status: :unprocessable_entity
+                 status: :unprocessable_content
       end
 
       # PATCH/PUT /api/v1/devices/:id
@@ -104,7 +104,7 @@ module Api
         rescue ActiveRecord::RecordInvalid => e
           Rails.logger.error "Device update validation failed: #{e.record.errors.full_messages}"
           render json: { error: { message: "Validation failed", details: e.record.errors.full_messages } },
-                 status: :unprocessable_entity
+                 status: :unprocessable_content
       end
 
       # DELETE /api/v1/devices/:id
@@ -123,7 +123,7 @@ module Api
           if result[:success]
             render json: result
           else
-            render json: { error: { message: result[:error] } }, status: :unprocessable_entity
+            render json: { error: { message: result[:error] } }, status: :unprocessable_content
           end
         rescue ActiveRecord::RecordNotFound
           render json: { error: { message: "Resource not found" } }, status: :not_found

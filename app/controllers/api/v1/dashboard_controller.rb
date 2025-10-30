@@ -23,7 +23,7 @@ module Api
 
         render json: data, status: :ok
       rescue DashboardDataService::ValidationError => e
-        render json: { code: "validation_error", message: "Invalid parameters", details: e.details }, status: :unprocessable_entity
+        render json: { code: "validation_error", message: "Invalid parameters", details: e.details }, status: :unprocessable_content
       rescue DashboardDataService::TooExpensiveError
         render json: { code: "timeout", message: "Dashboard query took too long" }, status: :request_timeout
       end
@@ -48,7 +48,7 @@ module Api
 
         render json: stats, status: :ok
       rescue DashboardDataService::ValidationError => e
-        render json: { code: "validation_error", message: "Invalid parameters", details: e.details }, status: :unprocessable_entity
+        render json: { code: "validation_error", message: "Invalid parameters", details: e.details }, status: :unprocessable_content
       end
 
       private

@@ -36,7 +36,7 @@ module Api
               message: "Validation failed",
               details: template.errors.as_json
             }
-          }, status: :unprocessable_entity
+          }, status: :unprocessable_content
         end
       end
 
@@ -68,7 +68,7 @@ module Api
               message: "Validation failed",
               details: @template.errors.as_json
             }
-          }, status: :unprocessable_entity
+          }, status: :unprocessable_content
         end
       end
 
@@ -89,7 +89,7 @@ module Api
         instance = @template.generate_next_instance
         unless instance
           render json: { error: { message: "Could not generate instance" } },
-                 status: :unprocessable_entity
+                 status: :unprocessable_content
           return
         end
         render json: serialize_instance(instance), status: :created
@@ -186,7 +186,7 @@ module Api
                 message: "Validation failed",
                 details: { recurrence_time: [ "must be in HH:MM format" ] }
               }
-            }, status: :unprocessable_entity
+            }, status: :unprocessable_content
             return
           end
         end
@@ -205,7 +205,7 @@ module Api
                   message: "Validation failed",
                   details: { recurrence_days: [ "must be valid day values (0-6 or day names)" ] }
                 }
-              }, status: :unprocessable_entity
+              }, status: :unprocessable_content
               return
             end
           end
@@ -219,7 +219,7 @@ module Api
                 message: "Validation failed",
                 details: { list_id: [ "must be a valid integer" ] }
               }
-            }, status: :unprocessable_entity
+            }, status: :unprocessable_content
             nil
           end
         end

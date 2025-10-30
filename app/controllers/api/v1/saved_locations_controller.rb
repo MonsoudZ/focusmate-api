@@ -31,7 +31,7 @@ module Api
           Rails.logger.error "Location creation validation failed: #{@location.errors.full_messages}"
           render json: {
             errors: @location.errors.full_messages
-          }, status: :unprocessable_entity
+          }, status: :unprocessable_content
         end
       end
 
@@ -43,7 +43,7 @@ module Api
           Rails.logger.error "Location update validation failed: #{@location.errors.full_messages}"
           render json: {
             errors: @location.errors.full_messages
-          }, status: :unprocessable_entity
+          }, status: :unprocessable_content
         end
       end
 
@@ -135,7 +135,7 @@ module Api
         end
 
         if errors.any?
-          render json: { errors: errors }, status: :unprocessable_entity
+          render json: { errors: errors }, status: :unprocessable_content
           nil
         end
       end
