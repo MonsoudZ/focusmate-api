@@ -255,5 +255,75 @@ RSpec.describe User, type: :model do
       expect(coach.coaching_relationship_with(client)).to eq(relationship)
       expect(client.coaching_relationship_with(coach)).to eq(relationship)
     end
+
+    it 'gets active coaching relationship with specific coach as client' do
+      relationship = create(:coaching_relationship, coach: coach, client: client, status: :active)
+      expect(client.relationship_with_coach(coach)).to eq(relationship)
+    end
+
+    it 'returns nil when no active relationship with coach' do
+      create(:coaching_relationship, coach: coach, client: client, status: :pending)
+      expect(client.relationship_with_coach(coach)).to be_nil
+    end
+
+    it 'gets active coaching relationship with specific client as coach' do
+      relationship = create(:coaching_relationship, coach: coach, client: client, status: :active)
+      expect(coach.relationship_with_client(client)).to eq(relationship)
+    end
+
+    it 'returns nil when no active relationship with client' do
+      create(:coaching_relationship, coach: coach, client: client, status: :pending)
+      expect(coach.relationship_with_client(client)).to be_nil
+    end
+  end
+
+  describe 'task queries' do
+    let(:list) { create(:list, user: user) }
+    let!(:overdue_task) { create(:task, list: list, creator: user, due_at: 1.hour.ago, status: :pending) }
+    let!(:future_task) { create(:task, list: list, creator: user, due_at: 1.hour.from_now, status: :pending) }
+
+    describe '#overdue_tasks' do
+      it 'returns overdue pending tasks' do
+        expect(user.overdue_tasks).to include(overdue_task)
+      end
+
+      it 'does not return future tasks' do
+        expect(user.overdue_tasks).not_to include(future_task)
+      end
+
+      it 'does not return completed overdue tasks' do
+        overdue_task.update!(status: :done)
+        expect(user.overdue_tasks).not_to include(overdue_task)
+      end
+    end
+
+    describe '#tasks_requiring_explanation' do
+      let!(:task_needing_explanation) do
+        create(:task,
+               list: list,
+               creator: user,
+               due_at: 1.hour.ago,
+               status: :pending,
+               requires_explanation_if_missed: true)
+      end
+
+      it 'returns overdue tasks requiring explanation' do
+        expect(user.tasks_requiring_explanation).to include(task_needing_explanation)
+      end
+
+      it 'does not return tasks not requiring explanation' do
+        expect(user.tasks_requiring_explanation).not_to include(overdue_task)
+      end
+
+      it 'does not return future tasks even if requiring explanation' do
+        future_explanation_task = create(:task,
+                                        list: list,
+                                        creator: user,
+                                        due_at: 1.hour.from_now,
+                                        status: :pending,
+                                        requires_explanation_if_missed: true)
+        expect(user.tasks_requiring_explanation).not_to include(future_explanation_task)
+      end
+    end
   end
 end
