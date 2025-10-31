@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_30_215000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -49,6 +49,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.datetime "deleted_at"
+    t.index ["coaching_relationship_id", "sent"], name: "index_daily_summaries_on_relationship_and_sent"
     t.index ["coaching_relationship_id", "summary_date"], name: "idx_daily_summaries_unique_per_rel_and_date", unique: true
     t.index ["coaching_relationship_id"], name: "index_daily_summaries_on_coaching_relationship_id"
     t.index ["sent"], name: "index_daily_summaries_on_sent"
@@ -174,6 +175,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.index ["permissions"], name: "index_list_shares_on_permissions", using: :gin
     t.index ["role"], name: "index_list_shares_on_role"
     t.index ["status"], name: "index_list_shares_on_status"
+    t.index ["user_id", "status"], name: "index_list_shares_on_user_and_status"
     t.index ["user_id"], name: "index_list_shares_on_user_id"
     t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'accepted'::character varying::text, 'declined'::character varying::text])", name: "list_shares_status_check"
   end
@@ -186,9 +188,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.datetime "updated_at", null: false
     t.datetime "deleted_at"
     t.string "visibility", default: "private", null: false
+    t.integer "tasks_count", default: 0, null: false
+    t.integer "list_shares_count", default: 0, null: false
     t.index ["deleted_at"], name: "index_lists_on_deleted_at"
     t.index ["user_id", "created_at"], name: "index_lists_on_user_created_at"
     t.index ["user_id", "deleted_at"], name: "index_lists_on_user_deleted_at"
+    t.index ["user_id", "visibility"], name: "index_lists_on_user_and_visibility"
     t.index ["user_id"], name: "index_lists_on_user_id"
     t.index ["visibility"], name: "index_lists_on_visibility"
     t.check_constraint "visibility::text = ANY (ARRAY['private'::character varying::text, 'shared'::character varying::text, 'public'::character varying::text])", name: "lists_visibility_check"
@@ -204,6 +209,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.boolean "receive_overdue_alerts", default: true
     t.bigint "coaching_relationship_id"
     t.index ["coaching_relationship_id"], name: "index_memberships_on_coaching_relationship_id"
+    t.index ["list_id", "role"], name: "index_memberships_on_list_and_role"
     t.index ["list_id", "user_id"], name: "index_memberships_on_list_user"
     t.index ["list_id"], name: "index_memberships_on_list_id"
     t.index ["user_id", "list_id"], name: "index_memberships_on_user_list"
@@ -235,6 +241,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.index ["user_id", "created_at"], name: "idx_notification_logs_user_created_at"
     t.index ["user_id", "created_at"], name: "index_notification_logs_on_user_created_at"
     t.index ["user_id", "created_at"], name: "index_notification_logs_on_user_id_and_created_at"
+    t.index ["user_id", "delivered"], name: "index_notification_logs_on_user_and_delivered"
     t.index ["user_id"], name: "index_notification_logs_on_user_id"
     t.check_constraint "delivery_method IS NULL OR (delivery_method::text = ANY (ARRAY['email'::character varying::text, 'push'::character varying::text, 'sms'::character varying::text, 'in_app'::character varying::text]))", name: "chk_notification_log_delivery_method"
   end
@@ -249,6 +256,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.datetime "deleted_at"
+    t.index ["address"], name: "index_saved_locations_on_address"
+    t.index ["name"], name: "index_saved_locations_on_name"
     t.index ["user_id"], name: "index_saved_locations_on_user_id"
     t.check_constraint "latitude >= '-90'::integer::numeric AND latitude <= 90::numeric", name: "saved_locations_latitude_range"
     t.check_constraint "longitude >= '-180'::integer::numeric AND longitude <= 180::numeric", name: "saved_locations_longitude_range"
@@ -267,6 +276,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.index ["created_at"], name: "index_task_events_on_created_at"
     t.index ["task_id", "created_at"], name: "index_task_events_on_task_created_at"
     t.index ["task_id", "created_at"], name: "index_task_events_on_task_id_and_created_at"
+    t.index ["task_id", "kind"], name: "index_task_events_on_task_and_kind"
     t.index ["task_id"], name: "index_task_events_on_task_id"
     t.index ["user_id"], name: "index_task_events_on_user_id"
   end
@@ -308,6 +318,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.datetime "deleted_at"
     t.bigint "assigned_to_id"
     t.boolean "is_template"
+    t.integer "subtasks_count", default: 0, null: false
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["completed_at"], name: "index_tasks_on_completed_at"
@@ -319,6 +330,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_and_status"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_status"
     t.index ["is_recurring"], name: "index_tasks_on_is_recurring"
+    t.index ["list_id", "deleted_at"], name: "index_tasks_on_list_and_deleted"
+    t.index ["list_id", "parent_task_id"], name: "index_tasks_on_list_and_parent"
     t.index ["list_id", "status", "due_at"], name: "index_tasks_on_list_status_due_at"
     t.index ["list_id", "status"], name: "index_tasks_on_list_id_and_status"
     t.index ["list_id", "updated_at"], name: "index_tasks_on_list_id_and_updated_at"
@@ -327,6 +340,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.index ["missed_reason_reviewed_by_id"], name: "index_tasks_on_missed_reason_reviewed_by_id"
     t.index ["parent_task_id"], name: "index_tasks_on_parent_task_id"
     t.index ["recurring_template_id"], name: "index_tasks_on_recurring_template_id"
+    t.index ["status", "completed_at"], name: "index_tasks_on_status_and_completed"
     t.index ["status", "due_at"], name: "index_tasks_on_status_and_due_at"
     t.index ["visibility"], name: "index_tasks_on_visibility"
     t.check_constraint "location_latitude >= '-90'::integer::numeric AND location_latitude <= 90::numeric", name: "tasks_latitude_range"
@@ -355,6 +369,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.index ["recorded_at"], name: "index_user_locations_on_recorded_at"
     t.index ["source"], name: "index_user_locations_on_source"
     t.index ["user_id", "created_at"], name: "index_user_locations_on_user_created_at"
+    t.index ["user_id", "deleted_at"], name: "index_user_locations_on_user_and_deleted"
     t.index ["user_id", "recorded_at"], name: "index_user_locations_on_user_id_and_recorded_at"
     t.index ["user_id", "recorded_at"], name: "index_user_locations_on_user_recorded_at"
     t.index ["user_id"], name: "index_user_locations_on_user_id"
@@ -382,6 +397,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_142713) do
     t.datetime "location_updated_at"
     t.float "current_latitude"
     t.float "current_longitude"
+    t.integer "lists_count", default: 0, null: false
+    t.integer "notification_logs_count", default: 0, null: false
+    t.integer "devices_count", default: 0, null: false
+    t.integer "coaching_relationships_as_coach_count", default: 0, null: false
+    t.integer "coaching_relationships_as_client_count", default: 0, null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["email"], name: "index_users_on_email_unique", unique: true
     t.index ["fcm_token"], name: "index_users_on_fcm_token"

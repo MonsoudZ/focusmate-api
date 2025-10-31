@@ -111,6 +111,7 @@ class Task < ApplicationRecord
   # Callbacks
   after_create :record_creation_event
   after_update :handle_status_change_callbacks, if: :saved_change_to_status?
+  after_commit :invalidate_dashboard_cache, on: [ :create, :update, :destroy ]
 
   # Business logic
   def complete!
@@ -335,5 +336,23 @@ class Task < ApplicationRecord
 
   def calculate_yearly_recurrence
     TaskRecurrenceService.new(self).send(:calculate_yearly_recurrence)
+  end
+
+  # Cache invalidation for dashboard queries
+  def invalidate_dashboard_cache
+    return unless list&.user_id
+
+    # Invalidate user's dashboard cache
+    Rails.cache.delete_matched("dashboard/user/#{list.user_id}/*")
+    Rails.cache.delete_matched("dashboard/user_stats/#{list.user_id}/*")
+
+    # Invalidate coach dashboards if this user has coaches
+    CoachingRelationship.where(client_id: list.user_id, status: "active").pluck(:coach_id).each do |coach_id|
+      Rails.cache.delete_matched("dashboard/coach/#{coach_id}/*")
+      Rails.cache.delete_matched("dashboard/coach_stats/#{coach_id}/*")
+    end
+  rescue => e
+    # Log error but don't fail the transaction
+    Rails.logger.error("Failed to invalidate dashboard cache: #{e.message}")
   end
 end

@@ -25,33 +25,43 @@ class DashboardDataService
   end
 
   def user_dashboard_data
-    {
-      inbox_count: inbox_count,
-      overdue_count: overdue_count,
-      completion_rate: completion_rate,
-      recent_tasks: recent_tasks,
-      blocking_tasks_count: blocking_tasks_count,
-      overdue_tasks_count: overdue_count,
-      awaiting_explanation_count: awaiting_explanation_count,
-      coaches_count: coaches_count,
-      completion_rate_this_week: completion_rate_this_week,
-      recent_activity: recent_activity,
-      upcoming_deadlines: upcoming_deadlines,
-      digest: generate_digest,
-      last_modified: last_modified
-    }
+    # Cache dashboard data for 5 minutes with automatic invalidation via digest
+    cache_key = "dashboard/user/#{@user.id}/#{generate_digest}"
+
+    Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+      {
+        inbox_count: inbox_count,
+        overdue_count: overdue_count,
+        completion_rate: completion_rate,
+        recent_tasks: recent_tasks,
+        blocking_tasks_count: blocking_tasks_count,
+        overdue_tasks_count: overdue_count,
+        awaiting_explanation_count: awaiting_explanation_count,
+        coaches_count: coaches_count,
+        completion_rate_this_week: completion_rate_this_week,
+        recent_activity: recent_activity,
+        upcoming_deadlines: upcoming_deadlines,
+        digest: generate_digest,
+        last_modified: last_modified
+      }
+    end
   end
 
   def coach_dashboard_data
-    {
-      clients_count: clients_count,
-      total_overdue_tasks: total_overdue_tasks,
-      pending_explanations: pending_client_explanations,
-      active_relationships: active_relationships_count,
-      recent_client_activity: recent_client_activity,
-      digest: generate_digest,
-      last_modified: last_modified
-    }
+    # Cache coach dashboard data for 5 minutes
+    cache_key = "dashboard/coach/#{@user.id}/#{generate_digest}"
+
+    Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+      {
+        clients_count: clients_count,
+        total_overdue_tasks: total_overdue_tasks,
+        pending_explanations: pending_client_explanations,
+        active_relationships: active_relationships_count,
+        recent_client_activity: recent_client_activity,
+        digest: generate_digest,
+        last_modified: last_modified
+      }
+    end
   end
 
   def stats(group_by: "day", limit: 30)
@@ -63,31 +73,41 @@ class DashboardDataService
   end
 
   def user_stats(group_by, limit)
-    {
-      total_tasks: total_tasks,
-      completed_tasks: completed_tasks,
-      overdue_tasks: overdue_count,
-      completion_rate: completion_rate,
-      average_completion_time: average_completion_time,
-      tasks_by_priority: tasks_by_priority,
-      series: build_series(group_by, limit),
-      digest: generate_digest,
-      last_modified: last_modified
-    }
+    # Cache stats data for 10 minutes
+    cache_key = "dashboard/user_stats/#{@user.id}/#{group_by}/#{limit}/#{generate_digest}"
+
+    Rails.cache.fetch(cache_key, expires_in: 10.minutes) do
+      {
+        total_tasks: total_tasks,
+        completed_tasks: completed_tasks,
+        overdue_tasks: overdue_count,
+        completion_rate: completion_rate,
+        average_completion_time: average_completion_time,
+        tasks_by_priority: tasks_by_priority,
+        series: build_series(group_by, limit),
+        digest: generate_digest,
+        last_modified: last_modified
+      }
+    end
   end
 
   def coach_stats(group_by, limit)
-    {
-      total_clients: clients_count,
-      active_clients: active_relationships_count,
-      total_tasks_across_clients: total_client_tasks,
-      completed_tasks_across_clients: completed_client_tasks,
-      average_client_completion_rate: average_client_completion_rate,
-      client_performance_summary: client_performance_summary,
-      series: build_series(group_by, limit),
-      digest: generate_digest,
-      last_modified: last_modified
-    }
+    # Cache coach stats for 10 minutes
+    cache_key = "dashboard/coach_stats/#{@user.id}/#{group_by}/#{limit}/#{generate_digest}"
+
+    Rails.cache.fetch(cache_key, expires_in: 10.minutes) do
+      {
+        total_clients: clients_count,
+        active_clients: active_relationships_count,
+        total_tasks_across_clients: total_client_tasks,
+        completed_tasks_across_clients: completed_client_tasks,
+        average_client_completion_rate: average_client_completion_rate,
+        client_performance_summary: client_performance_summary,
+        series: build_series(group_by, limit),
+        digest: generate_digest,
+        last_modified: last_modified
+      }
+    end
   end
 
   private
