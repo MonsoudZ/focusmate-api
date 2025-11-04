@@ -8,7 +8,7 @@ Rails.application.configure do
   config.lograge.custom_payload do |controller|
     {
       request_id: controller.request.request_id,
-      user_id: Current.user&.id,
+      user_id: controller.try(:current_user)&.id,
       params: controller.request.filtered_parameters.except("controller", "action"),
       ip: controller.request.remote_ip,
       user_agent: controller.request.user_agent

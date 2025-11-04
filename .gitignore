@@ -34,3 +34,5 @@
 # APNs Key - Never commit!
 config/apns/*.p8
 .env
+
+/config/credentials/production.key
