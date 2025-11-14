@@ -83,7 +83,7 @@ production:
     <<: *default
     database: focusmate_api_production
     username: focusmate_api
-    password: <%= ENV["FOCUSMATE_API_DATABASE_PASSWORD"] %>
+    password: <%= ENV.fetch("FOCUSMATE_API_DATABASE_PASSWORD") %>
   cache:
     <<: *primary_production
     database: focusmate_api_production_cache
