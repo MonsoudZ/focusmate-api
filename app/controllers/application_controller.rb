@@ -66,6 +66,12 @@ class ApplicationController < ActionController::API
         return
       end
 
+      # Check if token is in the denylist (revoked)
+      if payload["jti"].present? && defined?(JwtDenylist) && JwtDenylist.exists?(jti: payload["jti"])
+        render_unauthorized("Token has been revoked")
+        return
+      end
+
       # Check if user_id is present in the token
       if payload["user_id"].blank?
         render_unauthorized("Invalid token")

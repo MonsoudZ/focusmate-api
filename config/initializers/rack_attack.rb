@@ -33,9 +33,17 @@ class Rack::Attack
     req.ip if req.path.start_with?("/users/password")
   end
 
-  # Block suspicious requests
+  # Safelist legitimate bots (Google, Bing, monitoring tools, etc.)
+  Rack::Attack.safelist("allow good bots") do |req|
+    req.user_agent =~ /(googlebot|bingbot|yandexbot|duckduckbot|slackbot|twitterbot|facebookexternalhit|linkedinbot|whatsapp|discordbot|telegrambot|uptimerobot|pingdom|newrelic)/i
+  end
+
+  # Block known malicious user agents
   Rack::Attack.blocklist("block bad user agents") do |req|
-    req.user_agent =~ /(bot|crawler|spider|scraper)/i
+    # Block empty user agents and known malicious patterns
+    # But don't block legitimate bots (they're safelisted above)
+    req.user_agent.blank? ||
+    req.user_agent =~ /(masscan|nmap|nikto|sqlmap|acunetix|nessus|openvas|metasploit|havij|libwww-perl)/i
   end
 
   # Custom response for blocked requests
