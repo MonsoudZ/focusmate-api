@@ -12,15 +12,9 @@ test:
   database: focusmate_api_test
 
 production:
-  <<: *default
-  url: <%= ENV["DATABASE_URL"] %>
-
-  cache:
-  migrations_paths: db/cache_migrate
-
-  queue:
-    migrations_paths: db/queue_migrate
+  primary: &primary_production
+    <<: *default
+    url: <%= ENV["DATABASE_URL"] %>
 
   cable:
-    migrations_paths: db/cable_migrate
-
+    <<: *primary_production
