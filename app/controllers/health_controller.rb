@@ -5,8 +5,9 @@ class HealthController < ApplicationController
   skip_before_action :force_json_format
 
   # Liveness probe - basic application health
+  # Simple endpoint that just confirms app boots (no config leaks)
   def live
-    head :ok
+    render json: { ok: true }, status: :ok
   end
 
   # Readiness probe - comprehensive service health

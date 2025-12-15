@@ -72,10 +72,6 @@ module Api
           return render json: { error: { message: "Bad Request" } }, status: :bad_request
         end
 
-        # Debug logging for iOS app issues
-        Rails.logger.info "Task creation request - Raw params: #{params.inspect}"
-        Rails.logger.info "Task creation request - Parsed task_params: #{task_params.inspect}"
-
         unless @list.can_add_items_by?(current_user)
           # Try to find a list the user can add items to
           fallback_list = current_user.owned_lists.first

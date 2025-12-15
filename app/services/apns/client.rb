@@ -6,46 +6,55 @@ require "json"
 require "securerandom"
 require "openssl"
 require "monitor"
+require "base64"
 
 module Apns
   class Client
     include MonitorMixin
 
-    DEFAULT_PUSH_TYPE = "alert" # "alert" | "background" | "voip" | "complication" | "fileprovider" | "mdm"
-    DEFAULT_PRIORITY  = 10      # 10 (immediate) or 5 (background)
-    TOKEN_TTL_SECONDS = 20 * 60 # refresh every 20 minutes (APNs allows up to 1h)
+    DEFAULT_PUSH_TYPE = "alert"
+    DEFAULT_PRIORITY  = 10
+    TOKEN_TTL_SECONDS = 20 * 60
+
+    def self.enabled?
+      ENV["APNS_TEAM_ID"].present? &&
+        ENV["APNS_KEY_ID"].present? &&
+        ENV["APNS_TOPIC"].present? &&
+        ENV["APNS_AUTH_KEY_B64"].present?
+    end
 
     def initialize(
-      team_id:      ENV.fetch("APNS_TEAM_ID"),
-      key_id:       ENV.fetch("APNS_KEY_ID"),
-      bundle_id:    ENV.fetch("APNS_TOPIC"),
-      p8:           ENV.fetch("APNS_CERT_PATH"),
-      environment:  ENV.fetch("APNS_ENVIRONMENT", "development") # "production" or "sandbox"
+      team_id:     ENV["APNS_TEAM_ID"],
+      key_id:      ENV["APNS_KEY_ID"],
+      bundle_id:   ENV["APNS_TOPIC"],
+      auth_key_b64: ENV["APNS_AUTH_KEY_B64"],
+      environment: ENV.fetch("APNS_ENVIRONMENT", "sandbox") # "sandbox" or "production"
     )
       super() # Monitor
+
+      @enabled = team_id.present? && key_id.present? && bundle_id.present? && auth_key_b64.present?
+      return unless @enabled
+
       @team_id   = team_id
       @key_id    = key_id
       @bundle_id = bundle_id
-      @p8_key    = load_ec_key!(p8)
       @env       = environment
 
-      @jwt       = nil
-      @jwt_iat   = 0
+      # Decode the .p8 contents from Base64 (Railway env var)
+      raw_key = Base64.decode64(auth_key_b64)
+      @p8_key  = load_ec_key_from_string!(raw_key)
+
+      @jwt     = nil
+      @jwt_iat = 0
     end
 
-    # Public API:
-    # payload: a Ruby Hash that becomes your APNs JSON body, e.g. { aps: { alert: { title: "...", body: "..." }, sound: "default" } }
-    #
-    # Options:
-    #  push_type:  "alert" (default) | "background" | ...
-    #  topic:      override apns-topic (defaults to bundle_id; for VoIP, e.g. "#{bundle_id}.voip")
-    #  apns_id:    a UUID you pass; APNs returns it back
-    #  expiration: Unix epoch seconds when the notification expires (0 means immediately discard if not delivered)
-    #  priority:   10 or 5
-    #
-    # Returns: { ok: true, apns_id:, status: 200 } on success
-    #          { ok: false, status:, reason:, timestamp: } on error
+    def enabled?
+      @enabled
+    end
+
     def send_notification(device_token, payload, push_type: DEFAULT_PUSH_TYPE, topic: nil, apns_id: nil, expiration: 0, priority: DEFAULT_PRIORITY)
+      return { ok: false, status: 0, reason: "APNs disabled (missing env vars)" } unless enabled?
+
       headers = {
         "authorization"  => "bearer #{jwt!}",
         "apns-topic"     => (topic || @bundle_id),
@@ -53,14 +62,13 @@ module Apns
         "apns-priority"  => priority.to_s,
         "content-type"   => "application/json"
       }
-      headers["apns-id"]        = apns_id if apns_id
-      headers["apns-expiration"]= expiration.to_s if expiration && expiration.to_i > 0
+      headers["apns-id"]         = apns_id if apns_id
+      headers["apns-expiration"] = expiration.to_s if expiration && expiration.to_i > 0
 
-      path    = "/3/device/#{device_token}"
-      body    = JSON.generate(payload)
+      path = "3/device/#{device_token}" # NOTE: no leading slash when interpolating into URL below
+      body = JSON.generate(payload)
 
-      # Use standard Net::HTTP with HTTP/2 support
-      uri = URI("https://#{apns_host}/#{path}")
+      uri  = URI("https://#{apns_host}/#{path}")
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
       http.verify_mode = OpenSSL::SSL::VERIFY_PEER
@@ -70,7 +78,7 @@ module Apns
       request.body = body
 
       response = http.request(request)
-      status = response.code.to_i
+      status   = response.code.to_i
       apns_id_hdr = response["apns-id"]
 
       if status == 200
@@ -80,12 +88,11 @@ module Apns
         { ok: false, status: status, reason: err["reason"], timestamp: err["timestamp"], apns_id: apns_id_hdr }
       end
     rescue => e
-      # Connection errors, etc.
       { ok: false, status: 0, reason: "HTTP error: #{e.class}: #{e.message}" }
     end
 
     def close
-      # No persistent connection to close
+      # no-op (no persistent connection)
     end
 
     private
@@ -94,14 +101,10 @@ module Apns
       @env.to_s == "sandbox" ? "api.sandbox.push.apple.com" : "api.push.apple.com"
     end
 
-    def load_ec_key!(p8)
-      key = if File.file?(p8)
-        OpenSSL::PKey.read(File.read(p8))
-      else
-        OpenSSL::PKey.read(p8)
-      end
+    def load_ec_key_from_string!(p8_contents)
+      key = OpenSSL::PKey.read(p8_contents)
       unless key.is_a?(OpenSSL::PKey::EC) && key.private?
-        raise ArgumentError, "APNS_CERT_PATH must be an EC private key (.p8) with a private component"
+        raise ArgumentError, "APNS_AUTH_KEY_B64 must decode to an EC private key (.p8) with a private component"
       end
       key
     end
@@ -111,9 +114,9 @@ module Apns
       synchronize do
         if @jwt.nil? || (now - @jwt_iat) >= TOKEN_TTL_SECONDS
           headers = { kid: @key_id, alg: "ES256", typ: "JWT" }
-          claims  = { iss: @team_id, iat: now } # APNs only wants iss + iat
-          @jwt    = JWT.encode(claims, @p8_key, "ES256", headers)
-          @jwt_iat = now
+          claims  = { iss: @team_id, iat: now }
+          @jwt     = JWT.encode(claims, @p8_key, "ES256", headers)
+          @jwt_iat  = now
         end
         @jwt
       end
@@ -126,3 +129,4 @@ module Apns
     end
   end
 end
+

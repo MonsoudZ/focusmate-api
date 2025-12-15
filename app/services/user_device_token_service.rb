@@ -36,7 +36,7 @@ class UserDeviceTokenService
   end
 
   def log_success
-    token_preview = @token.present? ? "#{@token[0..20]}..." : "nil (logout)"
+    token_preview = TokenHelper.redact_token(@token)
     Rails.logger.info "[#{token_label}] Updated for user ##{@user.id}: #{token_preview}"
   end
 end

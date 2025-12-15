@@ -31,6 +31,10 @@ class NotificationService
         type: "new_task_assigned",
         message: "New task assigned: #{task.title}"
       )
+    rescue => e
+      # Fail-safe: Never crash requests or jobs due to notification failures
+      Rails.logger.error "[NotificationService] Error in new_item_assigned for task ##{task.id}: #{e.message}"
+      Rails.logger.error e.backtrace.first(5).join("\n")
     end
 
     # When client completes a task
@@ -498,16 +502,19 @@ class NotificationService
 
     def send_test_notification(user, message = "Test notification")
       # Send to iOS devices
-      if user.devices.ios.any? && APNS_CLIENT.present?
-        send_apns_notification(
-          user: user,
-          title: "🧪 Test Notification",
-          body: message,
-          data: {
-            type: "test",
-            timestamp: Time.current.iso8601
-          }
-        )
+      if user.devices.ios.any?
+        client = Apns.client
+        if client&.enabled?
+          send_apns_notification(
+            user: user,
+            title: "🧪 Test Notification",
+            body: message,
+            data: {
+              type: "test",
+              timestamp: Time.current.iso8601
+            }
+          )
+        end
       end
 
       # Send to Android devices
@@ -539,7 +546,8 @@ class NotificationService
 
     def send_apns_notification(user:, title:, body:, data: {}, badge: nil, sound: "default", critical: false, interruption_level: "active", category: nil)
       return unless user.devices.ios.any?
-      return unless APNS_CLIENT.present?
+      client = Apns.client
+      return unless client&.enabled?
 
       # Build notification payload
       aps_payload = {
@@ -584,7 +592,7 @@ class NotificationService
       user.devices.ios.each do |device|
         begin
           # Use our custom APNs client
-          response = APNS_CLIENT.send_notification(
+          response = client.send_notification(
             device.apns_token,
             payload,
             push_type: "alert",
@@ -592,8 +600,12 @@ class NotificationService
             expiration: Time.now.to_i + 1.hour.to_i
           )
 
-          Rails.logger.info "[NotificationService] APNs sent to user ##{user.id}: #{title}"
-          Rails.logger.debug "[NotificationService] APNs Response: #{response.inspect}"
+          if Rails.env.development?
+            Rails.logger.info "[NotificationService] APNs sent to user ##{user.id}: #{title} (token=#{TokenHelper.redact_token(device.apns_token)})"
+          else
+            Rails.logger.info "[NotificationService] APNs sent to user ##{user.id}: #{title}"
+          end
+          Rails.logger.debug "[NotificationService] APNs Response: #{response.inspect}" if Rails.env.development?
 
           # Check for errors
           if response[:status] == 410 # Unregistered
@@ -668,8 +680,12 @@ class NotificationService
       begin
         response = FCM_CLIENT.send([ user.fcm_token ], payload)
 
-        Rails.logger.info "[NotificationService] FCM sent to user ##{user.id}: #{title}"
-        Rails.logger.debug "[NotificationService] FCM Response: #{response.inspect}"
+        if Rails.env.development?
+          Rails.logger.info "[NotificationService] FCM sent to user ##{user.id}: #{title} (token=#{TokenHelper.redact_token(user.fcm_token)})"
+        else
+          Rails.logger.info "[NotificationService] FCM sent to user ##{user.id}: #{title}"
+        end
+        Rails.logger.debug "[NotificationService] FCM Response: #{response.inspect}" if Rails.env.development?
 
         # Check if token is invalid
         if response[:status_code] == 200

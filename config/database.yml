@@ -12,9 +12,21 @@ test:
   database: focusmate_api_test
 
 production:
-  primary: &primary_production
+  primary:
     <<: *default
-    url: <%= ENV["DATABASE_URL"] %>
+    url: "<%= defined?(Rails) && Rails.env.production? ? ENV.fetch('DATABASE_URL') : ENV['DATABASE_URL'] %>"
+
+  cache:
+    <<: *default
+    url: "<%= defined?(Rails) && Rails.env.production? ? ENV.fetch('DATABASE_URL') : ENV['DATABASE_URL'] %>"
+    migrations_paths: db/cache_migrate
+
+  queue:
+    <<: *default
+    url: "<%= defined?(Rails) && Rails.env.production? ? ENV.fetch('DATABASE_URL') : ENV['DATABASE_URL'] %>"
+    migrations_paths: db/queue_migrate
 
   cable:
-    <<: *primary_production
+    <<: *default
+    url: "<%= defined?(Rails) && Rails.env.production? ? ENV.fetch('DATABASE_URL') : ENV['DATABASE_URL'] %>"
+    migrations_paths: db/cable_migrate
