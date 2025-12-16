@@ -8,9 +8,20 @@ RSpec.describe "API Authentication Security", type: :request do
   let(:list_a) { create(:list, user: user_a) }
   let!(:task_a) { create(:task, list: list_a, creator: user_a, title: "User A's Task") }
 
-  def auth_headers(user)
-    token = JwtHelper.access_for(user)
-    { "Authorization" => "Bearer #{token}" }
+  def auth_headers(user, password: "password123")
+    post "/api/v1/login",
+         params: {
+           authentication: {
+             email: user.email,
+             password: password
+           }
+         }.to_json,
+         headers: { "CONTENT_TYPE" => "application/json" }
+
+    token = response.headers["Authorization"]
+    raise "Missing Authorization header in auth_headers" if token.blank?
+
+    { "Authorization" => token, "ACCEPT" => "application/json" }
   end
 
   describe "Unauthenticated access" do

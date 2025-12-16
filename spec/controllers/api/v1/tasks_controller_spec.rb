@@ -6,7 +6,21 @@ RSpec.describe Api::V1::TasksController, type: :request do
   let(:user) { create(:user) }
   let(:list) { create(:list, user: user) }
   let(:task) { create(:task, list: list, creator: user) }
-  let(:auth_headers) { { 'Authorization' => "Bearer #{JWT.encode({ user_id: user.id, exp: 24.hours.from_now.to_i }, Rails.application.credentials.secret_key_base)}" } }
+  let(:auth_headers) do
+    post "/api/v1/login",
+         params: {
+           authentication: {
+             email: user.email,
+             password: "password123"
+           }
+         }.to_json,
+         headers: { "CONTENT_TYPE" => "application/json" }
+
+    token = response.headers["Authorization"]
+    raise "Missing Authorization header in auth_headers" if token.blank?
+
+    { "Authorization" => token, "ACCEPT" => "application/json" }
+  end
 
   describe 'GET /api/v1/lists/:list_id/tasks' do
     it 'should get tasks for list' do
@@ -35,9 +49,19 @@ RSpec.describe Api::V1::TasksController, type: :request do
         creator: test_user
       )
 
-      # Create auth headers
-      token = JWT.encode({ user_id: test_user.id, exp: 24.hours.from_now.to_i }, Rails.application.credentials.secret_key_base)
-      test_auth_headers = { 'Authorization' => "Bearer #{token}" }
+      # Create auth headers by hitting the real login endpoint
+      post "/api/v1/login",
+           params: {
+             authentication: {
+               email: test_user.email,
+               password: "password123"
+             }
+           }.to_json,
+           headers: { "CONTENT_TYPE" => "application/json" }
+
+      token = response.headers["Authorization"]
+      raise "Missing Authorization header in test_auth_headers" if token.blank?
+      test_auth_headers = { "Authorization" => token, "ACCEPT" => "application/json" }
 
       get "/api/v1/lists/#{test_list.id}/tasks", headers: test_auth_headers
 

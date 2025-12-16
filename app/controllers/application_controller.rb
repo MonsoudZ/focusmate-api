@@ -66,13 +66,27 @@ class ApplicationController < ActionController::API
         return
       end
 
-      # Check if user_id is present in the token
-      if payload["user_id"].blank?
+      # Devise-JWT uses "sub" by default for the resource identifier.
+      user_id = payload["user_id"].presence || payload["sub"].presence
+
+      if user_id.blank?
         render_unauthorized("Invalid token")
         return
       end
 
-      @current_user = User.find(payload["user_id"])
+      # Enforce denylist revocation if we have a JTI claim (required for denylist).
+      jti = payload["jti"].presence
+      if jti.blank?
+        render_unauthorized("Invalid token")
+        return
+      end
+
+      if JwtDenylist.exists?(jti: jti)
+        render_unauthorized("Token revoked")
+        return
+      end
+
+      @current_user = User.find(user_id)
     rescue JWT::DecodeError
       render_unauthorized("Invalid token")
     rescue ActiveRecord::RecordNotFound

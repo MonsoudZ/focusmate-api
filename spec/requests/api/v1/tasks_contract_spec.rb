@@ -6,9 +6,20 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
   let(:user) { create(:user) }
   let(:list) { create(:list, user: user) }
 
-  def auth_headers_for(u)
-    token = JwtHelper.access_for(u)
-    { 'Authorization' => "Bearer #{token}" }
+  def auth_headers_for(u, password: "password123")
+    post '/api/v1/login',
+         params: {
+           authentication: {
+             email: u.email,
+             password: password
+           }
+         }.to_json,
+         headers: { 'CONTENT_TYPE' => 'application/json' }
+
+    token = response.headers['Authorization']
+    raise 'Missing Authorization header in auth_headers_for' if token.blank?
+
+    { 'Authorization' => token, 'ACCEPT' => 'application/json' }
   end
 
   let(:auth_headers) { auth_headers_for(user) }

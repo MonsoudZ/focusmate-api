@@ -20,21 +20,30 @@ module Api
           return unauth!("Invalid email or password")
         end
 
-        token = JwtHelper.access_for(user)
-        render json: auth_payload(user, token), status: :ok
+        # Let Devise-JWT handle token dispatch via Warden.
+        # If the Authorization header is missing, that is a configuration bug, not
+        # something we should patch with manual token generation.
+        sign_in(user, store: false)
+
+        render json: auth_payload(user), status: :ok
       end
 
       # POST /api/v1/auth/sign_up
       def register
         # Accept either {authentication:{...}} or {user:{...}} for convenience
         attrs = auth_params_flexible
-        user  = User.new(email: attrs[:email], password: attrs[:password],
-                         password_confirmation: attrs[:password_confirmation],
-                         name: attrs[:name], timezone: attrs[:timezone])
+        user = User.new(
+          email:                 attrs[:email],
+          password:              attrs[:password],
+          password_confirmation: attrs[:password_confirmation],
+          name:                  attrs[:name],
+          timezone:              attrs[:timezone]
+        )
 
         if user.save
-          token = JwtHelper.access_for(user)
-          render json: auth_payload(user, token), status: :created
+          # Sign in to trigger JWT dispatch for newly registered users (if configured).
+          sign_in(user, store: false)
+          render json: auth_payload(user), status: :created
         else
           render json: { code: "validation_error", message: "Validation failed", details: user.errors.to_hash },
                  status: :unprocessable_content
@@ -55,9 +64,11 @@ module Api
         }
       end
 
-      # DELETE /api/v1/auth/sign_out
+      # DELETE /api/v1/logout and /api/v1/auth/sign_out
       def logout
-        # Stateless JWT: client deletes token. Return 204.
+        # Let Devise-JWT handle revocation (via jwt.revocation_requests),
+        # and explicitly sign_out so the revocation strategy is invoked.
+        sign_out(current_user) if current_user
         head :no_content
       end
 
@@ -86,16 +97,15 @@ module Api
       private
 
       # Standardize response body for SwiftUI
-      def auth_payload(user, token)
+      def auth_payload(user)
         {
           user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
+            id:       user.id,
+            email:    user.email,
+            name:     user.name,
+            role:     user.role,
             timezone: user.timezone
-          },
-          token: token
+          }
         }
       end
 

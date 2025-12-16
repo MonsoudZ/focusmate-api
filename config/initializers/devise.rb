@@ -308,12 +308,17 @@ Devise.setup do |config|
   config.jwt do |jwt|
     jwt.secret = Rails.application.secret_key_base
     jwt.dispatch_requests = [
+      # Primary API endpoints
+      [ "POST", %r{^/api/v1/login$} ],
+      [ "POST", %r{^/api/v1/register$} ],
+      # Backwards-compatible aliases used by iOS
       [ "POST", %r{^/api/v1/auth/sign_in$} ],
       [ "POST", %r{^/api/v1/auth/sign_up$} ]
     ]
-    # jwt.revocation_requests = [
-    #   [ "DELETE", %r{^/api/v1/auth/sign_out$} ]
-    # ]
+    jwt.revocation_requests = [
+      [ "DELETE", %r{^/api/v1/logout$} ],
+      [ "DELETE", %r{^/api/v1/auth/sign_out$} ]
+    ]
     jwt.expiration_time = 1.day.to_i
   end
 end

@@ -44,7 +44,7 @@ module ApplicationCable
         end
 
         # Check if token is blacklisted
-        if token_blacklisted?(token)
+        if token_blacklisted?(payload)
           log_connection_rejected("Token blacklisted")
           reject_unauthorized_connection
           return
@@ -88,9 +88,9 @@ module ApplicationCable
     def decode_jwt_token(token)
       JWT.decode(
         token,
-        Rails.application.credentials.secret_key_base,
+        Rails.application.secret_key_base,
         true,
-        { algorithm: "HS256" }
+        algorithm: "HS256"
       ).first
     rescue JWT::ExpiredSignature
       log_connection_rejected("Token signature expired")
@@ -118,21 +118,14 @@ module ApplicationCable
       payload["exp"] < Time.current.to_i
     end
 
-    def token_blacklisted?(token)
+    def token_blacklisted?(payload)
       # Check if token is in the JWT denylist
       return false unless defined?(JwtDenylist)
 
-      JwtDenylist.exists?(jti: extract_jti_from_token(token))
-    end
+      jti = payload["jti"]
+      return false if jti.blank?
 
-    def extract_jti_from_token(token)
-      # Extract JTI from token without full decode for performance
-      begin
-        decoded = JWT.decode(token, nil, false)
-        decoded.first["jti"]
-      rescue
-        nil
-      end
+      JwtDenylist.exists?(jti: jti)
     end
 
     def user_active?(user)

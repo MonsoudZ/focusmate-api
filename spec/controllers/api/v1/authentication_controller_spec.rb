@@ -13,9 +13,12 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
   end
 
   def auth_headers_for(u)
-    # Use the real token generator to ensure claims don't drift
-    token = JwtHelper.access_for(u)
-    { "Authorization" => "Bearer #{token}" }
+    # Obtain a real JWT by calling the login endpoint so Devise-JWT adds
+    # whatever claims (including jti) it requires.
+    post_json "/api/v1/login", { email: u.email, password: password }
+    auth_header = response.headers["Authorization"]
+    raise "Missing Authorization header in auth_headers_for" if auth_header.blank?
+    { "Authorization" => auth_header }
   end
 
   def post_json(path, params = {}, headers: {})
@@ -33,14 +36,20 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
 
   # Use one canonical route; if you truly support aliases, cover them once via shared_examples.
   shared_examples "login success" do |path|
-    it "logs in and returns user + token" do
+    it "logs in and returns user payload with JWT in Authorization header" do
       post_json path, { email: user.email, password: password }
 
       expect(response).to have_http_status(:ok)
-      expect(json).to include("user", "token")
 
+      # Devise-JWT should attach the token to the Authorization header
+      auth_header = response.headers["Authorization"]
+      expect(auth_header).to be_present
+      expect(auth_header).to match(/\ABearer\s+.+/)
+
+      # Response body should contain user payload (no manual token generation)
+      expect(json).to include("user")
       expect(json["user"]).to include("id" => user.id, "email" => user.email)
-      expect(json["token"]).to be_a(String).and be_present
+      expect(json).not_to have_key("token")
     end
   end
 
@@ -88,7 +97,13 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
     it "supports alias route /auth/sign_in (once)" do
       post_json "/api/v1/auth/sign_in", { email: user.email, password: password }
       expect(response).to have_http_status(:ok)
-      expect(json).to include("user", "token")
+
+      auth_header = response.headers["Authorization"]
+      expect(auth_header).to be_present
+      expect(auth_header).to match(/\ABearer\s+.+/)
+
+      expect(json).to include("user")
+      expect(json).not_to have_key("token")
     end
 
     it "does NOT attempt concurrency via threads (request helpers are not thread-safe)" do
@@ -111,14 +126,23 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
     it "registers with valid attributes" do
       register!(email: "newuser@example.com", password: password, password_confirmation: password, name: "New User", timezone: "UTC")
       expect(response).to have_http_status(:created)
-      expect(json).to include("user", "token")
+      expect(json).to include("user")
+      expect(json).not_to have_key("token")
+      # New registrations should also receive a JWT in the Authorization header
+      auth_header = response.headers["Authorization"]
+      expect(auth_header).to be_present
+      expect(auth_header).to match(/\ABearer\s+.+/)
       expect(json.dig("user", "email")).to eq("newuser@example.com")
     end
 
     it "supports /auth/sign_up alias" do
       post_json "/api/v1/auth/sign_up", { email: "a@b.com", password: password, password_confirmation: password, name: "A", timezone: "UTC" }
       expect(response).to have_http_status(:created)
-      expect(json).to include("user", "token")
+      expect(json).to include("user")
+      expect(json).not_to have_key("token")
+      auth_header = response.headers["Authorization"]
+      expect(auth_header).to be_present
+      expect(auth_header).to match(/\ABearer\s+.+/)
     end
 
     it "normalizes email whitespace" do
@@ -197,7 +221,7 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
         expect(response).to have_http_status(:unauthorized)
 
         travel_to 2.hours.ago do
-          expired = JWT.encode({ user_id: user.id, exp: 1.hour.ago.to_i }, Rails.application.credentials.secret_key_base)
+          expired = JWT.encode({ user_id: user.id, exp: 1.hour.ago.to_i }, Rails.application.secret_key_base, "HS256")
           get_json "/api/v1/profile", headers: { "Authorization" => "Bearer #{expired}" }
           expect(response).to have_http_status(:unauthorized)
         end
@@ -208,11 +232,11 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
       end
 
       it "rejects tokens without a user or with a missing user" do
-        token_without_user = JWT.encode({ exp: 30.days.from_now.to_i }, Rails.application.credentials.secret_key_base)
+        token_without_user = JWT.encode({ exp: 30.days.from_now.to_i }, Rails.application.secret_key_base, "HS256")
         get_json "/api/v1/profile", headers: { "Authorization" => "Bearer #{token_without_user}" }
         expect(response).to have_http_status(:unauthorized)
 
-        token_with_fake_user = JWT.encode({ user_id: 9_999_999, exp: 30.days.from_now.to_i }, Rails.application.credentials.secret_key_base)
+        token_with_fake_user = JWT.encode({ user_id: 9_999_999, exp: 30.days.from_now.to_i }, Rails.application.secret_key_base, "HS256")
         get_json "/api/v1/profile", headers: { "Authorization" => "Bearer #{token_with_fake_user}" }
         expect(response).to have_http_status(:unauthorized)
       end
@@ -233,7 +257,9 @@ RSpec.describe Api::V1::AuthenticationController, type: :request do
 
     it "documents future denylist behavior (no assertion now)" do
       post_json "/api/v1/login", { email: user.email, password: password }
-      token = json["token"]
+      auth_header = response.headers["Authorization"]
+      expect(auth_header).to be_present
+      token = auth_header.split.last
 
       get_json "/api/v1/profile", headers: { "Authorization" => "Bearer #{token}" }
       expect(response).to have_http_status(:ok)

@@ -942,11 +942,22 @@ RSpec.describe Api::V1::UsersController, type: :request do
   end
 
   # Helper method for authentication headers
-  def auth_headers(user)
-    token = JWT.encode(
-      { user_id: user.id, exp: 30.days.from_now.to_i },
-      Rails.application.credentials.secret_key_base
-    )
-    { "Authorization" => "Bearer #{token}" }
+  #
+  # Always obtain tokens by hitting the real login endpoint so Devise-JWT
+  # generates proper claims (including jti) for denylist, Cable, etc.
+  def auth_headers(user, password: "password123")
+    post "/api/v1/login",
+         params: {
+           authentication: {
+             email: user.email,
+             password: password
+           }
+         }.to_json,
+         headers: { "CONTENT_TYPE" => "application/json" }
+
+    token = response.headers["Authorization"]
+    raise "Missing Authorization header in auth_headers" if token.blank?
+
+    { "Authorization" => token, "ACCEPT" => "application/json" }
   end
 end

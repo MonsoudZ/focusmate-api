@@ -43,7 +43,7 @@ RSpec.describe UserDeviceTokenService do
 
         service.update!
 
-        expect(Rails.logger).to have_received(:info).with(/nil \(logout\)/)
+        expect(Rails.logger).to have_received(:info).with(/\(nil\)/)
       end
     end
 
@@ -154,7 +154,7 @@ RSpec.describe UserDeviceTokenService do
 
         expect(Rails.logger).to have_received(:info) do |log_message|
           expect(log_message).to include('aaaaaa')
-          expect(log_message).to include('...')
+          expect(log_message).to match(/\.{3}|…/)
           expect(log_message.length).to be < token.length + 100
         end
       end

@@ -4,12 +4,30 @@ RSpec.describe "Security", type: :request do
   let(:user) { create(:user, email: "security_test_#{SecureRandom.hex(4)}@example.com") }
   let(:list) { create(:list, user: user) }
   let!(:task) { create(:task, list: list, creator: user) }
-  let(:auth_headers) do
-    token = JWT.encode(
-      { user_id: user.id, exp: 30.days.from_now.to_i },
-      Rails.application.credentials.secret_key_base
-    )
-    { "Authorization" => "Bearer #{token}" }
+  let(:auth_headers) { login_headers(user) }
+
+  # Always obtain tokens by hitting the real login endpoint so Devise-JWT generates
+  # proper claims (including jti) for denylist, Cable, etc.
+  def login_headers(u, password: "password123")
+    post "/api/v1/login",
+         params: {
+           authentication: {
+             email: u.email,
+             password: password
+           }
+         }.to_json,
+         headers: { "CONTENT_TYPE" => "application/json" }
+
+    auth = response.headers["Authorization"]
+    raise "Missing Authorization header in login_headers" if auth.blank?
+
+    { "Authorization" => auth, "ACCEPT" => "application/json" }
+  end
+
+  # Helper for tests that intentionally mint tokens (expired/non-existent user/etc).
+  # Must include "sub" and "jti" because our API enforces denylist revocation.
+  def jwt_for(sub:, exp:, jti: SecureRandom.uuid, alg: "HS256", secret: Rails.application.secret_key_base)
+    JWT.encode({ sub: sub.to_s, exp: exp.to_i, jti: jti }, secret, alg)
   end
 
   describe "Authentication Security" do
@@ -52,13 +70,7 @@ RSpec.describe "Security", type: :request do
     end
 
     it "should not allow access with expired token" do
-      expired_token = JWT.encode(
-        {
-          user_id: user.id,
-          exp: 1.hour.ago.to_i
-        },
-        Rails.application.credentials.secret_key_base
-      )
+      expired_token = jwt_for(sub: user.id, exp: 1.hour.ago.to_i)
 
       get "/api/v1/profile", headers: { "Authorization" => "Bearer #{expired_token}" }
       expect(response).to have_http_status(:unauthorized)
@@ -68,13 +80,7 @@ RSpec.describe "Security", type: :request do
 
     it "should not allow access with tampered token" do
       # Create a valid token
-      valid_token = JWT.encode(
-        {
-          user_id: user.id,
-          exp: 30.days.from_now.to_i
-        },
-        Rails.application.credentials.secret_key_base
-      )
+      valid_token = jwt_for(sub: user.id, exp: 30.days.from_now.to_i)
 
       # Tamper with the token
       tampered_token = valid_token + "tampered"
@@ -86,13 +92,7 @@ RSpec.describe "Security", type: :request do
     end
 
     it "should not allow access with token for non-existent user" do
-      non_existent_user_token = JWT.encode(
-        {
-          user_id: 99999,
-          exp: 30.days.from_now.to_i
-        },
-        Rails.application.credentials.secret_key_base
-      )
+      non_existent_user_token = jwt_for(sub: 99_999, exp: 30.days.from_now.to_i)
 
       get "/api/v1/profile", headers: { "Authorization" => "Bearer #{non_existent_user_token}" }
       expect(response).to have_http_status(:unauthorized)
@@ -260,11 +260,13 @@ RSpec.describe "Security", type: :request do
     end
 
     it "should handle concurrent requests" do
-      threads = []
-      10.times do |i|
-        threads << Thread.new do
-          get "/api/v1/profile", headers: auth_headers
-          expect([ 200, 429 ]).to include(response.status)
+      header = auth_headers
+
+      threads = 10.times.map do
+        Thread.new do
+          session = ActionDispatch::Integration::Session.new(Rails.application)
+          session.get "/api/v1/profile", headers: header
+          expect([ 200, 429 ]).to include(session.response.status)
         end
       end
 
@@ -341,14 +343,7 @@ RSpec.describe "Security", type: :request do
   describe "Token Security" do
     it "should not accept tokens with invalid algorithm" do
       # Create token with different algorithm
-      invalid_token = JWT.encode(
-        {
-          user_id: user.id,
-          exp: 30.days.from_now.to_i
-        },
-        Rails.application.credentials.secret_key_base,
-        "HS512" # Different algorithm
-      )
+      invalid_token = jwt_for(sub: user.id, exp: 30.days.from_now.to_i, alg: "HS512")
 
       get "/api/v1/profile", headers: { "Authorization" => "Bearer #{invalid_token}" }
       expect(response).to have_http_status(:unauthorized)
@@ -362,7 +357,8 @@ RSpec.describe "Security", type: :request do
         {
           exp: 30.days.from_now.to_i
         },
-        Rails.application.credentials.secret_key_base
+        Rails.application.secret_key_base,
+        "HS256"
       )
 
       get "/api/v1/profile", headers: { "Authorization" => "Bearer #{invalid_token}" }
@@ -373,13 +369,7 @@ RSpec.describe "Security", type: :request do
 
     it "should not accept tokens with invalid signature" do
       # Create token with wrong secret
-      invalid_token = JWT.encode(
-        {
-          user_id: user.id,
-          exp: 30.days.from_now.to_i
-        },
-        "wrong_secret"
-      )
+      invalid_token = jwt_for(sub: user.id, exp: 30.days.from_now.to_i, secret: "wrong_secret")
 
       get "/api/v1/profile", headers: { "Authorization" => "Bearer #{invalid_token}" }
       expect(response).to have_http_status(:unauthorized)

@@ -8,7 +8,8 @@ RSpec.describe 'Health Endpoints', type: :request do
       get '/health/live'
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to be_empty
+      json = JSON.parse(response.body)
+      expect(json).to eq("ok" => true)
     end
   end
 

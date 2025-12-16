@@ -31,8 +31,10 @@
 # Ignore master key for decrypting credentials and more.
 /config/master.key
 
-# APNs Key - Never commit!
+# Secrets / certs / keys
 config/apns/*.p8
+config/apns/*.pem
+config/apns/*.p12
 .env
 
 /config/credentials/production.key

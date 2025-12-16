@@ -1,12 +1,16 @@
 class User < ApplicationRecord
+  # Temporary: ignore legacy jti column until migration removing it has been
+  # deployed everywhere. This prevents Rails from trying to load/write it.
+  self.ignored_columns += [ "jti" ]
+
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable,
          :jwt_authenticatable, jwt_revocation_strategy: JwtDenylist
 
-  # Generate JTI on create and set default role
-  before_create :generate_jti, :set_default_role
+  # Set default role on create
+  before_create :set_default_role
 
   # Validations
   validates :timezone, presence: true
@@ -14,11 +18,6 @@ class User < ApplicationRecord
   validates :latitude, numericality: { greater_than_or_equal_to: -90, less_than_or_equal_to: 90 }, allow_nil: true
   validates :longitude, numericality: { greater_than_or_equal_to: -180, less_than_or_equal_to: 180 }, allow_nil: true
   validate :valid_timezone
-
-  # JWT token revocation
-  def jwt_payload
-    { "jti" => jti }
-  end
 
   # Associations
   has_many :owned_lists, class_name: "List", foreign_key: "user_id", dependent: :destroy
@@ -190,7 +189,4 @@ class User < ApplicationRecord
     self.role = "client" if role.blank?
   end
 
-  def generate_jti
-    self.jti = SecureRandom.uuid
-  end
 end

@@ -173,13 +173,6 @@ RSpec.describe User, type: :model do
   end
 
   describe 'callbacks' do
-    it 'generates JTI on create' do
-      user = build(:user)
-      expect(user.jti).to be_nil
-      user.save!
-      expect(user.jti).not_to be_nil
-    end
-
     it 'validates timezone' do
       user = build(:user, timezone: "Invalid/Timezone")
       expect(user).not_to be_valid

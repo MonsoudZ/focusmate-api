@@ -5,7 +5,21 @@ require 'rails_helper'
 RSpec.describe Api::V1::ListsController, type: :request do
   let(:user) { create(:user) }
   let(:list) { create(:list, user: user) }
-  let(:auth_headers) { { 'Authorization' => "Bearer #{JWT.encode({ user_id: user.id, exp: 24.hours.from_now.to_i }, Rails.application.credentials.secret_key_base)}" } }
+  let(:auth_headers) do
+    post "/api/v1/login",
+         params: {
+           authentication: {
+             email: user.email,
+             password: "password123"
+           }
+         }.to_json,
+         headers: { "CONTENT_TYPE" => "application/json" }
+
+    token = response.headers["Authorization"]
+    raise "Missing Authorization header in auth_headers" if token.blank?
+
+    { "Authorization" => token, "ACCEPT" => "application/json" }
+  end
 
   describe 'GET /api/v1/lists' do
     it 'should get all lists owned by user' do

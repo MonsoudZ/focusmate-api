@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_30_215000) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_14_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -385,7 +385,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_215000) do
     t.datetime "remember_created_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "jti"
     t.string "name"
     t.string "role", default: "client", null: false
     t.string "fcm_token"
@@ -405,7 +404,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_215000) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["email"], name: "index_users_on_email_unique", unique: true
     t.index ["fcm_token"], name: "index_users_on_fcm_token"
-    t.index ["jti"], name: "index_users_on_jti"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role"], name: "index_users_on_role"
     t.check_constraint "role::text = ANY (ARRAY['client'::character varying::text, 'coach'::character varying::text, 'admin'::character varying::text])", name: "users_role_check"
