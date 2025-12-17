@@ -1,41 +1,44 @@
-# app/controllers/api/v1/daily_summaries_controller.rb
+# frozen_string_literal: true
+
 module Api
   module V1
     class DailySummariesController < ApplicationController
+      before_action :authenticate_user!
       before_action :set_relationship
-      before_action :validate_params, only: [ :index ]
+      before_action :validate_params, only: :index
 
       # GET /api/v1/coaching_relationships/:coaching_relationship_id/daily_summaries
-      # Query params (optional):
-      #   limit: 1..100 (default 30)
-      #   before: cursor string "YYYY-MM-DD:ID" for keyset pagination
-      #   date_from, date_to: ISO dates to bound the window (inclusive)
+      #
+      # Optional query params:
+      #   limit      (1..100, default 30)
+      #   before     opaque cursor "YYYY-MM-DD:ID" (Base64)
+      #   date_from  ISO8601 date (inclusive)
+      #   date_to    ISO8601 date (inclusive)
+      #
       def index
-        limit  = params[:limit].present? ? [ [ params[:limit].to_i, 1 ].max, 100 ].min : 30
-        before = params[:before].to_s.presence
+        limit  = normalized_limit
+        before = params[:before].presence
         df     = parse_date(params[:date_from])
         dt     = parse_date(params[:date_to])
 
         scope = @relationship.daily_summaries
-                             .includes(:coaching_relationship) # preloads minimal assoc if serializer needs it
                              .order(summary_date: :desc, id: :desc)
 
-        scope = scope.where(summary_date: df..Date::Infinity.new) if df
-        scope = scope.where(summary_date: Date.new(0)..dt)        if dt
+        scope = scope.where(summary_date: df..) if df
+        scope = scope.where(summary_date: ..dt) if dt
 
         if before
           bd, bid = decode_cursor(before)
           if bd && bid
-            # keyset: (date,id) <
             scope = scope.where(
-              scope.sanitize_sql_array(
-                "(summary_date < ? OR (summary_date = ? AND id < ?))", bd, bd, bid
-              )
+              "(summary_date < ?) OR (summary_date = ? AND id < ?)",
+              bd, bd, bid
             )
           end
         end
 
-        rows = scope.limit(limit + 1).to_a # overfetch to decide next_cursor
+        rows = scope.limit(limit + 1).to_a
+
         next_cursor = nil
         if rows.length > limit
           tail = rows[limit - 1]
@@ -43,37 +46,42 @@ module Api
           rows = rows.first(limit)
         end
 
-        # Optional caching hint (weak)
         response.set_header("Cache-Control", "private, max-age=60")
 
-        # Return array format for backward compatibility with tests
-        render json: rows.map { |s| DailySummarySerializer.new(s).as_json }, status: :ok
+        render json: {
+          data: rows.map { |s| DailySummarySerializer.new(s).as_json },
+          next_cursor: next_cursor
+        }, status: :ok
       end
 
       # GET /api/v1/coaching_relationships/:coaching_relationship_id/daily_summaries/:id
       def show
-        s = @relationship.daily_summaries.find(params[:id])
+        summary = @relationship.daily_summaries.find(params[:id])
 
-        # ETag/conditional GET
-        fresh_when(etag: [ s.id, s.updated_at.to_i ], last_modified: s.updated_at, public: false)
+        fresh_when(
+          etag: [summary.id, summary.updated_at.to_i],
+          last_modified: summary.updated_at,
+          public: false
+        )
 
-        render json: DailySummarySerializer.new(s, detailed: true).as_json, status: :ok
-      rescue ActiveRecord::RecordNotFound => e
-        Rails.logger.warn "Daily summary not found: #{params[:id]}"
+        render json: DailySummarySerializer.new(summary, detailed: true).as_json,
+               status: :ok
+      rescue ActiveRecord::RecordNotFound
         render json: { error: { message: "Daily summary not found" } },
                status: :not_found
       end
 
       private
 
+      # ---------- Authorization ----------
+
       def set_relationship
         @relationship = CoachingRelationship.find(params[:coaching_relationship_id])
+
         unless participant?(@relationship, current_user)
-          render json: { error: { message: "Unauthorized" } }, status: :forbidden
-          nil
+          render json: { error: { message: "Forbidden" } }, status: :forbidden
         end
-      rescue ActiveRecord::RecordNotFound => e
-        Rails.logger.warn "Coaching relationship not found: #{params[:coaching_relationship_id]}"
+      rescue ActiveRecord::RecordNotFound
         render json: { error: { message: "Coaching relationship not found" } },
                status: :not_found
       end
@@ -82,94 +90,67 @@ module Api
         rel.coach_id == user.id || rel.client_id == user.id
       end
 
+      # ---------- Validation ----------
+
       def validate_params
-        # Validate limit parameter
-        if params[:limit].present?
-          limit = params[:limit].to_i
-          unless limit.between?(1, 100)
-            render json: { error: { message: "Limit must be between 1 and 100" } },
-                   status: :bad_request
-            return
-          end
-        end
+        validate_limit!
+        validate_date!(:date_from)
+        validate_date!(:date_to)
+        validate_cursor!
+      end
 
-        # Validate date parameters
-        if params[:date_from].present?
-          unless parse_date(params[:date_from])
-            render json: { error: { message: "Invalid date_from format. Use ISO 8601 date format (YYYY-MM-DD)" } },
-                   status: :bad_request
-            return
-          end
-        end
+      def validate_limit!
+        return unless params[:limit].present?
 
-        if params[:date_to].present?
-          unless parse_date(params[:date_to])
-            render json: { error: { message: "Invalid date_to format. Use ISO 8601 date format (YYYY-MM-DD)" } },
-                   status: :bad_request
-            return
-          end
-        end
-
-        # Validate cursor parameter
-        if params[:before].present?
-          unless valid_cursor_format?(params[:before])
-            render json: { error: { message: "Invalid cursor format" } },
-                   status: :bad_request
-            nil
-          end
+        unless params[:limit].to_i.between?(1, 100)
+          render json: { error: { message: "limit must be between 1 and 100" } },
+                 status: :bad_request
         end
       end
 
-      def valid_cursor_format?(cursor)
-        return false if cursor.blank?
+      def validate_date!(key)
+        return unless params[key].present?
 
-        begin
-          raw = Base64.urlsafe_decode64(cursor)
-          parts = raw.split(":", 2)
-          return false unless parts.length == 2
-
-          # Validate date format
-          Date.iso8601(parts[0])
-          # Validate ID format (should be numeric)
-          Integer(parts[1])
-          true
-        rescue ArgumentError, TypeError
-          false
+        unless parse_date(params[key])
+          render json: {
+            error: { message: "Invalid #{key}. Use YYYY-MM-DD." }
+          }, status: :bad_request
         end
       end
 
-      # ---------- keyset cursor helpers ----------
+      def validate_cursor!
+        return unless params[:before].present?
+
+        decode_cursor(params[:before]) || render(
+          json: { error: { message: "Invalid cursor format" } },
+          status: :bad_request
+        )
+      end
+
+      # ---------- Pagination helpers ----------
+
+      def normalized_limit
+        params[:limit].present? ? params[:limit].to_i.clamp(1, 100) : 30
+      end
+
       def encode_cursor(date, id)
-        # date in YYYY-MM-DD, opaque to clients
         Base64.urlsafe_encode64("#{date.iso8601}:#{id}")
       end
 
-      def decode_cursor(cur)
-        return [ nil, nil ] if cur.blank?
-
-        begin
-          raw = Base64.urlsafe_decode64(cur)
-          d, i = raw.split(":", 2)
-          return [ nil, nil ] unless d && i
-
-          date = Date.iso8601(d)
-          id = Integer(i)
-          [ date, id ]
-        rescue ArgumentError, TypeError => e
-          Rails.logger.warn "Invalid cursor format: #{cur[0..20]}... - #{e.message}"
-          [ nil, nil ]
-        end
+      def decode_cursor(cursor)
+        raw = Base64.urlsafe_decode64(cursor)
+        d, i = raw.split(":", 2)
+        [Date.iso8601(d), Integer(i)]
+      rescue ArgumentError, TypeError
+        nil
       end
 
-      def parse_date(val)
-        return nil if val.blank?
+      # ---------- Utilities ----------
 
-        begin
-          Date.iso8601(val)
-        rescue ArgumentError => e
-          Rails.logger.warn "Invalid date format: #{val} - #{e.message}"
-          nil
-        end
+      def parse_date(val)
+        Date.iso8601(val) if val.present?
+      rescue ArgumentError
+        nil
       end
     end
   end
