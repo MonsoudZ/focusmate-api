@@ -8,7 +8,7 @@ puts "Cleaning up existing data..."
 Task.unscoped.destroy_all
 List.unscoped.destroy_all
 ListShare.destroy_all
-User.where(email: ['coach@test.com', 'client@test.com']).destroy_all
+User.where(email: %w[coach@test.com client@test.com]).destroy_all
 
 puts "Creating test users..."
 
