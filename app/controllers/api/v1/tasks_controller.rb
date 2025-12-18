@@ -1,6 +1,6 @@
 module Api
   module V1
-    class TasksController < ApplicationController
+    class TasksController <  BaseController
       before_action :authenticate_user!
       before_action :set_list, only: [ :index, :create ]
       before_action :set_task, only: [ :show, :update, :destroy, :complete, :uncomplete, :reassign, :submit_explanation, :toggle_visibility, :add_subtask, :update_subtask, :delete_subtask, :change_visibility ]

@@ -15,14 +15,19 @@
 # See https://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 
 # Coverage reporting with SimpleCov
-require 'simplecov'
-SimpleCov.start 'rails' do
+require "simplecov"
+
+SimpleCov.start "rails" do
   enable_coverage :branch
   add_filter %w[bin/ db/ config/ vendor/]
-  # Set realistic initial thresholds - can be increased over time
-  minimum_coverage 60  # Current coverage is ~60%
+
+  # Only enforce coverage in CI (or when explicitly requested).
+  enforce = ENV["CI"] == "true" || ENV["ENFORCE_COVERAGE"] == "true"
+  minimum_coverage(enforce ? 60 : 0)
+
   # minimum_coverage_by_file 20  # Disabled for now - some files have 0% coverage
 end
+
 
 RSpec.configure do |config|
   # rspec-expectations config goes here. You can use an alternate

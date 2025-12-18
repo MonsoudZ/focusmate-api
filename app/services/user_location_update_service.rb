@@ -3,7 +3,8 @@
 class UserLocationUpdateService
   class ValidationError < StandardError
     attr_reader :details
-    def initialize(message, details = [])
+
+    def initialize(message, details: {})
       super(message)
       @details = details
     end
@@ -16,50 +17,56 @@ class UserLocationUpdateService
   end
 
   def update!
-    validate_coordinates!
-
-    lat_f = @latitude.to_f
-    lng_f = @longitude.to_f
-
-    Rails.logger.info "Updating location for user #{@user.id}: lat=#{lat_f}, lng=#{lng_f}"
+    lat = parse_coordinate!(@latitude, field: :latitude, min: -90.0, max: 90.0)
+    lng = parse_coordinate!(@longitude, field: :longitude, min: -180.0, max: 180.0)
 
     ActiveRecord::Base.transaction do
-      update_user_location(lat_f, lng_f)
-      create_location_history(lat_f, lng_f)
-      @user.reload
+      @user.update!(
+        latitude: lat,
+        longitude: lng,
+        location_updated_at: Time.current
+      )
+
+      # Keep history in sync with the user row
+      @user.user_locations.create!(
+        latitude: lat,
+        longitude: lng,
+        recorded_at: Time.current
+      )
     end
 
-    Rails.logger.info "Location updated successfully: lat=#{@user.latitude}, lng=#{@user.longitude}"
-    @user
+    @user.reload
+  rescue ActiveRecord::RecordInvalid => e
+    # Could be user update or location create
+    raise ValidationError.new(
+      "Failed to update location",
+      details: e.record.errors.to_hash
+    )
   end
 
   private
 
-  def validate_coordinates!
-    if @latitude.blank? || @longitude.blank?
-      raise ValidationError.new("Latitude and longitude are required", [])
+  def parse_coordinate!(value, field:, min:, max:)
+    if value.nil? || value.to_s.strip.empty?
+      raise ValidationError.new(
+        "#{field.to_s.humanize} is required",
+        details: { field => ["required"] }
+      )
     end
-  end
 
-  def update_user_location(lat_f, lng_f)
-    unless @user.update(
-      latitude: lat_f,
-      longitude: lng_f,
-      location_updated_at: Time.current
-    )
-      Rails.logger.error "Failed to update location: #{@user.errors.full_messages}"
-      raise ValidationError.new("Failed to update location", @user.errors.full_messages)
+    num = Float(value)
+    unless num >= min && num <= max
+      raise ValidationError.new(
+        "#{field.to_s.humanize} is out of range",
+        details: { field => ["must_be_between_#{min}_and_#{max}"] }
+      )
     end
-  end
 
-  def create_location_history(lat_f, lng_f)
-    @user.user_locations.create!(
-      latitude: lat_f,
-      longitude: lng_f,
-      recorded_at: Time.current
+    num
+  rescue ArgumentError, TypeError
+    raise ValidationError.new(
+      "#{field.to_s.humanize} must be a number",
+      details: { field => ["not_a_number"] }
     )
-  rescue ActiveRecord::RecordInvalid => e
-    Rails.logger.error "Location history creation failed: #{e.record.errors.full_messages}"
-    raise ValidationError.new("Failed to update location", e.record.errors.full_messages)
   end
 end

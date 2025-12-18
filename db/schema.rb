@@ -10,51 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_14_130000) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_18_212529) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
-
-  create_table "coaching_relationships", force: :cascade do |t|
-    t.bigint "coach_id", null: false
-    t.bigint "client_id", null: false
-    t.string "status", default: "pending", null: false
-    t.string "invited_by", null: false
-    t.datetime "accepted_at"
-    t.boolean "notify_on_completion", default: true
-    t.boolean "notify_on_missed_deadline", default: true
-    t.boolean "send_daily_summary", default: true
-    t.time "daily_summary_time"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["client_id", "status"], name: "index_coaching_relationships_on_client_status"
-    t.index ["client_id"], name: "index_coaching_relationships_on_client_id"
-    t.index ["coach_id", "client_id"], name: "index_coaching_relationships_on_coach_id_and_client_id", unique: true
-    t.index ["coach_id", "status"], name: "index_coaching_relationships_on_coach_status"
-    t.index ["coach_id"], name: "index_coaching_relationships_on_coach_id"
-    t.index ["status"], name: "index_coaching_relationships_on_status"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'active'::character varying::text, 'inactive'::character varying::text, 'declined'::character varying::text])", name: "check_coaching_relationships_status"
-  end
-
-  add_check_constraint "coaching_relationships", "status::text = ANY (ARRAY['pending'::character varying::text, 'active'::character varying::text, 'inactive'::character varying::text, 'declined'::character varying::text])", name: "coaching_relationships_status_check", validate: false
-
-  create_table "daily_summaries", force: :cascade do |t|
-    t.bigint "coaching_relationship_id", null: false
-    t.date "summary_date", null: false
-    t.integer "tasks_completed", default: 0
-    t.integer "tasks_missed", default: 0
-    t.integer "tasks_overdue", default: 0
-    t.jsonb "summary_data"
-    t.boolean "sent", default: false
-    t.datetime "sent_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.datetime "deleted_at"
-    t.index ["coaching_relationship_id", "sent"], name: "index_daily_summaries_on_relationship_and_sent"
-    t.index ["coaching_relationship_id", "summary_date"], name: "idx_daily_summaries_unique_per_rel_and_date", unique: true
-    t.index ["coaching_relationship_id"], name: "index_daily_summaries_on_coaching_relationship_id"
-    t.index ["sent"], name: "index_daily_summaries_on_sent"
-    t.index ["summary_date"], name: "index_daily_summaries_on_summary_date"
-  end
 
   create_table "devices", force: :cascade do |t|
     t.bigint "user_id", null: false
@@ -82,15 +40,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_14_130000) do
 
   add_check_constraint "devices", "platform::text = ANY (ARRAY['ios'::character varying::text, 'android'::character varying::text])", name: "devices_platform_enum", validate: false
 
-  create_table "examples", force: :cascade do |t|
-    t.string "name"
-    t.text "description"
-    t.bigint "user_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["user_id"], name: "index_examples_on_user_id"
-  end
-
   create_table "flipper_features", force: :cascade do |t|
     t.string "key", null: false
     t.datetime "created_at", null: false
@@ -107,77 +56,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_14_130000) do
     t.index ["feature_key", "key", "value"], name: "index_flipper_gates_on_feature_key_and_key_and_value", unique: true
   end
 
-  create_table "item_escalations", force: :cascade do |t|
-    t.bigint "task_id", null: false
-    t.string "escalation_level", default: "normal", null: false
-    t.integer "notification_count", default: 0
-    t.datetime "last_notification_at"
-    t.datetime "became_overdue_at"
-    t.boolean "coaches_notified", default: false
-    t.datetime "coaches_notified_at"
-    t.boolean "blocking_app", default: false
-    t.datetime "blocking_started_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["blocking_app"], name: "index_item_escalations_on_blocking_app"
-    t.index ["escalation_level", "blocking_app"], name: "index_item_escalations_on_level_blocking"
-    t.index ["escalation_level"], name: "index_item_escalations_on_escalation_level"
-    t.index ["task_id", "escalation_level"], name: "index_item_escalations_on_task_level"
-    t.index ["task_id"], name: "index_item_escalations_on_task_id"
-    t.check_constraint "escalation_level::text = ANY (ARRAY['normal'::character varying::text, 'warning'::character varying::text, 'critical'::character varying::text, 'blocking'::character varying::text])", name: "check_item_escalations_escalation_level"
-  end
-
-  create_table "item_visibility_restrictions", force: :cascade do |t|
-    t.bigint "task_id", null: false
-    t.bigint "coaching_relationship_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.datetime "deleted_at"
-    t.boolean "active", default: true, null: false
-    t.jsonb "metadata", default: {}, null: false
-    t.index ["coaching_relationship_id"], name: "index_item_visibility_restrictions_on_coaching_relationship_id"
-    t.index ["deleted_at"], name: "index_item_visibility_restrictions_on_deleted_at"
-    t.index ["task_id", "coaching_relationship_id"], name: "index_item_vis_restrictions_on_task_and_coaching_rel", unique: true
-    t.index ["task_id", "coaching_relationship_id"], name: "index_visibility_on_task_and_relationship", unique: true
-    t.index ["task_id"], name: "index_item_visibility_restrictions_on_task_id"
-  end
-
   create_table "jwt_denylists", force: :cascade do |t|
     t.string "jti"
     t.datetime "exp"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["jti"], name: "index_jwt_denylists_on_jti", unique: true
-  end
-
-  create_table "list_shares", force: :cascade do |t|
-    t.bigint "list_id", null: false
-    t.bigint "user_id"
-    t.jsonb "permissions", default: {}
-    t.boolean "can_view", default: true
-    t.boolean "can_edit", default: false
-    t.boolean "can_add_items", default: false
-    t.boolean "can_delete_items", default: false
-    t.boolean "receive_notifications", default: true
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.string "email"
-    t.integer "role", default: 0
-    t.string "status", default: "pending"
-    t.string "invitation_token"
-    t.datetime "invited_at"
-    t.datetime "accepted_at"
-    t.index ["email"], name: "index_list_shares_on_email"
-    t.index ["invitation_token"], name: "index_list_shares_on_invitation_token", unique: true
-    t.index ["list_id", "status"], name: "index_list_shares_on_list_status"
-    t.index ["list_id", "user_id"], name: "index_list_shares_on_list_id_and_user_id", unique: true
-    t.index ["list_id"], name: "index_list_shares_on_list_id"
-    t.index ["permissions"], name: "index_list_shares_on_permissions", using: :gin
-    t.index ["role"], name: "index_list_shares_on_role"
-    t.index ["status"], name: "index_list_shares_on_status"
-    t.index ["user_id", "status"], name: "index_list_shares_on_user_and_status"
-    t.index ["user_id"], name: "index_list_shares_on_user_id"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'accepted'::character varying::text, 'declined'::character varying::text])", name: "list_shares_status_check"
   end
 
   create_table "lists", force: :cascade do |t|
@@ -207,8 +91,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_14_130000) do
     t.datetime "updated_at", null: false
     t.boolean "can_add_items", default: true
     t.boolean "receive_overdue_alerts", default: true
-    t.bigint "coaching_relationship_id"
-    t.index ["coaching_relationship_id"], name: "index_memberships_on_coaching_relationship_id"
     t.index ["list_id", "role"], name: "index_memberships_on_list_and_role"
     t.index ["list_id", "user_id"], name: "index_memberships_on_list_user"
     t.index ["list_id"], name: "index_memberships_on_list_id"
@@ -387,9 +269,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_14_130000) do
     t.datetime "updated_at", null: false
     t.string "name"
     t.string "role", default: "client", null: false
-    t.string "fcm_token"
     t.string "timezone", default: "UTC"
-    t.string "device_token"
     t.float "latitude"
     t.float "longitude"
     t.jsonb "preferences"
@@ -403,25 +283,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_14_130000) do
     t.integer "coaching_relationships_as_client_count", default: 0, null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["email"], name: "index_users_on_email_unique", unique: true
-    t.index ["fcm_token"], name: "index_users_on_fcm_token"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role"], name: "index_users_on_role"
     t.check_constraint "role::text = ANY (ARRAY['client'::character varying::text, 'coach'::character varying::text, 'admin'::character varying::text])", name: "users_role_check"
     t.check_constraint "role::text = ANY (ARRAY['client'::character varying::text, 'coach'::character varying::text])", name: "check_users_role"
   end
 
-  add_foreign_key "coaching_relationships", "users", column: "client_id"
-  add_foreign_key "coaching_relationships", "users", column: "coach_id"
-  add_foreign_key "daily_summaries", "coaching_relationships"
   add_foreign_key "devices", "users"
-  add_foreign_key "examples", "users"
-  add_foreign_key "item_escalations", "tasks"
-  add_foreign_key "item_visibility_restrictions", "coaching_relationships"
-  add_foreign_key "item_visibility_restrictions", "tasks"
-  add_foreign_key "list_shares", "lists"
-  add_foreign_key "list_shares", "users"
   add_foreign_key "lists", "users"
-  add_foreign_key "memberships", "coaching_relationships"
   add_foreign_key "memberships", "lists"
   add_foreign_key "memberships", "users"
   add_foreign_key "notification_logs", "tasks"

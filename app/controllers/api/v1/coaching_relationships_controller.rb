@@ -4,7 +4,7 @@
 
 module Api
   module V1
-    class CoachingRelationshipsController < ApplicationController
+    class CoachingRelationshipsController <  BaseController
       before_action :authenticate_user!
       before_action :set_relationship, only: %i[show accept decline update_preferences destroy]
 

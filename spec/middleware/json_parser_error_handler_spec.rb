@@ -1,6 +1,7 @@
 require 'rails_helper'
 
-RSpec.describe JsonParserErrorHandler do
+RSpec.describe Middleware::JsonParserErrorHandler do
+
   let(:app) { ->(env) { [200, {}, ['OK']] } }
   let(:middleware) { described_class.new(app) }
 

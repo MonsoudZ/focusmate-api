@@ -1,8 +1,26 @@
 # frozen_string_literal: true
 
-# Simple Rack app used by Warden as failure app to avoid any session usage
+# Rack app used by Warden as a failure app for API-only authentication.
+# Ensures we return JSON (not redirects) and never rely on session state.
 class ApiFailureApp
-  def self.call(env)
-    [ 401, { "Content-Type" => "application/json" }, [ { error: "Authentication failed" }.to_json ] ]
+  CONTENT_TYPE = "application/json"
+  WWW_AUTHENTICATE = 'Bearer realm="Application"'
+
+  def self.call(_env)
+    body = {
+      error: {
+        code: "unauthorized",
+        message: "Unauthorized"
+      }
+    }.to_json
+
+    [
+      401,
+      {
+        "Content-Type" => CONTENT_TYPE,
+        "WWW-Authenticate" => WWW_AUTHENTICATE
+      },
+      [body]
+    ]
   end
 end

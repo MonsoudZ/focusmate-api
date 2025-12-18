@@ -2,7 +2,7 @@
 
 module Api
   module V1
-    class MembershipsController < ApplicationController
+    class MembershipsController <  BaseController
       include Pundit::Authorization
 
       before_action :authenticate_user!
