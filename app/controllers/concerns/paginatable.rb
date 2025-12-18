@@ -68,6 +68,6 @@ module Paginatable
   def normalize_per_page(value, default_per_page:, max_per_page:)
     pp = value.to_i
     pp = default_per_page if pp <= 0
-    [pp, max_per_page].min
+    [ pp, max_per_page ].min
   end
 end

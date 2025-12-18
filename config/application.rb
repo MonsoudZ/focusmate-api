@@ -45,6 +45,5 @@ module FocusmateApi
     # Handle malformed JSON bodies at the Rack layer
     require Rails.root.join("lib/middleware/json_parser_error_handler")
     config.middleware.use Middleware::JsonParserErrorHandler
-
   end
 end

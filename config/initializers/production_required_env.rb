@@ -10,4 +10,3 @@ missing = required.select { |k| ENV[k].blank? }
 if missing.any?
   raise "Missing required env vars in production: #{missing.join(', ')}"
 end
-

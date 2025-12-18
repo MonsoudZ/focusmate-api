@@ -20,7 +20,7 @@ class ApiFailureApp
         "Content-Type" => CONTENT_TYPE,
         "WWW-Authenticate" => WWW_AUTHENTICATE
       },
-      [body]
+      [ body ]
     ]
   end
 end

@@ -108,10 +108,10 @@ RSpec.describe HealthController, type: :controller do
       get :metrics
       json_response = JSON.parse(response.body)
 
-      expect([0, 1]).to include(json_response['health_status'])
-      expect([0, 1]).to include(json_response['database_status'])
-      expect([0, 1]).to include(json_response['redis_status'])
-      expect([0, 1]).to include(json_response['queue_status'])
+      expect([ 0, 1 ]).to include(json_response['health_status'])
+      expect([ 0, 1 ]).to include(json_response['database_status'])
+      expect([ 0, 1 ]).to include(json_response['redis_status'])
+      expect([ 0, 1 ]).to include(json_response['queue_status'])
     end
   end
 

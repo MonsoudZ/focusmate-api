@@ -19,7 +19,7 @@ module Notifications
 
       devices = @user.devices
                      .where(platform: "ios")
-                     .where.not(apns_token: [nil, ""])
+                     .where.not(apns_token: [ nil, "" ])
                      .where(active: true)
 
       sent = failed = skipped = 0

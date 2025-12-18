@@ -27,12 +27,12 @@ module Notifications
         task_title = truncate(task.title.to_s, 50)
 
         if task.respond_to?(:done?) && task.done?
-          ["Task Completed", "Completed: #{task_title}"]
+          [ "Task Completed", "Completed: #{task_title}" ]
         elsif reason.present?
           r = truncate(reason.to_s, 100)
-          ["Task Reassigned", "Reassigned: #{task_title} — #{r}"]
+          [ "Task Reassigned", "Reassigned: #{task_title} — #{r}" ]
         else
-          ["Task Reminder", "Due soon: #{task_title}"]
+          [ "Task Reminder", "Due soon: #{task_title}" ]
         end
       end
 

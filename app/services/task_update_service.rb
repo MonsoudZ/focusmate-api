@@ -32,7 +32,7 @@ class TaskUpdateService
   def can_edit_task?
     return true if @task.list.user_id == @user.id
     return true if @task.creator_id == @user.id
-    return true if @task.list.memberships.exists?(user_id: @user.id, role: 'editor')
+    return true if @task.list.memberships.exists?(user_id: @user.id, role: "editor")
     false
   end
 

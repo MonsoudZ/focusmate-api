@@ -1,8 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe Middleware::JsonParserErrorHandler do
-
-  let(:app) { ->(env) { [200, {}, ['OK']] } }
+  let(:app) { ->(env) { [ 200, {}, [ 'OK' ] ] } }
   let(:middleware) { described_class.new(app) }
 
   describe '#call' do
@@ -11,7 +10,7 @@ RSpec.describe Middleware::JsonParserErrorHandler do
       status, headers, body = middleware.call(env)
 
       expect(status).to eq(200)
-      expect(body).to eq(['OK'])
+      expect(body).to eq([ 'OK' ])
     end
 
     it 'returns 400 when ActionDispatch::Http::Parameters::ParseError is raised' do

@@ -10,9 +10,6 @@ class Task < ApplicationRecord
   has_many   :recurring_instances, class_name: "Task", foreign_key: :recurring_template_id, dependent: :destroy
 
   has_many :task_events, dependent: :destroy
-  has_many :visibility_restrictions, class_name: "ItemVisibilityRestriction", foreign_key: :task_id, dependent: :destroy
-  has_one  :escalation, class_name: "ItemEscalation", foreign_key: :task_id, dependent: :destroy
-  has_many :notification_logs, foreign_key: :task_id, dependent: :destroy
   belongs_to :missed_reason_reviewed_by, class_name: "User", optional: true
 
   # Enums
@@ -190,16 +187,6 @@ class Task < ApplicationRecord
     minutes_overdue > 120
   end
 
-  def create_escalation!
-    return escalation if escalation.present?
-    ItemEscalation.create!(
-      task: self,
-      escalation_level: "normal",
-      notification_count: 0,
-      became_overdue_at: Time.current
-    )
-  end
-
   def all_subtasks_completed?
     return true if subtasks.empty?
     subtasks.all?(&:done?)
@@ -337,22 +324,4 @@ class Task < ApplicationRecord
   def calculate_yearly_recurrence
     TaskRecurrenceService.new(self).send(:calculate_yearly_recurrence)
   end
-
-  # Cache invalidation for dashboard queries
-  def invalidate_dashboard_cache
-    return unless list&.user_id
-
-    # Invalidate user's dashboard cache
-    Rails.cache.delete_matched("dashboard/user/#{list.user_id}/*")
-    Rails.cache.delete_matched("dashboard/user_stats/#{list.user_id}/*")
-
-    # Invalidate coach dashboards if this user has coaches
-    CoachingRelationship.where(client_id: list.user_id, status: "active").pluck(:coach_id).each do |coach_id|
-      Rails.cache.delete_matched("dashboard/coach/#{coach_id}/*")
-      Rails.cache.delete_matched("dashboard/coach_stats/#{coach_id}/*")
-    end
-  rescue => e
-    # Log error but don't fail the transaction
-    Rails.logger.error("Failed to invalidate dashboard cache: #{e.message}")
   end
-end

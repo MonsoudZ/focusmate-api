@@ -50,7 +50,7 @@ class UserLocationUpdateService
     if value.nil? || value.to_s.strip.empty?
       raise ValidationError.new(
         "#{field.to_s.humanize} is required",
-        details: { field => ["required"] }
+        details: { field => [ "required" ] }
       )
     end
 
@@ -58,7 +58,7 @@ class UserLocationUpdateService
     unless num >= min && num <= max
       raise ValidationError.new(
         "#{field.to_s.humanize} is out of range",
-        details: { field => ["must_be_between_#{min}_and_#{max}"] }
+        details: { field => [ "must_be_between_#{min}_and_#{max}" ] }
       )
     end
 
@@ -66,7 +66,7 @@ class UserLocationUpdateService
   rescue ArgumentError, TypeError
     raise ValidationError.new(
       "#{field.to_s.humanize} must be a number",
-      details: { field => ["not_a_number"] }
+      details: { field => [ "not_a_number" ] }
     )
   end
 end

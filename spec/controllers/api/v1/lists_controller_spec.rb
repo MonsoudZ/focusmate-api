@@ -328,51 +328,6 @@ RSpec.describe Api::V1::ListsController, type: :request do
     end
   end
 
-  describe 'PATCH /api/v1/lists/:id/unshare' do
-    it 'should unshare list with user' do
-      # Ensure the base list is created first
-      list # This forces the let(:list) to be evaluated
-
-      other_user = create(:user, email: "shared@example.com")
-      create(:list_share, list: list, user: other_user, status: "accepted")
-
-      unshare_params = {
-        user_id: other_user.id
-      }
-
-      patch "/api/v1/lists/#{list.id}/unshare", params: unshare_params, headers: auth_headers
-
-      expect(response).to have_http_status(:success)
-      expect(ListShare.find_by(list: list, user: other_user)).to be_nil
-    end
-
-    it 'should not unshare list without authentication' do
-      other_user = create(:user)
-
-      unshare_params = {
-        user_id: other_user.id
-      }
-
-      patch "/api/v1/lists/#{list.id}/unshare", params: unshare_params
-
-      expect(response).to have_http_status(:unauthorized)
-    end
-
-    it 'should not unshare list from other user' do
-      other_user = create(:user)
-      other_list = create(:list, user: other_user)
-      create(:list_share, list: other_list, user: user, status: "accepted")
-
-      unshare_params = {
-        user_id: user.id
-      }
-
-      patch "/api/v1/lists/#{other_list.id}/unshare", params: unshare_params, headers: auth_headers
-
-      expect(response).to have_http_status(:forbidden)
-    end
-  end
-
   describe 'GET /api/v1/lists/:id/members' do
     it 'should get list members' do
       # Ensure the base list is created first

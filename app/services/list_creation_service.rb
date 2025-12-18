@@ -27,7 +27,7 @@ class ListCreationService
     # Check if params are blank and no name is provided
     cleaned = @params.except(:controller, :action, :list).to_h
     if cleaned.blank? && !@params.key?(:name)
-      raise ValidationError.new("Validation failed", ["Name can't be blank"])
+      raise ValidationError.new("Validation failed", [ "Name can't be blank" ])
     end
   end
 

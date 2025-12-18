@@ -23,15 +23,7 @@ class User < ApplicationRecord
   has_many :owned_lists, class_name: "List", foreign_key: "user_id", dependent: :destroy
   has_many :memberships, dependent: :destroy
   has_many :lists, through: :memberships, source: :list
-  has_many :list_shares, dependent: :destroy
-  has_many :shared_lists, through: :list_shares, source: :list
   has_many :devices, dependent: :destroy
-
-  # NEW: Coaching associations
-  has_many :coaching_relationships_as_coach, class_name: "CoachingRelationship", foreign_key: "coach_id", dependent: :destroy
-  has_many :coaching_relationships_as_client, class_name: "CoachingRelationship", foreign_key: "client_id", dependent: :destroy
-  has_many :clients, through: :coaching_relationships_as_coach, source: :client
-  has_many :coaches, through: :coaching_relationships_as_client, source: :coach
   has_many :created_tasks, class_name: "Task", foreign_key: "creator_id", dependent: :destroy
   has_many :reviewed_tasks, class_name: "Task", foreign_key: "missed_reason_reviewed_by_id", dependent: :nullify
   has_many :saved_locations, dependent: :destroy
@@ -51,14 +43,9 @@ class User < ApplicationRecord
   end
 
   # Get all coaching relationships
-  def all_coaching_relationships
-    coaching_relationships_as_coach.or(coaching_relationships_as_client)
-  end
 
   # Get active coaching relationships
-  def active_coaching_relationships
-    all_coaching_relationships.active
-  end
+
 
   # Get all clients (if user is a coach)
   def all_clients
@@ -188,5 +175,4 @@ class User < ApplicationRecord
   def set_default_role
     self.role = "client" if role.blank?
   end
-
 end

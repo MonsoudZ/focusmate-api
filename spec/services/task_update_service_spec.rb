@@ -148,10 +148,10 @@ RSpec.describe TaskUpdateService do
 
   describe 'ValidationError' do
     it 'stores details hash' do
-      error = TaskUpdateService::ValidationError.new("Test message", { field: ["error"] })
+      error = TaskUpdateService::ValidationError.new("Test message", { field: [ "error" ] })
 
       expect(error.message).to eq("Test message")
-      expect(error.details).to eq({ field: ["error"] })
+      expect(error.details).to eq({ field: [ "error" ] })
     end
 
     it 'handles empty details' do

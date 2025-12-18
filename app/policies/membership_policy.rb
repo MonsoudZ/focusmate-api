@@ -12,8 +12,7 @@ class MembershipPolicy < ApplicationPolicy
 
     def visible_list_ids
       owned  = List.where(user_id: user.id).select(:id)
-      shared = ListShare.where(user_id: user.id, status: "accepted").select(:list_id)
-      List.where(id: owned).or(List.where(id: shared)).select(:id)
+      List.where(id: owned).select(:id)
     end
   end
 end

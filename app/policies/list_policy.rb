@@ -15,12 +15,7 @@ class ListPolicy < ApplicationPolicy
   def owner?
     record.user_id == user.id
   end
-
-  def accepted_share?
-    ListShare.exists?(list_id: record.id, user_id: user.id, status: "accepted")
-  end
   def manage_shares?
     owner?
   end
-
 end

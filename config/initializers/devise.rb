@@ -15,16 +15,16 @@ Devise.setup do |config|
 
   # ==> Configuration for any authentication mechanism
   # Configure which keys are used when authenticating a user.
-  config.authentication_keys = [:email]
+  config.authentication_keys = [ :email ]
 
   # Configure parameters permitted by Devise.
   # If you use custom Devise controllers, you may need to permit additional parameters there.
-  config.case_insensitive_keys = [:email]
-  config.strip_whitespace_keys = [:email]
+  config.case_insensitive_keys = [ :email ]
+  config.strip_whitespace_keys = [ :email ]
 
   # Skip session storage for API-only / JWT auth.
   # This ensures Devise never attempts to write session data.
-  config.skip_session_storage = [:http_auth, :database, :params_auth]
+  config.skip_session_storage = [ :http_auth, :database, :params_auth ]
 
   # ==> Navigation
   # For API-only apps, do not use navigational formats (no redirects / HTML responses).
@@ -40,13 +40,13 @@ Devise.setup do |config|
 
     # Issue tokens on sign-in and sign-up
     jwt.dispatch_requests = [
-      ["POST", %r{^/api/v1/auth/sign_in$}],
-      ["POST", %r{^/api/v1/auth/sign_up$}]
+      [ "POST", %r{^/api/v1/auth/sign_in$} ],
+      [ "POST", %r{^/api/v1/auth/sign_up$} ]
     ]
 
     # Revoke tokens on sign-out
     jwt.revocation_requests = [
-      ["DELETE", %r{^/api/v1/auth/sign_out$}]
+      [ "DELETE", %r{^/api/v1/auth/sign_out$} ]
     ]
 
     # Token lifetime

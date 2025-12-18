@@ -142,10 +142,10 @@ RSpec.describe ListUpdateService do
 
   describe 'ValidationError' do
     it 'stores message and details' do
-      error = ListUpdateService::ValidationError.new('Test error', { field: ['error'] })
+      error = ListUpdateService::ValidationError.new('Test error', { field: [ 'error' ] })
 
       expect(error.message).to eq('Test error')
-      expect(error.details).to eq({ field: ['error'] })
+      expect(error.details).to eq({ field: [ 'error' ] })
     end
 
     it 'handles empty details' do

@@ -129,4 +129,3 @@ module Apns
     end
   end
 end
-

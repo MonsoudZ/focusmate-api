@@ -50,7 +50,7 @@ module Notifications
         Sidekiq::Client.push_bulk(
           "class" => NudgeJob,
           "queue" => "notifications",
-          "args" => ids.map { |id| [id, nil, { "priority" => "high", "skip_creator" => true }] }
+          "args" => ids.map { |id| [ id, nil, { "priority" => "high", "skip_creator" => true } ] }
         )
 
         total += ids.length

@@ -26,7 +26,6 @@ RSpec.describe "API surface", type: :request do
       post "/api/v1/tasks/1/reassign"
       expect(response.status).to be_between(404, 410).inclusive
     end
-
   end
 
   describe "kept routes should be accessible" do

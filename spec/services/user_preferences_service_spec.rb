@@ -40,7 +40,7 @@
           fake_user = instance_double(
             User,
             update: false,
-            errors: instance_double(ActiveModel::Errors, full_messages: ["boom"])
+            errors: instance_double(ActiveModel::Errors, full_messages: [ "boom" ])
           )
 
           expect {

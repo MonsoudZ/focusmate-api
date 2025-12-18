@@ -11,7 +11,7 @@ class NudgeJob
       0 # task/user/list deleted -> don't retry
     else
       # backoff: 30s, 60s, 90s (capped)
-      [30 * (count + 1), 300].min
+      [ 30 * (count + 1), 300 ].min
     end
   end
 
@@ -37,4 +37,3 @@ class NudgeJob
     end
   end
 end
-

@@ -41,7 +41,7 @@ class UserPreferencesService
     else
       raise ValidationError.new(
         "Preferences must be a JSON object",
-        details: { preferences: ["must_be_object"] }
+        details: { preferences: [ "must_be_object" ] }
       )
     end
   end
