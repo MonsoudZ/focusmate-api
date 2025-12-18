@@ -1,34 +1,35 @@
-class ListShareSerializer
-  attr_reader :list_share
+# frozen_string_literal: true
 
-  def initialize(list_share)
-    @list_share = list_share
+class ListShareSerializer
+  def self.one(share)
+    { share: serialize(share) }
   end
 
-  def as_json
+  def self.collection(shares, pagination = nil)
+    payload = { shares: shares.map { |s| serialize(s) } }
+    payload[:pagination] = pagination if pagination
+    payload
+  end
+
+  def self.serialize(s)
     {
-      id: list_share.id,
-      list_id: list_share.list_id,
-      email: list_share.email,
-      role: list_share.role,
-      status: list_share.status,
-      invitation_token: list_share.invitation_token,
-      can_view: list_share.can_view?,
-      can_edit: list_share.can_edit?,
-      can_add_items: list_share.can_add_items?,
-      can_delete_items: list_share.can_delete_items?,
-      receive_notifications: list_share.receive_notifications?,
-      user_id: list_share.user_id,
-      user: list_share.user ? {
-        id: list_share.user.id,
-        email: list_share.user.email,
-        name: list_share.user.name || list_share.user.email.split("@").first,
-        role: list_share.user.role
-      } : nil,
-      invited_at: list_share.invited_at&.iso8601,
-      accepted_at: list_share.accepted_at&.iso8601,
-      created_at: list_share.created_at.iso8601,
-      updated_at: list_share.updated_at.iso8601
+      id: s.id,
+      email: s.email,
+      role: s.role,
+      status: s.status,
+      user_id: s.user_id,
+      permissions: {
+        can_view: s.can_view,
+        can_edit: s.can_edit,
+        can_add_items: s.can_add_items,
+        can_delete_items: s.can_delete_items,
+        receive_notifications: s.receive_notifications
+      },
+      invited_at: s.invited_at,
+      created_at: s.created_at,
+      updated_at: s.updated_at
     }
   end
+
+  private_class_method :serialize
 end

@@ -1,28 +1,29 @@
 # frozen_string_literal: true
 
-class CoachingRelationshipPolicy
-  def initialize(user, relationship)
-    @user = user
-    @rel = relationship
-  end
-
-  def request?
-    @user.id == @rel.client_id
+class CoachingRelationshipPolicy < ApplicationPolicy
+  def show?
+    participant?
   end
 
   def accept?
-    @user.id == @rel.coach_id && @rel.pending?
+    participant?
   end
 
   def decline?
-    accept?
+    participant?
   end
 
-  def cancel?
-    @user.id == @rel.client_id && @rel.pending?
+  def update_preferences?
+    participant?
   end
 
-  def terminate?
-    (@user.id == @rel.client_id || @user.id == @rel.coach_id) && @rel.active?
+  def destroy?
+    participant?
+  end
+
+  private
+
+  def participant?
+    record.coach_id == user.id || record.client_id == user.id
   end
 end

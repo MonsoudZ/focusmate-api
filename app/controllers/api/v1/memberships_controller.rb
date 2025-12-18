@@ -4,120 +4,59 @@ module Api
   module V1
     class MembershipsController < ApplicationController
       include Pundit::Authorization
+
       before_action :authenticate_user!
       before_action :set_list
-      before_action :set_membership, only: [ :show, :update, :destroy ]
-      after_action :verify_authorized, except: [ :index, :create ]
-      after_action :verify_policy_scoped, only: [ :index ]
+      before_action :set_membership, only: %i[show update destroy]
 
-      # GET /api/v1/lists/:list_id/memberships
+      after_action :verify_authorized
+      after_action :verify_policy_scoped, only: :index
+
       def index
-        @memberships = policy_scope(@list.memberships).includes(:user)
         authorize @list, :show?
 
-        render json: {
-          memberships: @memberships.map do |membership|
-            {
-              id: membership.id,
-              user: {
-                id: membership.user.id,
-                email: membership.user.email
-              },
-              role: membership.role,
-              created_at: membership.created_at,
-              updated_at: membership.updated_at
-            }
-          end
-        }
+        memberships = policy_scope(@list.memberships)
+                        .includes(:user)
+                        .order(created_at: :asc)
+
+        render json: MembershipSerializer.collection(memberships), status: :ok
       end
 
-      # GET /api/v1/lists/:list_id/memberships/:id
       def show
-        authorize @membership
-        render json: {
-          membership: {
-            id: @membership.id,
-            user: {
-              id: @membership.user.id,
-              email: @membership.user.email
-            },
-            role: @membership.role,
-            created_at: @membership.created_at,
-            updated_at: @membership.updated_at
-          }
-        }
+        authorize @list, :show?
+        render json: MembershipSerializer.one(@membership), status: :ok
       end
 
-      # POST /api/v1/lists/:list_id/memberships
       def create
-        # Find user by email or ID
-        target_user = find_user_by_email_or_id(membership_params[:user_identifier])
+        authorize @list, :manage_memberships?
 
-        unless target_user
-          return render json: { error: "User not found" }, status: :not_found
-        end
-
-        # Check if user is already a member
-        if @list.members.include?(target_user)
-          return render json: { error: "User is already a member of this list" }, status: :unprocessable_content
-        end
-
-        # Check if user is trying to invite themselves
-        if target_user == current_user
-          return render json: { error: "Cannot invite yourself" }, status: :unprocessable_content
-        end
-
-        @membership = @list.memberships.build(
-          user: target_user,
-          role: membership_params[:role] || "viewer"
+        membership = Memberships::Create.call!(
+          list: @list,
+          inviter: current_user,
+          user_identifier: create_params[:user_identifier],
+          role: create_params[:role]
         )
 
-        authorize @membership
-
-        if @membership.save
-          render json: {
-            membership: {
-              id: @membership.id,
-              user: {
-                id: @membership.user.id,
-                email: @membership.user.email
-              },
-              role: @membership.role,
-              created_at: @membership.created_at,
-              updated_at: @membership.updated_at
-            }
-          }, status: :created
-        else
-          render json: { errors: @membership.errors.full_messages }, status: :unprocessable_content
-        end
+        render json: MembershipSerializer.one(membership), status: :created
       end
 
-      # PATCH/PUT /api/v1/lists/:list_id/memberships/:id
       def update
-        authorize @membership
+        authorize @list, :manage_memberships?
 
-        if @membership.update(membership_params.except(:user_identifier))
-          render json: {
-            membership: {
-              id: @membership.id,
-              user: {
-                id: @membership.user.id,
-                email: @membership.user.email
-              },
-              role: @membership.role,
-              created_at: @membership.created_at,
-              updated_at: @membership.updated_at
-            }
-          }
-        else
-          render json: { errors: @membership.errors.full_messages }, status: :unprocessable_content
-        end
+        membership = Memberships::Update.call!(
+          membership: @membership,
+          actor: current_user,
+          role: update_params[:role]
+        )
+
+        render json: MembershipSerializer.one(membership), status: :ok
       end
 
-      # DELETE /api/v1/lists/:list_id/memberships/:id
       def destroy
-        authorize @membership
-        @membership.destroy
+        authorize @list, :manage_memberships?
+
+        Memberships::Destroy.call!(membership: @membership, actor: current_user)
+
         head :no_content
       end
 
@@ -125,40 +64,18 @@ module Api
 
       def set_list
         @list = List.find(params[:list_id])
-        authorize @list, :show?
       end
 
       def set_membership
-        @membership = @list.memberships.find(params[:id])
+        @membership = @list.memberships.includes(:user).find(params[:id])
       end
 
-      def membership_params
-        # Only permit user_identifier, handle role separately for security
-        permitted = params.require(:membership).permit(:user_identifier)
-
-        # Handle role separately with explicit validation
-        if params[:membership][:role].present?
-          role = params[:membership][:role].to_s.downcase
-          if %w[editor viewer].include?(role)
-            permitted[:role] = role
-          else
-            permitted[:role] = "viewer" # Default to viewer for invalid roles
-          end
-        else
-          permitted[:role] = "viewer" # Default role
-        end
-
-        permitted
+      def create_params
+        params.require(:membership).permit(:user_identifier, :role)
       end
 
-      def find_user_by_email_or_id(identifier)
-        # Try to find by ID first (if it's a number)
-        if identifier.match?(/^\d+$/)
-          User.find_by(id: identifier)
-        else
-          # Otherwise, try to find by email
-          User.find_by(email: identifier)
-        end
+      def update_params
+        params.require(:membership).permit(:role)
       end
     end
   end

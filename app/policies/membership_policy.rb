@@ -1,34 +1,19 @@
+# frozen_string_literal: true
+
 class MembershipPolicy < ApplicationPolicy
-  def index?
-    # Can view memberships if user can view the list
-    record.list.can_view?(user)
-  end
-
-  def show?
-    # Can view membership if user can view the list
-    record.list.can_view?(user)
-  end
-
-  def create?
-    # Can invite members if user can invite to the list
-    record.list.can_invite?(user)
-  end
-
-  def update?
-    # Can update membership if user can invite to the list
-    record.list.can_invite?(user)
-  end
-
-  def destroy?
-    # Can remove members if user can invite to the list
-    # OR if the membership belongs to the current user (self-removal)
-    record.list.can_invite?(user) || record.user == user
-  end
-
-  class Scope < ApplicationPolicy::Scope
+  class Scope < Scope
     def resolve
-      # Users can only see memberships for lists they have access to
-      scope.joins(:list).where(list: List.accessible_by(user))
+      # If you already authorized @list for show?, this scope just ensures
+      # you can't see memberships for lists you don't have access to.
+      scope.joins(:list).where(lists: { id: visible_list_ids })
+    end
+
+    private
+
+    def visible_list_ids
+      owned  = List.where(user_id: user.id).select(:id)
+      shared = ListShare.where(user_id: user.id, status: "accepted").select(:list_id)
+      List.where(id: owned).or(List.where(id: shared)).select(:id)
     end
   end
 end

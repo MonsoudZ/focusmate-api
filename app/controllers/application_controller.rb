@@ -1,4 +1,5 @@
 class ApplicationController < ActionController::API
+  include Api::ErrorHandling
   include Pundit::Authorization
   include ErrorResponseHelper
   include ErrorLoggingHelper

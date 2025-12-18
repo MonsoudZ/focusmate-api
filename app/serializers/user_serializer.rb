@@ -1,18 +1,13 @@
+# frozen_string_literal: true
+
 class UserSerializer
-  attr_reader :user
-
-  def initialize(user)
-    @user = user
-  end
-
-  def as_json
+  def self.one(user)
     {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
-      timezone: user.timezone,
-      created_at: user.created_at.iso8601
+      timezone: user.timezone
     }
   end
 end

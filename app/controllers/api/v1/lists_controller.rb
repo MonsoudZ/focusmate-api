@@ -1,257 +1,293 @@
-# app/controllers/api/v1/lists_controller.rb
+# frozen_string_literal: true
+
 module Api
   module V1
     class ListsController < ApplicationController
-      before_action :set_list, only: [ :show, :update, :destroy, :members, :share, :unshare, :tasks ]
-      before_action :authorize_list_view!, only: [ :show, :members, :tasks ]
-      before_action :authorize_list_edit!, only: [ :update ]
-      before_action :authorize_list_owner!, only: [ :destroy, :share, :unshare ]
+      before_action :authenticate_user!
 
-      # GET /api/v1/lists/validate/:id (convenience check)
+      before_action :set_list, only: %i[
+        show update destroy members share unshare tasks
+      ]
+
+      before_action :authorize_list_view!,  only: %i[show members tasks]
+      before_action :authorize_list_edit!,  only: %i[update]
+      before_action :authorize_list_owner!, only: %i[destroy share unshare]
+
+      rescue_from ActiveRecord::RecordNotFound do
+        render_error("List not found", status: :not_found)
+      end
+
+      rescue_from ActionController::ParameterMissing do |e|
+        render_error(e.message, status: :bad_request)
+      end
+
+      rescue_from ListCreationService::ValidationError do |e|
+        render json: { errors: e.details }, status: :unprocessable_content
+      end
+
+      rescue_from ListUpdateService::UnauthorizedError do |e|
+        render_error(e.message, status: :forbidden)
+      end
+
+      rescue_from ListUpdateService::ValidationError do |e|
+        render json: { errors: e.details }, status: :unprocessable_content
+      end
+
+      rescue_from ListSharingService::UnauthorizedError do |e|
+        render_error(e.message, status: :forbidden)
+      end
+
+      rescue_from ListSharingService::ValidationError do |e|
+        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_content
+      end
+
+      rescue_from ListSharingService::NotFoundError do |e|
+        render_error(e.message, status: :not_found)
+      end
+
+      # GET /api/v1/lists/validate/:id
       def validate_access
         list = List.find_by(id: params[:id])
-        unless list
-          return render json: { list_id: params[:id], accessible: false, error: "List not found" }, status: :not_found
-        end
+        return render json: { list_id: params[:id], accessible: false, error: "List not found" }, status: :not_found unless list
 
-        can_access = can_view?(list)
+        accessible = can_view?(list)
         render json: {
           list_id: list.id,
-          accessible: can_access,
-          owner: can_access ? list.user&.email : nil
+          accessible: accessible,
+          owner: accessible ? list.user&.email : nil
         }, status: :ok
       end
 
       # GET /api/v1/lists
       def index
-        owned_ids  = List.where(user_id: current_user.id).select(:id)
-        shared_ids = ListShare.where(user_id: current_user.id, status: ListShare.statuses[:accepted]).select(:list_id)
-        scope = List.where(id: owned_ids).or(List.where(id: shared_ids)).distinct
+        scope = accessible_lists_scope
 
-        # since filter (optional)
         if params[:since].present?
-          since_time =
-            begin
-              Time.zone.parse(params[:since])
-            rescue ArgumentError, TypeError
-              nil
-            end
+          since_time = safe_parse_time(params[:since])
           scope = scope.where("lists.updated_at >= ?", since_time) if since_time
         end
 
         active = scope.where(deleted_at: nil)
 
-        render json: { lists: active.map { |l| serialize_list(l) }, tombstones: [] }, status: :ok
+        render json: {
+          lists: active.map { |l| ListSerializer.as_json(l) },
+          tombstones: [] # TODO: if you ever soft-delete, return tombstones here
+        }, status: :ok
       end
 
       # GET /api/v1/lists/:id
       def show
-        render json: serialize_list(@list, include_tasks: true), status: :ok
+        render json: ListSerializer.as_json(@list, include_tasks: true), status: :ok
       end
 
       # POST /api/v1/lists
       def create
-        service = ListCreationService.new(user: current_user, params: list_params_flat)
-        list = service.create!
-        render json: serialize_list(list), status: :created
-      rescue ListCreationService::ValidationError => e
-        render json: { errors: e.details }, status: :unprocessable_content
+        list = ListCreationService.new(user: current_user, params: list_params).create!
+        render json: ListSerializer.as_json(list), status: :created
       end
 
       # PATCH /api/v1/lists/:id
       def update
-        service = ListUpdateService.new(list: @list, user: current_user)
-        service.update!(attributes: list_params_flat)
-        render json: serialize_list(@list), status: :ok
-      rescue ListUpdateService::UnauthorizedError => e
-        render json: { error: { message: e.message } }, status: :forbidden
-      rescue ListUpdateService::ValidationError => e
-        render json: { errors: e.details }, status: :unprocessable_content
+        ListUpdateService.new(list: @list, user: current_user).update!(attributes: list_params)
+        render json: ListSerializer.as_json(@list), status: :ok
       end
 
       # DELETE /api/v1/lists/:id
       def destroy
-        @list.class.delete(@list.id)
+        # Your old code did a hard delete via class.delete (skips callbacks) :contentReference[oaicite:1]{index=1}
+        # Keep behavior but make it explicit and safe:
+        @list.delete
         head :no_content
       end
 
       # POST /api/v1/lists/:id/share
-      # params: user_id or email (required), can_edit (optional)
       def share
-        service = ListSharingService.new(list: @list, user: current_user)
-        permissions = {
-          can_view: params[:can_view],
-          can_edit: params[:can_edit],
-          can_add_items: params[:can_add_items],
-          can_delete_items: params[:can_delete_items]
-        }
-        share = service.share!(user_id: params[:user_id], email: params[:email], permissions: permissions)
+        permissions = share_permissions_params
 
-        render json: {
-          id: share.id,
-          user_id: share.user_id,
-          email: share.email,
-          can_view: share.can_view,
-          can_edit: share.can_edit,
-          can_add_items: share.can_add_items,
-          can_delete_items: share.can_delete_items,
-          status: share.status,
-          created_at: share.created_at,
-          updated_at: share.updated_at
-        }, status: :created
-      rescue ListSharingService::UnauthorizedError => e
-        render json: { error: { message: e.message } }, status: :forbidden
-      rescue ListSharingService::ValidationError => e
-        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_content
-      rescue ListSharingService::NotFoundError => e
-        render json: { error: { message: e.message } }, status: :not_found
+        share = ListSharingService
+                  .new(list: @list, user: current_user)
+                  .share!(user_id: params[:user_id], email: params[:email], permissions: permissions)
+
+        render json: ListShareSerializer.as_json(share), status: :created
       end
 
       # PATCH /api/v1/lists/:id/unshare
-      # params: user_id (required)
       def unshare
-        service = ListSharingService.new(list: @list, user: current_user)
-        service.unshare!(user_id: params[:user_id])
-        render json: serialize_list(@list), status: :ok
-      rescue ListSharingService::UnauthorizedError => e
-        render json: { error: { message: e.message } }, status: :forbidden
-      rescue ListSharingService::ValidationError => e
-        render json: { error: { message: e.message, details: e.details } }, status: :unprocessable_content
+        ListSharingService.new(list: @list, user: current_user).unshare!(user_id: params[:user_id])
+        render json: ListSerializer.as_json(@list), status: :ok
       end
 
       # GET /api/v1/lists/:id/members
       def members
-        owner = { id: @list.user_id, role: "owner" }
-        shared_members = @list.list_shares.includes(:user).map do |s|
-          { id: s.user_id, role: "member", can_edit: s.can_edit }
+        members = []
+        members << { id: @list.user_id, role: "owner" }
+
+        @list.list_shares.includes(:user).find_each do |s|
+          members << { id: s.user_id, role: "member", can_edit: s.can_edit }
         end
-        all_members = [ owner ] + shared_members
-        render json: { members: all_members }, status: :ok
+
+        render json: { members: members }, status: :ok
       end
 
       # GET /api/v1/lists/:id/tasks
       def tasks
         tasks = @list.tasks.where(deleted_at: nil).order(:due_at)
-        render json: {
-          tasks: tasks.map do |t|
-            {
-              id: t.id,
-              title: t.title,
-              note: t.note,
-              due_at: t.due_at,
-              status: t.status,
-              created_at: t.created_at,
-              updated_at: t.updated_at
-            }
-          end
-        }, status: :ok
+        render json: { tasks: tasks.map { |t| TaskSerializer.as_json(t) } }, status: :ok
       end
 
       private
 
-      # === Auth & authz helpers ===
-
-      def require_auth!
-        return if current_user.present?
-        render json: { error: { message: "Unauthorized" } }, status: :unauthorized
-      end
-
+      # -------------------------
+      # Finders
+      # -------------------------
       def set_list
-        @list = List.find_by(id: params[:id])
-        not_found unless @list
+        # old code used find_by + custom not_found :contentReference[oaicite:2]{index=2}
+        @list = List.find(params[:id])
       end
 
+      # -------------------------
+      # Authorization
+      # -------------------------
       def authorize_list_view!
         return if can_view?(@list)
-        forbidden
+        render_error("Unauthorized", status: :forbidden)
       end
 
       def authorize_list_edit!
         return if can_edit?(@list)
-        forbidden
+        render_error("Unauthorized", status: :forbidden)
       end
 
       def authorize_list_owner!
         return if owns?(@list)
-        forbidden
+        render_error("Unauthorized", status: :forbidden)
       end
 
-      def owns?(list)
-        list.user_id == current_user.id
-      end
+      def owns?(list) = list.user_id == current_user.id
 
       def can_view?(list)
         return true if owns?(list)
-        ListShare.exists?(list_id: list.id,
-                          user_id: current_user.id,
-                          status: ListShare.statuses[:accepted])
+        ListShare.exists?(
+          list_id: list.id,
+          user_id: current_user.id,
+          status: ListShare.statuses[:accepted]
+        )
       end
 
       def can_edit?(list)
         return true if owns?(list)
-        ListShare.exists?(list_id: list.id,
-                          user_id: current_user.id,
-                          status: ListShare.statuses[:accepted],
-                          can_edit: true)
+        ListShare.exists?(
+          list_id: list.id,
+          user_id: current_user.id,
+          status: ListShare.statuses[:accepted],
+          can_edit: true
+        )
       end
 
-      # === Params & serializers ===
+      # -------------------------
+      # Queries
+      # -------------------------
+      def accessible_lists_scope
+        owned_ids  = List.where(user_id: current_user.id).select(:id)
+        shared_ids = ListShare.where(
+          user_id: current_user.id,
+          status: ListShare.statuses[:accepted]
+        ).select(:list_id)
 
-      # Specs send flat params; support both flat and nested.
-      def list_params_flat
-        if params[:list].present?
-          params.require(:list).permit(:name, :description, :visibility)
+        List.where(id: owned_ids).or(List.where(id: shared_ids)).distinct
+      end
+
+      def safe_parse_time(value)
+        Time.zone.parse(value.to_s)
+      rescue ArgumentError, TypeError
+        nil
+      end
+
+      # -------------------------
+      # Params
+      # -------------------------
+      # Old controller supported flat or nested list params :contentReference[oaicite:3]{index=3}
+      def list_params
+        container = params[:list].present? ? params.require(:list) : params
+        container.permit(:name, :description, :visibility)
+      end
+
+      def share_permissions_params
+        # Old version passed raw strings; normalize to booleans :contentReference[oaicite:4]{index=4}
+        fields = %i[can_view can_edit can_add_items can_delete_items]
+        fields.to_h { |k| [k, cast_bool(params[k])] }
+      end
+
+      def cast_bool(value)
+        case value
+        when true, false then value
+        when nil, ""     then false
         else
-          params.permit(:name, :description, :visibility)
+          value.to_s.strip.downcase.in?(%w[true 1 t yes y on])
         end
       end
 
-      def serialize_list(l, include_tasks: false)
-        payload = {
-          id: l.id,
-          name: l.name,
-          description: l.description,
-          visibility: l.visibility,
-          user_id: l.user_id,
-          deleted_at: l.deleted_at,
-          created_at: l.created_at,
-          updated_at: l.updated_at
-        }
-        if include_tasks
-          tasks = l.tasks.where(deleted_at: nil).order(:due_at)
-          payload[:tasks] = tasks.map do |t|
-            {
-              id: t.id, title: t.title, note: t.note, due_at: t.due_at,
-              status: t.status, created_at: t.created_at, updated_at: t.updated_at
-            }
-          end
-        end
-        payload
-      end
-
-      # === Error helpers (match spec shapes) ===
-
-      def not_found
-        render json: { error: { message: "List not found" } }, status: :not_found
-      end
-
-      def forbidden
-        render json: { error: { message: "Unauthorized" } }, status: :forbidden
-      end
-
-      def bad_request
-        render json: { error: { message: "Bad Request" } }, status: :bad_request
-      end
-
-      def validation_error!(record)
-        render json: { errors: record.errors.as_json },
-               status: :unprocessable_content
-      end
-
-      def validation_error_message!(msg)
-        render json: { error: { message: "Validation failed", details: { base: [ msg ] } } },
-               status: :unprocessable_content
+      # -------------------------
+      # Rendering helpers
+      # -------------------------
+      def render_error(message, status:)
+        render json: { error: { message: message } }, status: status
       end
     end
+  end
+end
+
+# --- Plain Ruby serializers (keep in app/serializers) ---
+
+class ListSerializer
+  def self.as_json(list, include_tasks: false)
+    payload = {
+      id: list.id,
+      name: list.name,
+      description: list.description,
+      visibility: list.visibility,
+      user_id: list.user_id,
+      deleted_at: list.deleted_at,
+      created_at: list.created_at,
+      updated_at: list.updated_at
+    }
+
+    if include_tasks
+      tasks = list.tasks.where(deleted_at: nil).order(:due_at)
+      payload[:tasks] = tasks.map { |t| TaskSerializer.as_json(t) }
+    end
+
+    payload
+  end
+end
+
+class TaskSerializer
+  def self.as_json(task)
+    {
+      id: task.id,
+      title: task.title,
+      note: task.note,
+      due_at: task.due_at,
+      status: task.status,
+      created_at: task.created_at,
+      updated_at: task.updated_at
+    }
+  end
+end
+
+class ListShareSerializer
+  def self.as_json(share)
+    {
+      id: share.id,
+      user_id: share.user_id,
+      email: share.email,
+      can_view: share.can_view,
+      can_edit: share.can_edit,
+      can_add_items: share.can_add_items,
+      can_delete_items: share.can_delete_items,
+      status: share.status,
+      created_at: share.created_at,
+      updated_at: share.updated_at
+    }
   end
 end
