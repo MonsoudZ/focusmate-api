@@ -4,8 +4,6 @@
     "builder": "nixpacks"
   },
   "deploy": {
-    "startCommand": "env DISABLE_DATABASE_ENVIRONMENT_CHECK=1 bundle exec rails db:drop db:create db:schema:load && bundle exec puma -C config/puma.rb",
-    "healthcheckPath": "/health/live",
-    "healthcheckTimeout": 60
+    "startCommand": "bundle exec rails db:prepare && bundle exec puma -C config/puma.rb"
   }
 }
