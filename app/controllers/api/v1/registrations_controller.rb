@@ -17,7 +17,7 @@ module Api
               message: "Validation failed",
               details: resource.errors.to_hash
             }
-          }, status: :unprocessable_entity
+          }, status: :unprocessable_content
         end
       end
     end

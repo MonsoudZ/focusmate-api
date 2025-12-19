@@ -120,7 +120,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
     it 'validates required fields' do
       post "/api/v1/lists", params: { description: "No name" }, headers: auth_headers
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["code"]).to eq("validation_error")
       expect(json["error"]["details"]).to have_key("name")

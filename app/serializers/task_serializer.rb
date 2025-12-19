@@ -1,4 +1,5 @@
-# app/serializers/task_serializer.rb
+# frozen_string_literal: true
+
 class TaskSerializer
   attr_reader :task, :current_user, :options
 
@@ -14,21 +15,14 @@ class TaskSerializer
       list_id: task.list_id,
       title: task.title,
       note: task.note,
-      description: task.note,
       due_at: task.due_at&.iso8601,
       completed_at: completed_at_value,
       priority: derive_priority,
       can_be_snoozed: !task.strict_mode,
       notification_interval_minutes: task.notification_interval_minutes || 10,
-      requires_explanation_if_missed: task.requires_explanation_if_missed || false,
-
-      # Status
       status: task.status,
-
-      # Status flags
       overdue: overdue?,
       minutes_overdue: minutes_overdue,
-      requires_explanation: requires_explanation?,
 
       # Recurring
       is_recurring: task.is_recurring || false,
@@ -45,23 +39,12 @@ class TaskSerializer
       notify_on_arrival: task.notify_on_arrival.nil? ? true : task.notify_on_arrival,
       notify_on_departure: task.notify_on_departure || false,
 
-      # Accountability
-      missed_reason: task.missed_reason,
-      missed_reason_submitted_at: task.missed_reason_submitted_at&.iso8601,
-      missed_reason_reviewed_at: task.missed_reason_reviewed_at&.iso8601,
-
       # Creator
       creator: creator_data,
-      created_by_coach: created_by_coach?,
 
       # Permissions
       can_edit: can_edit?,
       can_delete: can_delete?,
-      can_complete: can_complete?,
-
-      # Visibility
-      visibility: task.visibility == "visible_to_all",
-      can_change_visibility: can_change_visibility?,
 
       # Subtasks
       has_subtasks: has_subtasks?,
@@ -78,26 +61,21 @@ class TaskSerializer
   private
 
   def derive_priority
-    return 3 if task.strict_mode && overdue?  # Urgent
-    return 2 if task.strict_mode               # High
-    return 1 if task.due_at && task.due_at < 24.hours.from_now  # Medium
-    0  # Low
+    return 3 if task.strict_mode && overdue?
+    return 2 if task.strict_mode
+    return 1 if task.due_at && task.due_at < 24.hours.from_now
+    0
   end
 
   def overdue?
-    # Task is overdue if it has a due date in the past and is NOT completed
     task.due_at.present? &&
-    task.due_at < Time.current &&
-    (task.status.nil? || task.status == "pending" || task.status == "in_progress")
+      task.due_at < Time.current &&
+      (task.status.nil? || task.status == "pending" || task.status == "in_progress")
   end
 
   def minutes_overdue
     return 0 unless overdue?
     ((Time.current - task.due_at) / 60).to_i
-  end
-
-  def requires_explanation?
-    task.requires_explanation_if_missed && overdue? && task.missed_reason.nil?
   end
 
   def creator_data
@@ -112,29 +90,12 @@ class TaskSerializer
     }
   end
 
-  def created_by_coach?
-    task.creator_id.present? && task.creator_id != task.list.user_id
-  end
-
   def can_edit?
-    return true if task.creator_id == current_user.id
-    return true if task.list.user_id == current_user.id
-    false
+    task.creator_id == current_user.id || task.list.user_id == current_user.id
   end
 
   def can_delete?
-    return true if task.creator_id == current_user.id
-    return true if task.list.user_id == current_user.id
-    false
-  end
-
-  def can_complete?
-    task.list.user_id == current_user.id
-  end
-
-  def can_change_visibility?
-    return false unless current_user
-    task.creator == current_user || task.list.user == current_user
+    can_edit?
   end
 
   def has_subtasks?
@@ -155,11 +116,8 @@ class TaskSerializer
   end
 
   def completed_at_value
-    # Use the actual completed_at field if it exists, otherwise fall back to updated_at
     if task.status == "done"
       task.completed_at&.iso8601 || task.updated_at.iso8601
-    else
-      nil
     end
   end
 end

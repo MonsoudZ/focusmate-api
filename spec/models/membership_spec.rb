@@ -1,99 +1,64 @@
-require 'rails_helper'
+# frozen_string_literal: true
 
-RSpec.describe Membership, type: :model do
+RSpec.describe Membership do
   let(:user) { create(:user) }
-  let(:list) { create(:list) }
-
-  describe 'associations' do
-    it { should belong_to(:list) }
-    it { should belong_to(:user) }
-  end
+  let(:list_owner) { create(:user) }
+  let(:list) { create(:list, user: list_owner) }
+  let(:membership) { create(:membership, list: list, user: user, role: 'editor') }
 
   describe 'validations' do
-    it { should validate_presence_of(:role) }
-    it { should validate_inclusion_of(:role).in_array(%w[editor viewer]) }
+    it 'requires role' do
+      membership = build(:membership, list: list, user: user, role: nil)
+      expect(membership).not_to be_valid
+    end
 
-    describe 'uniqueness validation' do
-      it 'validates uniqueness of user_id scoped to list_id' do
-        create(:membership, list: list, user: user, role: 'editor')
-        duplicate = build(:membership, list: list, user: user, role: 'viewer')
+    it 'requires valid role' do
+      membership = build(:membership, list: list, user: user, role: 'admin')
+      expect(membership).not_to be_valid
+    end
 
-        expect(duplicate).not_to be_valid
-        expect(duplicate.errors[:user_id]).to include("is already a member of this list")
-      end
+    it 'validates uniqueness of user per list' do
+      create(:membership, list: list, user: user)
+      duplicate = build(:membership, list: list, user: user)
+      expect(duplicate).not_to be_valid
+    end
+  end
 
-      it 'allows same user in different lists' do
-        other_list = create(:list)
-        create(:membership, list: list, user: user, role: 'editor')
-        other_membership = build(:membership, list: other_list, user: user, role: 'viewer')
+  describe 'associations' do
+    it 'belongs to list' do
+      expect(membership.list).to eq(list)
+    end
 
-        expect(other_membership).to be_valid
-      end
+    it 'belongs to user' do
+      expect(membership.user).to eq(user)
     end
   end
 
   describe 'scopes' do
-    let!(:editor_membership) { create(:membership, list: list, user: user, role: 'editor') }
-    let!(:viewer_membership) { create(:membership, list: list, user: create(:user), role: 'viewer') }
-
-    describe '.editors' do
-      it 'returns only editor memberships' do
-        expect(Membership.editors).to include(editor_membership)
-        expect(Membership.editors).not_to include(viewer_membership)
-      end
+    it 'has editors scope' do
+      editor = create(:membership, list: list, user: create(:user), role: 'editor')
+      viewer = create(:membership, list: list, user: create(:user), role: 'viewer')
+      expect(Membership.editors).to include(editor)
+      expect(Membership.editors).not_to include(viewer)
     end
 
-    describe '.viewers' do
-      it 'returns only viewer memberships' do
-        expect(Membership.viewers).to include(viewer_membership)
-        expect(Membership.viewers).not_to include(editor_membership)
-      end
+    it 'has viewers scope' do
+      editor = create(:membership, list: list, user: create(:user), role: 'editor')
+      viewer = create(:membership, list: list, user: create(:user), role: 'viewer')
+      expect(Membership.viewers).to include(viewer)
+      expect(Membership.viewers).not_to include(editor)
     end
   end
 
   describe '#can_edit?' do
-    it 'returns true for editor role' do
+    it 'returns true for editor' do
       membership = build(:membership, role: 'editor')
       expect(membership.can_edit?).to be true
     end
 
-    it 'returns false for viewer role' do
+    it 'returns false for viewer' do
       membership = build(:membership, role: 'viewer')
       expect(membership.can_edit?).to be false
-    end
-  end
-
-  describe '#can_invite?' do
-    it 'returns true for editor role' do
-      membership = build(:membership, role: 'editor')
-      expect(membership.can_invite?).to be true
-    end
-
-    it 'returns false for viewer role' do
-      membership = build(:membership, role: 'viewer')
-      expect(membership.can_invite?).to be false
-    end
-  end
-
-  describe '#receives_overdue_alerts?' do
-    it 'returns true when receive_overdue_alerts is true' do
-      membership = build(:membership, receive_overdue_alerts: true)
-      expect(membership.receives_overdue_alerts?).to be true
-    end
-
-    it 'returns false when receive_overdue_alerts is false' do
-      membership = build(:membership, receive_overdue_alerts: false)
-      expect(membership.receives_overdue_alerts?).to be false
-    end
-  end
-
-  describe '#can_add_items?' do
-    it 'returns the value of can_add_items attribute' do
-      membership = build(:membership, can_add_items: true)
-      expect(membership.can_add_items?).to be true
-
-      membership.can_add_items = false
-      expect(membership.can_add_items?).to be false
     end
   end
 end

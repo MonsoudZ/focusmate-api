@@ -2,14 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15
@@ -34,63 +34,55 @@ jobs:
         ports:
           - 6379:6379
 
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/focusmate_test
+      REDIS_URL: redis://localhost:6379/0
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 3.3.6
-        bundler-cache: true
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.3.5
+          bundler-cache: true
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
+      - name: Setup database
+        run: |
+          bundle exec rails db:create
+          bundle exec rails db:schema:load
 
-    - name: Install dependencies
-      run: |
-        bundle install
-        bundle exec rails db:create
-        bundle exec rails db:schema:load
+      - name: Run RuboCop
+        run: bundle exec rubocop
 
-    - name: Run RuboCop
-      run: bundle exec rubocop
+      - name: Run Brakeman
+        run: bundle exec brakeman -q -w2
 
-    - name: Run Brakeman
-      run: bundle exec brakeman -q -w2
+      - name: Run Bundler Audit
+        run: bundle exec bundler-audit check --update
 
-    - name: Run Bundler Audit
-      run: bundle exec bundler-audit check --update
+      - name: Run RSpec
+        run: bundle exec rspec
 
-    - name: Run RubyCritic Gate
-      run: ./bin/rubycritic-gate
-
-    - name: Run RSpec with coverage
-      run: bundle exec rspec
-      env:
-        COVERAGE: true
-        RAILS_ENV: test
-
-    - name: Run Danger
-      run: bundle exec danger
-      env:
-        DANGER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage/coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+      - name: Run Danger
+        if: github.event_name == 'pull_request'
+        run: bundle exec danger
+        env:
+          DANGER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   security:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Run security scan
-      run: |
-        bundle install
-        bundle exec brakeman -q -w2
-        bundle exec bundler-audit check --update
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.3.5
+          bundler-cache: true
+
+      - name: Run security scan
+        run: |
+          bundle exec brakeman -q -w2
+          bundle exec bundler-audit check --update

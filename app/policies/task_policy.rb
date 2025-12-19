@@ -2,55 +2,39 @@
 
 class TaskPolicy < ApplicationPolicy
   def show?
-    return false unless record
-
-    if record.respond_to?(:status) && record.status.to_s == "deleted"
-      return false unless user
-      return record.list.user_id == user.id
-    end
-
-    record.visible_to?(user)
+    return false unless user && record
+    return false if record.deleted?
+    return false unless record.list
+    record.list.accessible_by?(user)
   end
 
   def create?
     return false unless user && record
-    record.list.accessible_by?(user) && record.list.can_edit?(user)
+    return false unless record.list
+    record.list.can_edit?(user)
   end
 
   def update?
-    can_mutate? && record.list.can_edit?(user)
+    return false unless user && record
+    return false if record.deleted?
+    return false unless record.list
+    record.list.can_edit?(user)
   end
 
   def destroy?
-    can_mutate? && record.list.can_edit?(user)
-  end
-
-  def complete?
-    can_mutate? && record.list.can_edit?(user)
-  end
-
-  def reassign?
-    can_mutate? && record.list.can_edit?(user)
-  end
-
-  private
-
-  def can_mutate?
-    return false unless user && record
-    record.visible_to?(user)
+    update?
   end
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      accessible_list_ids = List
-                              .left_outer_joins(:memberships)
-                              .where("lists.user_id = :uid OR memberships.user_id = :uid", uid: user.id)
-                              .select(:id)
+      list_ids = List
+                   .left_outer_joins(:memberships)
+                   .where("lists.user_id = :uid OR memberships.user_id = :uid", uid: user.id)
+                   .where(deleted_at: nil)
+                   .select(:id)
 
       scope.where(deleted_at: nil)
-           .where(list_id: accessible_list_ids)
-           .includes(:list)
-           .select { |task| task.visible_to?(user) }
+           .where(list_id: list_ids)
     end
   end
 end

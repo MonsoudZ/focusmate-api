@@ -1,32 +1,7 @@
 :concurrency: 5
 :queues:
-  - critical    # Blocking notifications
-  - default     # Normal notifications
-  - low         # Summaries, cleanup
-
-# Schedule recurring jobs
-:schedule:
-  item_escalation_worker:
-    cron: '*/5 * * * *'  # Every 5 minutes
-    class: ItemEscalationWorker
-    queue: critical
-    
-  daily_summary_worker:
-    cron: '0 * * * *'    # Every hour
-    class: DailySummaryWorker
-    queue: default
-    
-  recurring_task_generator_worker:
-    cron: '0 0 * * *'    # Daily at midnight
-    class: RecurringTaskGeneratorWorker
-    queue: default
-    
-  cleanup_old_notifications_worker:
-    cron: '0 2 * * *'    # Daily at 2am
-    class: CleanupOldNotificationsWorker
-    queue: low
-    
-  cleanup_completed_tasks_worker:
-    cron: '0 3 * * 0'    # Weekly on Sunday at 3am
-    class: CleanupCompletedTasksWorker
-    queue: low
+  - critical
+  - notifications
+  - maintenance
+  - default
+  - low

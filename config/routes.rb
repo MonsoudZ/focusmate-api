@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "sidekiq/web"
-require "sidekiq-scheduler/web"
 
 Rails.application.routes.draw do
   # ----------------------------
@@ -30,12 +29,9 @@ Rails.application.routes.draw do
   namespace :api, defaults: { format: :json } do
     namespace :v1 do
       resources :devices, only: %i[create destroy]
-
       resources :tasks, only: %i[index]
-
       resources :lists do
         resources :memberships, only: %i[index create update destroy]
-
         resources :tasks do
           member do
             patch :complete

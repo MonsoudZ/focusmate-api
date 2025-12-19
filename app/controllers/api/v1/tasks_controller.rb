@@ -7,20 +7,19 @@ module Api
 
       before_action :set_list, only: [ :index, :create ]
       before_action :set_task, only: [ :show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign ]
-      before_action :authorize_task_access, only: [ :show ]
-      before_action :authorize_task_edit, only: [ :update, :destroy ]
+
+      after_action :verify_authorized, except: [ :index ]
+      after_action :verify_policy_scoped, only: [ :index ]
 
       # GET /api/v1/tasks
       def index
-        tasks = if params[:list_id]
-                  @list.tasks.where(parent_task_id: nil).not_deleted
-        else
-                  Task.joins(:list)
-                      .where(lists: { user_id: current_user.id })
-                      .where(parent_task_id: nil)
-                      .not_deleted
+        tasks = policy_scope(Task)
+
+        if params[:list_id]
+          tasks = tasks.where(list_id: @list.id)
         end
 
+        tasks = tasks.where(parent_task_id: nil).not_deleted
         tasks = apply_filters(tasks)
         tasks = apply_ordering(tasks)
         result = paginate(tasks, page: params[:page], per_page: params[:per_page])
@@ -34,6 +33,7 @@ module Api
 
       # GET /api/v1/lists/:list_id/tasks/:id
       def show
+        authorize @task
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
 
@@ -43,7 +43,8 @@ module Api
           return render json: { error: { message: "Bad Request" } }, status: :bad_request
         end
 
-        ensure_list_access!
+        @list ||= current_user.owned_lists.first
+        authorize @list, :update?
 
         task = TaskCreationService.new(@list, current_user, task_params).call
         render json: TaskSerializer.new(task, current_user: current_user).as_json, status: :created
@@ -51,30 +52,35 @@ module Api
 
       # PATCH /api/v1/lists/:list_id/tasks/:id
       def update
+        authorize @task
         TaskUpdateService.new(task: @task, user: current_user).update!(attributes: task_params)
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
 
       # DELETE /api/v1/lists/:list_id/tasks/:id
       def destroy
+        authorize @task
         @task.destroy
         head :no_content
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/complete
       def complete
+        authorize @task, :update?
         TaskCompletionService.new(task: @task, user: current_user).complete!
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/reopen
       def reopen
+        authorize @task, :update?
         TaskCompletionService.new(task: @task, user: current_user).uncomplete!
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/snooze
       def snooze
+        authorize @task, :update?
         duration = params[:duration].to_i
         duration = 60 if duration <= 0
 
@@ -86,6 +92,7 @@ module Api
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/assign
       def assign
+        authorize @task, :update?
         unless params[:assigned_to].present?
           return render json: { error: { message: "assigned_to is required" } }, status: :bad_request
         end
@@ -96,6 +103,7 @@ module Api
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/unassign
       def unassign
+        authorize @task, :update?
         @task.update!(assigned_to_id: nil)
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
@@ -107,7 +115,7 @@ module Api
 
         if list_id.present?
           @list = List.find(list_id)
-          unless @list.can_view?(current_user)
+          unless @list.accessible_by?(current_user)
             render json: { error: { message: "Forbidden" } }, status: :forbidden
           end
         end
@@ -115,29 +123,6 @@ module Api
 
       def set_task
         @task = Task.find(params[:id])
-      end
-
-      def authorize_task_access
-        unless @task.list.can_view?(current_user) && @task.visible_to?(current_user)
-          render json: { error: { message: "Forbidden" } }, status: :forbidden
-        end
-      end
-
-      def authorize_task_edit
-        unless @task.editable_by?(current_user)
-          render json: { error: { message: "Forbidden" } }, status: :forbidden
-        end
-      end
-
-      def ensure_list_access!
-        return if @list&.can_edit?(current_user)
-
-        fallback_list = current_user.owned_lists.first
-        if fallback_list&.can_edit?(current_user)
-          @list = fallback_list
-        else
-          render json: { error: { message: "Forbidden" } }, status: :forbidden
-        end
       end
 
       def empty_json_body?

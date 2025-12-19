@@ -15,8 +15,6 @@ RSpec.describe TaskPolicy, type: :policy do
     it { expect(subject.show?).to be true }
     it { expect(subject.create?).to be true }
     it { expect(subject.update?).to be true }
-    it { expect(subject.complete?).to be true }
-    it { expect(subject.reassign?).to be true }
     it { expect(subject.destroy?).to be true }
   end
 
@@ -36,8 +34,6 @@ RSpec.describe TaskPolicy, type: :policy do
 
     it "blocks mutations" do
       expect(subject.update?).to be false
-      expect(subject.complete?).to be false
-      expect(subject.reassign?).to be false
       expect(subject.destroy?).to be false
     end
   end
@@ -58,7 +54,10 @@ RSpec.describe TaskPolicy, type: :policy do
 
 
   describe "deleted lists" do
-    before { list.soft_delete! }
+    before do
+      list.soft_delete!
+      task.reload
+    end
 
     it "blocks access entirely" do
       policy = described_class.new(owner, task)
