@@ -4,8 +4,8 @@
     "builder": "nixpacks"
   },
   "deploy": {
-    "startCommand": "bundle exec rails db:migrate && bundle exec puma -C config/puma.rb",
+    "startCommand": "bundle exec rails db:prepare && bundle exec puma -C config/puma.rb",
     "healthcheckPath": "/health/live",
-    "healthcheckTimeout": 30
+    "healthcheckTimeout": 60
   }
 }
