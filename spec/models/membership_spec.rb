@@ -3,14 +3,10 @@ require 'rails_helper'
 RSpec.describe Membership, type: :model do
   let(:user) { create(:user) }
   let(:list) { create(:list) }
-  let(:coach) { create(:user) }
-  let(:client) { create(:user) }
-  let(:coaching_relationship) { create(:coaching_relationship, coach: coach, client: client, status: :active) }
 
   describe 'associations' do
     it { should belong_to(:list) }
     it { should belong_to(:user) }
-    it { should belong_to(:coaching_relationship).optional }
   end
 
   describe 'validations' do
@@ -76,18 +72,6 @@ RSpec.describe Membership, type: :model do
     it 'returns false for viewer role' do
       membership = build(:membership, role: 'viewer')
       expect(membership.can_invite?).to be false
-    end
-  end
-
-  describe '#coach_membership?' do
-    it 'returns true when coaching_relationship_id is present' do
-      membership = create(:membership, list: list, user: coach, role: 'editor', coaching_relationship: coaching_relationship)
-      expect(membership.coach_membership?).to be true
-    end
-
-    it 'returns false when coaching_relationship_id is nil' do
-      membership = create(:membership, list: list, user: user, role: 'editor')
-      expect(membership.coach_membership?).to be false
     end
   end
 

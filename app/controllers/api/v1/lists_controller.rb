@@ -28,7 +28,7 @@ module Api
         authorize List
 
         render json: {
-          lists: lists.order(updated_at: :desc).map { |l| ListSerializer.as_json(l) },
+          lists: lists.order(updated_at: :desc).map { |l| ListSerializer.new(l, current_user: current_user).as_json },
           tombstones: [] # TODO: return tombstones if you implement soft-delete syncing
         }, status: :ok
       end
@@ -37,7 +37,7 @@ module Api
       def show
         authorize @list
 
-        render json: ListSerializer.as_json(@list, include_tasks: true), status: :ok
+        render json: ListSerializer.new(@list, current_user: current_user, include_tasks: true).as_json, status: :ok
       end
 
       # POST /api/v1/lists
@@ -45,7 +45,7 @@ module Api
         authorize List
 
         list = ListCreationService.new(user: current_user, params: list_params).create!
-        render json: ListSerializer.as_json(list), status: :created
+        render json: ListSerializer.new(list, current_user: current_user).as_json, status: :created
       rescue ListCreationService::ValidationError => e
         render json: { errors: e.details }, status: :unprocessable_content
       end
@@ -55,7 +55,7 @@ module Api
         authorize @list
 
         ListUpdateService.new(list: @list, user: current_user).update!(attributes: list_params)
-        render json: ListSerializer.as_json(@list), status: :ok
+        render json: ListSerializer.new(@list, current_user: current_user).as_json, status: :ok
       rescue ListUpdateService::UnauthorizedError => e
         render_error(e.message, status: :forbidden)
       rescue ListUpdateService::ValidationError => e

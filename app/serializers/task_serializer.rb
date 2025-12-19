@@ -63,9 +63,6 @@ class TaskSerializer
       visibility: task.visibility == "visible_to_all",
       can_change_visibility: can_change_visibility?,
 
-      # Escalation
-      escalation: escalation_data,
-
       # Subtasks
       has_subtasks: has_subtasks?,
       subtasks_count: subtasks_count,
@@ -137,21 +134,7 @@ class TaskSerializer
 
   def can_change_visibility?
     return false unless current_user
-    # Only creator, list owner, or coaches can change visibility
-    task.creator == current_user || task.list.user == current_user || (current_user.coach? && task.list.coach?(current_user))
-  end
-
-  def escalation_data
-    return nil unless task.escalation
-
-    {
-      level: task.escalation.escalation_level,
-      notification_count: task.escalation.notification_count,
-      blocking_app: task.escalation.blocking_app,
-      coaches_notified: task.escalation.coaches_notified,
-      became_overdue_at: task.escalation.became_overdue_at&.iso8601,
-      last_notification_at: task.escalation.last_notification_at&.iso8601
-    }
+    task.creator == current_user || task.list.user == current_user
   end
 
   def has_subtasks?

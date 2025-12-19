@@ -20,87 +20,51 @@ class TaskPolicy < ApplicationPolicy
   end
 
   def update?
-    return false unless user
-    return false unless record
-    # User can update tasks they can see and have edit permissions for
-    # But coaches cannot edit client's tasks
-    if user.coach? && record.creator != user && record.list.user != user
-      return false
-    end
-    record.visible_to?(user) && record.list.editable_by?(user)
+    can_mutate? && record.list.editable_by?(user)
   end
 
   def destroy?
-    return false unless user
-    return false unless record
-    # User can delete tasks they can see and have delete permissions for
-    # But coaches cannot delete client's tasks
-    if user.coach? && record.creator != user && record.list.user != user
-      return false
-    end
-    record.visible_to?(user) && record.list.can_delete_items_by?(user)
+    can_mutate? && record.list.can_delete_items_by?(user)
   end
 
   def complete?
-    return false unless user
-    return false unless record
-    # User can complete tasks they can see and have edit permissions for
-    # But coaches cannot complete client's tasks
-    if user.coach? && record.creator != user && record.list.user != user
-      return false
-    end
-    record.visible_to?(user) && record.list.editable_by?(user)
+    can_mutate? && record.list.editable_by?(user)
   end
 
   def reassign?
-    return false unless user
-    return false unless record
-    # User can reassign tasks they can see and have edit permissions for
-    # But coaches cannot reassign client's tasks
-    if user.coach? && record.creator != user && record.list.user != user
-      return false
-    end
-    record.visible_to?(user) && record.list.editable_by?(user)
+    can_mutate? && record.list.editable_by?(user)
   end
 
   def change_visibility?
-    return false unless user
-    return false unless record
+    return false unless user && record
+    # Only task creator or list owner can change visibility
+    record.creator == user || record.list.user == user
+  end
 
-    # Task creator can change visibility
-    return true if record.creator == user
+  private
 
-    # List owner can change visibility
-    return true if record.list.user == user
+  def can_mutate?
+    return false unless user && record
+    return false if coach_blocked?
+    record.visible_to?(user)
+  end
 
-    # Coach can change visibility of client's tasks
-    if user.coach?
-      # Check if there's a coaching relationship with the task creator or list owner
-      return true if record.creator && user.clients.include?(record.creator)
-      return true if record.list.user && user.clients.include?(record.list.user)
-    end
-
-    false
+  def coach_blocked?
+    user.coach? && record.creator != user && record.list.user != user
   end
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      # Lists the user can see (owner_id OR user_id) OR accepted shares
+      # Lists the user owns or is a member of
       accessible_list_ids = List
-        .left_outer_joins(:list_shares)
-        .where(
-          "lists.user_id = :uid " \
-          "OR (list_shares.user_id = :uid AND list_shares.status = 'accepted')",
-          uid: user.id
-        )
+        .left_outer_joins(:memberships)
+        .where("lists.user_id = :uid OR memberships.user_id = :uid", uid: user.id)
         .select(:id)
 
-      rel = scope.where("tasks.deleted_at IS NULL")
-                 .where("tasks.list_id IN (?)", accessible_list_ids)
-                 .includes(:list) # avoid N+1 when visible_to? looks at list
-
-      # visible_to? is complex; keep it in Ruby
-      rel.select { |task| task.visible_to?(user) }
+      scope.where(deleted_at: nil)
+           .where(list_id: accessible_list_ids)
+           .includes(:list)
+           .select { |task| task.visible_to?(user) }
     end
   end
 end

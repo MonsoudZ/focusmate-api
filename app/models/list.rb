@@ -5,9 +5,6 @@ class List < ApplicationRecord
   has_many :members, through: :memberships, source: :user
   has_many :tasks, dependent: :destroy
 
-  # Coaching links
-  has_many :coaching_memberships, -> { where.not(coaching_relationship_id: nil) }, class_name: "Membership"
-
   # Soft deletion
   default_scope { where(deleted_at: nil) }
   scope :with_deleted, -> { unscope(where: :deleted_at) }
@@ -72,37 +69,12 @@ class List < ApplicationRecord
   def can_edit?(user)
     role_for(user).in?(%w[owner editor])
   end
+  alias_method :editable_by?, :can_edit?
+  alias_method :can_add_items_by?, :can_edit?
+  alias_method :can_delete_items_by?, :can_edit?
 
   def can_view?(user)
     role_for(user).present?
-  end
-
-  def can_invite?(user)
-    role_for(user).in?(%w[owner editor])
-  end
-
-  def can_add_items?(user)
-    role_for(user).in?(%w[owner editor])
-  end
-
-  def viewable_by?(user)
-    can_view?(user)
-  end
-
-  def editable_by?(user)
-    return true if self.user == user
-    return true if can_edit?(user)
-  end
-
-  def can_add_items_by?(user)
-    return true if self.user == user
-    return true if can_add_items?(user)
-  end
-
-  def can_delete_items_by?(user)
-    return true if self.user == user
-    return true if can_edit?(user)
-
   end
 
   # Membership helpers

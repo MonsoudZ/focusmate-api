@@ -60,7 +60,7 @@ RSpec.describe "API surface", type: :request do
       post "/api/v1/lists/1/tasks"
       expect(response.status).not_to be_between(404, 410).inclusive
 
-      post "/api/v1/lists/1/tasks/1/complete"
+      patch "/api/v1/lists/1/tasks/1/complete"
       expect(response.status).not_to be_between(404, 410).inclusive
     end
 

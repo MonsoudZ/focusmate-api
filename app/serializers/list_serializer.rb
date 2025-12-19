@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ListSerializer
   attr_reader :list, :current_user, :options
 
@@ -12,16 +14,15 @@ class ListSerializer
       id: list.id,
       name: list.name,
       description: list.description,
-      user: UserSerializer.new(list.user).as_json,
+      visibility: list.visibility,
+      user: UserSerializer.one(list.user),
       role: role_for_current_user,
-      shared_with_coaches: shared_coaches,
-      tasks_count: tasks_count,
-      overdue_tasks_count: overdue_tasks_count,
+      tasks_count: list.tasks.count,
       created_at: list.created_at.iso8601,
       updated_at: list.updated_at.iso8601
     }.tap do |hash|
       if options[:include_tasks]
-        hash[:tasks] = list.tasks.select { |task| task.visible_to?(current_user) }.map do |task|
+        hash[:tasks] = list.tasks.map do |task|
           TaskSerializer.new(task, current_user: current_user).as_json
         end
       end
@@ -33,24 +34,12 @@ class ListSerializer
   def role_for_current_user
     if list.user == current_user
       "owner"
-    elsif current_user.coach? && list.shared_with?(current_user)
-      "coach"
-    else
+    elsif list.memberships.exists?(user_id: current_user.id, role: "editor")
+      "editor"
+    elsif list.memberships.exists?(user_id: current_user.id)
       "viewer"
+    else
+      nil
     end
-  end
-
-  def shared_coaches
-    return [] if list.user != current_user
-
-    list.coaches.map { |coach| UserSerializer.new(coach).as_json }
-  end
-
-  def tasks_count
-    list.tasks.select { |task| task.visible_to?(current_user) }.count
-  end
-
-  def overdue_tasks_count
-    list.tasks.select { |task| task.visible_to?(current_user) && task.overdue? }.count
   end
 end

@@ -11,21 +11,16 @@ RSpec.describe "Api::V1::Devices", type: :request do
   end
 
   def auth_headers(user, password: "password123")
-    post "/api/v1/login",
-         params: {
-           authentication: {
-             email: user.email,
-             password: password
-           }
-         }.to_json,
+    # Use the Devise-JWT dispatch endpoint (configured in devise.rb)
+    post "/api/v1/auth/sign_in",
+         params: { user: { email: user.email, password: password } }.to_json,
          headers: { "CONTENT_TYPE" => "application/json", "ACCEPT" => "application/json" }
 
-    body = JSON.parse(response.body)
-    token = body["token"] || body["jwt"]
+    # Token is in the Authorization response header (Devise-JWT)
+    auth = response.headers["Authorization"]
+    raise "Missing Authorization header in login response" if auth.blank?
 
-    raise "Missing token in login response" if token.blank?
-
-    { "Authorization" => "Bearer #{token}", "ACCEPT" => "application/json" }
+    { "Authorization" => auth, "ACCEPT" => "application/json" }
   end
 
   let(:headers) { auth_headers(user) }
@@ -38,7 +33,7 @@ RSpec.describe "Api::V1::Devices", type: :request do
           device_name: "iPhone",
           os_version: "17.3",
           app_version: "1.2.3",
-          timezone: "America/New_York"
+          bundle_id: "com.focusmate.app"
         }
       }
     end
@@ -52,10 +47,11 @@ RSpec.describe "Api::V1::Devices", type: :request do
 
       returned = json["device"]
       expect(returned).to be_present
-      expect(returned["apns_token"]).to eq(payload[:device][:apns_token])
+      expect(returned["id"]).to be_present
 
       device = Device.find(returned["id"])
       expect(device.user_id).to eq(user.id)
+      expect(device.apns_token).to eq(payload[:device][:apns_token])
     end
 
     it "is idempotent by apns_token" do
@@ -83,7 +79,7 @@ RSpec.describe "Api::V1::Devices", type: :request do
         device_name: "iPhone",
         os_version: "17.0",
         app_version: "1.0.0",
-        timezone: "America/New_York"
+        bundle_id: "com.focusmate.app"
       )
     end
 
@@ -102,7 +98,7 @@ RSpec.describe "Api::V1::Devices", type: :request do
         device_name: "Pixel",
         os_version: "14",
         app_version: "1.0.0",
-        timezone: "America/New_York"
+        bundle_id: "com.focusmate.app"
       )
 
       delete "/api/v1/devices/#{other_device.id}", headers: headers

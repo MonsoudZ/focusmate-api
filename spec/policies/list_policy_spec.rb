@@ -57,28 +57,37 @@ RSpec.describe ListPolicy, type: :policy do
     end
   end
 
-  describe '#invite_member?' do
+  describe '#manage_memberships?' do
     it 'allows the list owner' do
       policy = described_class.new(list_owner, list)
-      expect(policy.invite_member?).to be true
+      expect(policy.manage_memberships?).to be true
     end
 
-    it 'denies access to users without invite access' do
+    it 'denies access to non-owners' do
       policy = described_class.new(other_user, list)
-      expect(policy.invite_member?).to be false
+      expect(policy.manage_memberships?).to be false
     end
   end
 
   describe 'Scope' do
     describe '#resolve' do
-      it 'returns lists accessible by the user' do
-        accessible_lists = double('accessible_lists')
-        allow(List).to receive(:accessible_by).with(list_owner).and_return(accessible_lists)
+      it 'returns lists owned by the user' do
+        owned_list = create(:list, user: list_owner)
+        other_list = create(:list, user: other_user)
 
         scope = ListPolicy::Scope.new(list_owner, List).resolve
 
-        expect(List).to have_received(:accessible_by).with(list_owner)
-        expect(scope).to eq(accessible_lists)
+        expect(scope).to include(owned_list)
+        expect(scope).not_to include(other_list)
+      end
+
+      it 'returns lists user is a member of' do
+        member_list = create(:list, user: other_user)
+        create(:membership, list: member_list, user: list_owner, role: "viewer")
+
+        scope = ListPolicy::Scope.new(list_owner, List).resolve
+
+        expect(scope).to include(member_list)
       end
     end
   end

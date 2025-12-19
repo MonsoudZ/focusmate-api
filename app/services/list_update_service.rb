@@ -24,15 +24,9 @@ class ListUpdateService
   private
 
   def validate_authorization!
-    unless can_edit_list?
+    unless @list.can_edit?(@user)
       raise UnauthorizedError, "You do not have permission to edit this list"
     end
-  end
-
-  def can_edit_list?
-    return true if @list.user_id == @user.id
-    return true if @list.list_shares.exists?(user_id: @user.id, can_edit: true)
-    false
   end
 
   def perform_update(attributes)

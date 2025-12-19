@@ -95,25 +95,11 @@ RSpec.describe User, type: :model do
       expect(user.devices).to be_a(ActiveRecord::Associations::CollectionProxy)
     end
 
-    it 'has many saved_locations' do
-      expect(user).to respond_to(:saved_locations)
-      expect(user.saved_locations).to be_a(ActiveRecord::Associations::CollectionProxy)
-    end
-
     it 'has many user_locations' do
       expect(user).to respond_to(:user_locations)
       expect(user.user_locations).to be_a(ActiveRecord::Associations::CollectionProxy)
     end
 
-    it 'has many coaching_relationships as coach' do
-      expect(user).to respond_to(:coaching_relationships_as_coach)
-      expect(user.coaching_relationships_as_coach).to be_a(ActiveRecord::Associations::CollectionProxy)
-    end
-
-    it 'has many coaching_relationships as client' do
-      expect(user).to respond_to(:coaching_relationships_as_client)
-      expect(user.coaching_relationships_as_client).to be_a(ActiveRecord::Associations::CollectionProxy)
-    end
   end
 
   describe 'scopes' do
@@ -159,17 +145,6 @@ RSpec.describe User, type: :model do
       expect(user.current_location).to be_nil
     end
 
-    it 'checks if user is at specific saved location' do
-      saved_location = SavedLocation.create!(user: user, name: "Test Location", latitude: 40.7128, longitude: -74.0060, radius_meters: 100)
-      UserLocation.create!(user: user, latitude: 40.7128, longitude: -74.0060, recorded_at: Time.current)
-      # Test with explicit coordinates
-      expect(user.at_location?(saved_location, 40.7128, -74.0060)).to be true
-    end
-
-    it 'returns false when not at saved location' do
-      saved_location = SavedLocation.create!(user: user, name: "Test Location", latitude: 40.7128, longitude: -74.0060, radius_meters: 100)
-      expect(user.at_location?(saved_location)).to be false
-    end
   end
 
   describe 'callbacks' do
@@ -220,53 +195,6 @@ RSpec.describe User, type: :model do
       expect(coach.client?).to be false
       expect(client.coach?).to be false
       expect(client.client?).to be true
-    end
-  end
-
-  describe 'coaching relationships' do
-    let(:coach) { create(:user, role: "coach") }
-    let(:client) { create(:user, role: "client") }
-
-    it 'has coaching relationships as coach' do
-      relationship = create(:coaching_relationship, coach: coach, client: client)
-      expect(coach.coaching_relationships_as_coach).to include(relationship)
-    end
-
-    it 'has coaching relationships as client' do
-      relationship = create(:coaching_relationship, coach: coach, client: client)
-      expect(client.coaching_relationships_as_client).to include(relationship)
-    end
-
-    it 'checks coaching relationship with another user' do
-      relationship = create(:coaching_relationship, coach: coach, client: client, status: :active)
-      expect(coach.coaching_relationship_with?(client)).to be true
-      expect(client.coaching_relationship_with?(coach)).to be true
-    end
-
-    it 'gets coaching relationship with another user' do
-      relationship = create(:coaching_relationship, coach: coach, client: client, status: :active)
-      expect(coach.coaching_relationship_with(client)).to eq(relationship)
-      expect(client.coaching_relationship_with(coach)).to eq(relationship)
-    end
-
-    it 'gets active coaching relationship with specific coach as client' do
-      relationship = create(:coaching_relationship, coach: coach, client: client, status: :active)
-      expect(client.relationship_with_coach(coach)).to eq(relationship)
-    end
-
-    it 'returns nil when no active relationship with coach' do
-      create(:coaching_relationship, coach: coach, client: client, status: :pending)
-      expect(client.relationship_with_coach(coach)).to be_nil
-    end
-
-    it 'gets active coaching relationship with specific client as coach' do
-      relationship = create(:coaching_relationship, coach: coach, client: client, status: :active)
-      expect(coach.relationship_with_client(client)).to eq(relationship)
-    end
-
-    it 'returns nil when no active relationship with client' do
-      create(:coaching_relationship, coach: coach, client: client, status: :pending)
-      expect(coach.relationship_with_client(client)).to be_nil
     end
   end
 

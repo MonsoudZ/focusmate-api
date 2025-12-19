@@ -9,10 +9,11 @@ module Api
         device = Devices::Upsert.call!(
           user: current_user,
           apns_token: device_params[:apns_token],
+          bundle_id: device_params[:bundle_id],
+          platform: device_params[:platform] || "ios",
           device_name: device_params[:device_name],
           os_version: device_params[:os_version],
-          app_version: device_params[:app_version],
-          timezone: device_params[:timezone]
+          app_version: device_params[:app_version]
         )
 
         render json: { device: DeviceSerializer.new(device).as_json }, status: :created
@@ -32,10 +33,11 @@ module Api
       def device_params
         params.require(:device).permit(
           :apns_token,
+          :bundle_id,
+          :platform,
           :device_name,
           :os_version,
-          :app_version,
-          :timezone
+          :app_version
         )
       end
     end

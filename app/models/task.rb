@@ -112,12 +112,6 @@ class Task < ApplicationRecord
   # Business logic
   def complete!
     update!(status: :done, completed_at: Time.current)
-    escalation&.update!(
-      escalation_level: "normal",
-      notification_count: 0,
-      blocking_app: false,
-      blocking_started_at: nil
-    )
   end
 
   def uncomplete!

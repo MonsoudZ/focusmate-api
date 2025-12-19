@@ -71,19 +71,6 @@ RSpec.describe List, type: :model do
       expect(list.members).to include(other_user)
     end
 
-    it 'has many list_shares' do
-      other_user = create(:user, email: "shared@example.com")
-      list_share = create(:list_share, list: list, user: other_user)
-
-      expect(list.list_shares).to include(list_share)
-    end
-
-    it 'has many shared_users through list_shares' do
-      other_user = create(:user, email: "shared@example.com")
-      create(:list_share, list: list, user: other_user)
-
-      expect(list.shared_users).to include(other_user)
-    end
   end
 
   describe 'methods' do
@@ -146,57 +133,6 @@ RSpec.describe List, type: :model do
     it 'returns nil role for non-member' do
       other_user = create(:user, email: "nonmember@example.com")
       expect(list.role_for(other_user)).to be_nil
-    end
-
-    it 'checks if user is coach' do
-      coach = create(:user, role: "coach")
-      client = create(:user, role: "client")
-      create(:coaching_relationship, coach: coach, client: client, status: :active)
-      create(:membership, list: list, user: coach, role: "editor")
-
-      expect(list.coach?(coach)).to be true
-      expect(list.coach?(client)).to be false
-    end
-
-    it 'shares list with user' do
-      other_user = create(:user, email: "shared@example.com")
-      list.share_with!(other_user, {
-        can_view: true,
-        can_edit: true,
-        can_add_items: true,
-        can_delete_items: false
-      })
-
-      list_share = list.list_shares.find_by(user: other_user)
-      expect(list_share).to be_present
-      expect(list_share.can_view).to be true
-      expect(list_share.can_edit).to be true
-      expect(list_share.can_add_items).to be true
-      expect(list_share.can_delete_items).to be false
-    end
-
-    it 'unshares list with user' do
-      other_user = create(:user, email: "shared@example.com")
-      create(:list_share, list: list, user: other_user)
-
-      list.unshare_with!(other_user)
-      expect(list.list_shares.find_by(user: other_user)).to be_nil
-    end
-
-    it 'checks if list is shared with user' do
-      other_user = create(:user, email: "shared@example.com")
-      create(:list_share, list: list, user: other_user)
-
-      expect(list.shared_with?(other_user)).to be true
-    end
-
-    it 'returns shared users' do
-      other_user1 = create(:user, email: "shared1@example.com")
-      other_user2 = create(:user, email: "shared2@example.com")
-      create(:list_share, list: list, user: other_user1)
-      create(:list_share, list: list, user: other_user2)
-
-      expect(list.shared_users).to include(other_user1, other_user2)
     end
 
     it 'returns members' do
@@ -346,8 +282,6 @@ RSpec.describe List, type: :model do
 
   describe 'permissions' do
     let(:other_user) { create(:user, email: "other@example.com") }
-    let(:coach) { create(:user, role: "coach") }
-    let(:client) { create(:user, role: "client") }
 
     it 'allows owner full access' do
       expect(list.can_view?(user)).to be true
@@ -370,23 +304,11 @@ RSpec.describe List, type: :model do
 
       expect(list.can_view?(other_user)).to be true
       expect(list.can_edit?(other_user)).to be false
-      expect(list.can_add_items_by?(other_user)).to be false
-      expect(list.can_delete_items_by?(other_user)).to be false
     end
 
     it 'denies access to non-members' do
-      expect(list.can_view?(other_user)).to be false
+      expect(list.can_view?(other_user)).to be_falsey
       expect(list.can_edit?(other_user)).to be false
-      expect(list.can_add_items_by?(other_user)).to be false
-      expect(list.can_delete_items_by?(other_user)).to be false
-    end
-
-    it 'handles coaching relationships' do
-      create(:coaching_relationship, coach: coach, client: client, status: :active)
-      create(:membership, list: list, user: coach, role: "editor")
-
-      expect(list.coach?(coach)).to be true
-      expect(list.coach?(client)).to be false
     end
   end
 

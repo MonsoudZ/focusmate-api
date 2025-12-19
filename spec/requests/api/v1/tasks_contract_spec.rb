@@ -7,13 +7,8 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
   let(:list) { create(:list, user: user) }
 
   def auth_headers_for(u, password: "password123")
-    post '/api/v1/login',
-         params: {
-           authentication: {
-             email: u.email,
-             password: password
-           }
-         }.to_json,
+    post '/api/v1/auth/sign_in',
+         params: { user: { email: u.email, password: password } }.to_json,
          headers: { 'CONTENT_TYPE' => 'application/json' }
 
     token = response.headers['Authorization']
@@ -92,12 +87,11 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
     end
   end
 
-  describe 'POST /api/v1/tasks' do
+  describe 'POST /api/v1/lists/:list_id/tasks' do
     let(:task_params) do
       {
         title: 'Test Task',
         description: 'A test task description',
-        list_id: list.id,
         due_at: 1.week.from_now.iso8601,
         visibility: 'visible_to_all'
       }
@@ -105,7 +99,7 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
 
     context 'with valid parameters' do
       it 'creates task and returns schema-compliant response' do
-        post '/api/v1/tasks', params: task_params, headers: auth_headers
+        post "/api/v1/lists/#{list.id}/tasks", params: task_params, headers: auth_headers
 
         expect(response).to have_http_status(:created)
         expect(response.content_type).to include('application/json')
@@ -122,7 +116,7 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
 
     context 'with invalid parameters' do
       it 'returns validation error' do
-        post '/api/v1/tasks', params: { title: '', list_id: list.id }, headers: auth_headers
+        post "/api/v1/lists/#{list.id}/tasks", params: { title: '' }, headers: auth_headers
 
         expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to include('application/json')
@@ -133,12 +127,12 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
     end
   end
 
-  describe 'GET /api/v1/tasks/:id' do
-    let(:task) { create(:task, list: list, creator: user) }
+  describe 'GET /api/v1/lists/:list_id/tasks/:id' do
+    let(:task) { create(:task, list: list, creator: user, visibility: "visible_to_all") }
 
     context 'with valid task ID' do
       it 'returns task details' do
-        get "/api/v1/tasks/#{task.id}", headers: auth_headers
+        get "/api/v1/lists/#{list.id}/tasks/#{task.id}", headers: auth_headers
 
         expect(response).to have_http_status(:ok)
         expect(response.content_type).to include('application/json')
@@ -153,7 +147,7 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
 
     context 'with non-existent task ID' do
       it 'returns 404 Not Found' do
-        get '/api/v1/tasks/99999', headers: auth_headers
+        get "/api/v1/lists/#{list.id}/tasks/99999", headers: auth_headers
 
         expect(response).to have_http_status(:not_found)
         expect(response.content_type).to include('application/json')

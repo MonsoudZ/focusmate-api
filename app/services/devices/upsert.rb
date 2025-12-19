@@ -19,10 +19,9 @@ module Devices
       raise BadRequest, "apns_token is required" if @token.blank?
 
       device = @user.devices.find_or_initialize_by(apns_token: @token)
-      device.platform = "ios" if device.respond_to?(:platform)
-      device.last_seen_at = Time.current if device.respond_to?(:last_seen_at)
-
       device.assign_attributes(@attrs)
+      device.platform ||= "ios"
+      device.last_seen_at = Time.current if device.respond_to?(:last_seen_at)
       device.save!
       device
     end

@@ -39,9 +39,9 @@ RSpec.describe ListUpdateService do
       end
     end
 
-    context 'when user has edit permissions via share' do
+    context 'when user has edit permissions via membership' do
       before do
-        create(:list_share, list: list, user: editor, can_edit: true, status: :accepted)
+        create(:membership, list: list, user: editor, role: "editor")
       end
 
       it 'updates the list successfully' do
@@ -65,9 +65,9 @@ RSpec.describe ListUpdateService do
       end
     end
 
-    context 'when user does not have edit permissions' do
+    context 'when user has viewer-only permissions' do
       before do
-        create(:list_share, list: list, user: unauthorized_user, can_edit: false, status: :accepted)
+        create(:membership, list: list, user: unauthorized_user, role: "viewer")
       end
 
       it 'raises UnauthorizedError' do

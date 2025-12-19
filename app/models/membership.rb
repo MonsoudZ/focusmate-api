@@ -18,11 +18,6 @@ class Membership < ApplicationRecord
     role == "editor"
   end
 
-  # Determine if this is a coach membership
-  def coach_membership?
-    coaching_relationship_id.present?
-  end
-
   # Check if this membership receives overdue alerts
   def receives_overdue_alerts?
     receive_overdue_alerts

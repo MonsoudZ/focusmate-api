@@ -1,8 +1,32 @@
 # frozen_string_literal: true
 
 class ListPolicy < ApplicationPolicy
+  class Scope < ApplicationPolicy::Scope
+    def resolve
+      # Lists the user owns OR is a member of
+      member_list_ids = Membership.where(user_id: user.id).select(:list_id)
+      scope.where(user_id: user.id).or(scope.where(id: member_list_ids))
+    end
+  end
+
+  def index?
+    true
+  end
+
   def show?
-    owner? || accepted_share?
+    owner? || member?
+  end
+
+  def create?
+    true
+  end
+
+  def update?
+    owner?
+  end
+
+  def destroy?
+    owner?
   end
 
   # OWNER ONLY
@@ -15,7 +39,8 @@ class ListPolicy < ApplicationPolicy
   def owner?
     record.user_id == user.id
   end
-  def manage_shares?
-    owner?
+
+  def member?
+    record.memberships.exists?(user_id: user.id)
   end
 end

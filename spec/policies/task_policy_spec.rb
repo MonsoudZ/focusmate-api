@@ -23,14 +23,15 @@ RSpec.describe TaskPolicy, type: :policy do
 
   describe "shared list permissions" do
     let(:viewer) { create(:user) }
+    let(:visible_task) { create(:task, list: list, creator: owner, visibility: "visible_to_all") }
 
     before do
-      list.share_with!(viewer, can_view: true)
+      create(:membership, list: list, user: viewer, role: "viewer")
     end
 
-    subject { described_class.new(viewer, task) }
+    subject { described_class.new(viewer, visible_task) }
 
-    it "allows viewing" do
+    it "allows viewing public tasks" do
       expect(subject.show?).to be true
     end
 
