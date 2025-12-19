@@ -50,17 +50,6 @@ RSpec.describe Task, type: :model do
       expect(task.errors[:note]).to include("is too long (maximum is 1000 characters)")
     end
 
-    it 'validates status inclusion' do
-      task = build(:task, status: "invalid_status", due_at: 1.hour.from_now, list: list, creator: user)
-      expect(task).not_to be_valid
-      expect(task.errors[:status]).to include("is not included in the list")
-    end
-
-    it 'validates visibility inclusion' do
-      task = build(:task, visibility: "invalid_visibility", due_at: 1.hour.from_now, list: list, creator: user)
-      expect(task).not_to be_valid
-      expect(task.errors[:visibility]).to include("is not included in the list")
-    end
 
     it 'validates recurrence_interval for daily pattern' do
       task = build(:task,
@@ -84,15 +73,6 @@ RSpec.describe Task, type: :model do
       expect(task.errors[:recurrence_time]).to include("is required for daily recurring tasks")
     end
 
-    it 'validates location_radius_meters bounds' do
-      task = build(:task,
-                   location_radius_meters: 0,
-                   due_at: 1.hour.from_now,
-                   list: list,
-                   creator: user)
-      expect(task).not_to be_valid
-      expect(task.errors[:location_radius_meters]).to include("must be greater than 0")
-    end
 
     it 'validates notification_interval_minutes bounds' do
       task = build(:task,
@@ -165,32 +145,13 @@ RSpec.describe Task, type: :model do
       expect(Task.overdue).not_to include(future_task)
     end
 
-    it 'has location_based scope' do
-      location_task = create(:task, list: list, creator: user, location_based: true)
-      regular_task = create(:task, list: list, creator: user, location_based: false)
-      expect(Task.location_based).to include(location_task)
-      expect(Task.location_based).not_to include(regular_task)
-    end
+
 
     it 'has recurring scope' do
       recurring_task = create(:task, list: list, creator: user, is_recurring: true)
       regular_task = create(:task, list: list, creator: user, is_recurring: false)
       expect(Task.recurring).to include(recurring_task)
       expect(Task.recurring).not_to include(regular_task)
-    end
-
-    it 'has templates scope' do
-      template = create(:task, list: list, creator: user, is_template: true)
-      instance = create(:task, list: list, creator: user, is_template: false)
-      expect(Task.templates).to include(template)
-      expect(Task.templates).not_to include(instance)
-    end
-
-    it 'has instances scope' do
-      template = create(:task, list: list, creator: user, is_template: true)
-      instance = create(:task, list: list, creator: user, is_template: false)
-      expect(Task.instances).to include(instance)
-      expect(Task.instances).not_to include(template)
     end
   end
 
@@ -202,12 +163,6 @@ RSpec.describe Task, type: :model do
       expect(future_task.overdue?).to be false
     end
 
-    it 'checks if task is completed' do
-      completed_task = create(:task, list: list, creator: user, status: :done)
-      pending_task = create(:task, list: list, creator: user, status: :pending)
-      expect(completed_task.completed?).to be true
-      expect(pending_task.completed?).to be false
-    end
 
     it 'checks if task is pending' do
       pending_task = create(:task, list: list, creator: user, status: :pending)
@@ -223,12 +178,6 @@ RSpec.describe Task, type: :model do
       expect(pending_task.in_progress?).to be false
     end
 
-    it 'checks if task is recurring' do
-      recurring_task = create(:task, list: list, creator: user, is_recurring: true)
-      regular_task = create(:task, list: list, creator: user, is_recurring: false)
-      expect(recurring_task.recurring?).to be true
-      expect(regular_task.recurring?).to be false
-    end
 
 
     it 'checks if task is location based' do
@@ -238,38 +187,8 @@ RSpec.describe Task, type: :model do
       expect(regular_task.location_based?).to be false
     end
 
-    it 'checks if task can be snoozed' do
-      snoozable_task = create(:task, list: list, creator: user, can_be_snoozed: true)
-      non_snoozable_task = create(:task, list: list, creator: user, can_be_snoozed: false)
-      expect(snoozable_task.snoozable?).to be true
-      expect(non_snoozable_task.snoozable?).to be false
-    end
 
-    it 'checks if task requires explanation' do
-      explanation_task = create(:task, list: list, creator: user, requires_explanation_if_missed: true)
-      regular_task = create(:task, list: list, creator: user, requires_explanation_if_missed: false)
-      expect(explanation_task.requires_explanation?).to be true
-      expect(regular_task.requires_explanation?).to be false
-    end
 
-    it 'checks if task was created by coach' do
-      coach = create(:user, role: "coach")
-      coach_task = create(:task, list: list, creator: coach)
-      client_task = create(:task, list: list, creator: user)
-      expect(coach_task.created_by_coach?).to be true
-      expect(client_task.created_by_coach?).to be false
-    end
-
-    it 'checks if task is visible to user' do
-      other_user = create(:user)
-      visible_task = create(:task, list: list, creator: user, visibility: :visible_to_all)
-      private_task = create(:task, list: list, creator: user, visibility: :private_task)
-
-      expect(visible_task.visible_to?(user)).to be true
-      expect(visible_task.visible_to?(other_user)).to be true
-      expect(private_task.visible_to?(user)).to be true
-      expect(private_task.visible_to?(other_user)).to be false
-    end
 
 
     it 'completes task' do

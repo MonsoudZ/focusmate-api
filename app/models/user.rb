@@ -1,22 +1,15 @@
-class User < ApplicationRecord
-  # Temporary: ignore legacy jti column until migration removing it has been
-  # deployed everywhere. This prevents Rails from trying to load/write it.
-  self.ignored_columns += [ "jti" ]
+# frozen_string_literal: true
 
-  # Include default devise modules. Others available are:
-  # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
+class User < ApplicationRecord
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable,
          :jwt_authenticatable, jwt_revocation_strategy: JwtDenylist
 
-  # Set default role on create
   before_create :set_default_role
 
   # Validations
   validates :timezone, presence: true
   validates :role, presence: true, inclusion: { in: %w[client coach] }
-  validates :latitude, numericality: { greater_than_or_equal_to: -90, less_than_or_equal_to: 90 }, allow_nil: true
-  validates :longitude, numericality: { greater_than_or_equal_to: -180, less_than_or_equal_to: 180 }, allow_nil: true
   validate :valid_timezone
 
   # Associations
@@ -25,148 +18,26 @@ class User < ApplicationRecord
   has_many :lists, through: :memberships, source: :list
   has_many :devices, dependent: :destroy
   has_many :created_tasks, class_name: "Task", foreign_key: "creator_id", dependent: :destroy
-  has_many :reviewed_tasks, class_name: "Task", foreign_key: "missed_reason_reviewed_by_id", dependent: :nullify
-  has_many :saved_locations, dependent: :destroy
-  has_many :user_locations, dependent: :destroy
-  has_many :notification_logs, dependent: :destroy
 
-  # NEW: Coaching-related methods
-
-  # Check if user is a coach
   def coach?
     role == "coach"
   end
 
-  # Check if user is a client
   def client?
     role == "client"
   end
 
-  # Get all coaching relationships
-
-  # Get active coaching relationships
-
-
-  # Get all clients (if user is a coach)
-  def all_clients
-    clients.distinct
-  end
-
-  # Get all coaches (if user is a client)
-  def all_coaches
-    coaches.distinct
-  end
-
-  # Check if user has coaching relationship with another user
-  def coaching_relationship_with?(other_user)
-    all_coaching_relationships.exists?(coach: [ self, other_user ], client: [ self, other_user ])
-  end
-
-  # Get coaching relationship with another user
-  def coaching_relationship_with(other_user)
-    all_coaching_relationships.find_by(
-      coach: [ self, other_user ],
-      client: [ self, other_user ]
-    )
-  end
-
-  # Get active coaching relationship with a specific coach
-  def relationship_with_coach(coach)
-    coaching_relationships_as_client.find_by(coach: coach, status: "active")
-  end
-
-  # Get active coaching relationship with a specific client
-  def relationship_with_client(client)
-    coaching_relationships_as_coach.find_by(client: client, status: "active")
-  end
-
-  # Get recent location
-  def current_location
-    user_locations.recent.first
-  end
-
-  # Get tasks requiring explanation
-  def tasks_requiring_explanation
-    all_lists = owned_lists + lists
-    Task.joins(:list)
-        .where(list: all_lists)
-        .where(requires_explanation_if_missed: true)
-        .where(status: :pending)
-        .where("due_at < ?", Time.current)
-  end
-
-  # Get overdue tasks
-  def overdue_tasks
-    all_lists = owned_lists + lists
-    Task.joins(:list)
-        .where(list: all_lists)
-        .where(status: :pending)
-        .where("due_at < ?", Time.current)
-  end
-
-
-  # Get devices for push notifications
   def push_devices
     devices.where.not(apns_token: nil)
   end
 
-  # Get unread notifications count
-  def unread_notifications_count
-    notification_logs.where("metadata->>'read' IS NULL OR metadata->>'read' = 'false'").count
-  end
-
-  # Update user's current location
-  def update_location!(latitude, longitude, accuracy = nil)
-    user_locations.create!(
-      latitude: latitude,
-      longitude: longitude,
-      accuracy: accuracy,
-      recorded_at: Time.current
-    )
-  end
-
-  # Check if user is at a specific saved location
-  def at_location?(saved_location, lat = nil, lon = nil)
-    # Use provided coordinates or get from current location
-    if lat.nil? || lon.nil?
-      location = current_location
-      return false unless location
-      lat = location.latitude
-      lon = location.longitude
-    end
-
-    # Calculate distance from saved location
-    distance = calculate_distance(lat, lon, saved_location.latitude, saved_location.longitude)
-
-    # Check if within radius
-    distance <= saved_location.radius_meters
-  end
-
   private
-
-  def calculate_distance(lat1, lon1, lat2, lon2)
-    # Haversine formula - returns distance in meters
-    earth_radius = 6371000 # meters
-
-    lat1_rad = lat1 * Math::PI / 180
-    lat2_rad = lat2 * Math::PI / 180
-    delta_lat = (lat2 - lat1) * Math::PI / 180
-    delta_lon = (lon2 - lon1) * Math::PI / 180
-
-    a = Math.sin(delta_lat / 2) ** 2 +
-        Math.cos(lat1_rad) * Math.cos(lat2_rad) *
-        Math.sin(delta_lon / 2) ** 2
-    c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-    earth_radius * c
-  end
 
   def valid_timezone
     return if timezone.blank?
 
     begin
       Time.zone = timezone
-      Time.zone
     rescue ArgumentError
       errors.add(:timezone, "is not a valid timezone")
     end

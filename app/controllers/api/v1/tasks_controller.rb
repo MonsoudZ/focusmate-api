@@ -130,10 +130,10 @@ module Api
       end
 
       def ensure_list_access!
-        return if @list&.can_add_items_by?(current_user)
+        return if @list&.can_edit?(current_user)
 
         fallback_list = current_user.owned_lists.first
-        if fallback_list&.can_add_items_by?(current_user)
+        if fallback_list&.can_edit?(current_user)
           @list = fallback_list
         else
           render json: { error: { message: "Forbidden" } }, status: :forbidden

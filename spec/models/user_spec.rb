@@ -60,18 +60,6 @@ RSpec.describe User, type: :model do
       expect(user).not_to be_valid
       expect(user.errors[:role]).to include("is not included in the list")
     end
-
-    it 'validates latitude bounds' do
-      user = build(:user, latitude: 91)
-      expect(user).not_to be_valid
-      expect(user.errors[:latitude]).to include("must be less than or equal to 90")
-    end
-
-    it 'validates longitude bounds' do
-      user = build(:user, longitude: 181)
-      expect(user).not_to be_valid
-      expect(user.errors[:longitude]).to include("must be less than or equal to 180")
-    end
   end
 
   describe 'associations' do
@@ -93,11 +81,6 @@ RSpec.describe User, type: :model do
     it 'has many devices' do
       expect(user).to respond_to(:devices)
       expect(user.devices).to be_a(ActiveRecord::Associations::CollectionProxy)
-    end
-
-    it 'has many user_locations' do
-      expect(user).to respond_to(:user_locations)
-      expect(user.user_locations).to be_a(ActiveRecord::Associations::CollectionProxy)
     end
   end
 
@@ -131,17 +114,6 @@ RSpec.describe User, type: :model do
 
       expect(client.client?).to be true
       expect(coach.client?).to be false
-    end
-
-    it 'returns current location from user_locations' do
-      UserLocation.create!(user: user, latitude: 40.7128, longitude: -74.0060, recorded_at: Time.current)
-      expect(user.current_location).to be_a(UserLocation)
-      expect(user.current_location.latitude).to eq(40.7128)
-      expect(user.current_location.longitude).to eq(-74.0060)
-    end
-
-    it 'returns nil current location when no user_locations' do
-      expect(user.current_location).to be_nil
     end
   end
 
@@ -193,56 +165,6 @@ RSpec.describe User, type: :model do
       expect(coach.client?).to be false
       expect(client.coach?).to be false
       expect(client.client?).to be true
-    end
-  end
-
-  describe 'task queries' do
-    let(:list) { create(:list, user: user) }
-    let!(:overdue_task) { create(:task, list: list, creator: user, due_at: 1.hour.ago, status: :pending) }
-    let!(:future_task) { create(:task, list: list, creator: user, due_at: 1.hour.from_now, status: :pending) }
-
-    describe '#overdue_tasks' do
-      it 'returns overdue pending tasks' do
-        expect(user.overdue_tasks).to include(overdue_task)
-      end
-
-      it 'does not return future tasks' do
-        expect(user.overdue_tasks).not_to include(future_task)
-      end
-
-      it 'does not return completed overdue tasks' do
-        overdue_task.update!(status: :done)
-        expect(user.overdue_tasks).not_to include(overdue_task)
-      end
-    end
-
-    describe '#tasks_requiring_explanation' do
-      let!(:task_needing_explanation) do
-        create(:task,
-               list: list,
-               creator: user,
-               due_at: 1.hour.ago,
-               status: :pending,
-               requires_explanation_if_missed: true)
-      end
-
-      it 'returns overdue tasks requiring explanation' do
-        expect(user.tasks_requiring_explanation).to include(task_needing_explanation)
-      end
-
-      it 'does not return tasks not requiring explanation' do
-        expect(user.tasks_requiring_explanation).not_to include(overdue_task)
-      end
-
-      it 'does not return future tasks even if requiring explanation' do
-        future_explanation_task = create(:task,
-                                        list: list,
-                                        creator: user,
-                                        due_at: 1.hour.from_now,
-                                        status: :pending,
-                                        requires_explanation_if_missed: true)
-        expect(user.tasks_requiring_explanation).not_to include(future_explanation_task)
-      end
     end
   end
 end

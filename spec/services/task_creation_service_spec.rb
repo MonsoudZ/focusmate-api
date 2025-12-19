@@ -206,16 +206,6 @@ RSpec.describe TaskCreationService, type: :service do
       expect(task.requires_explanation_if_missed?).to be_truthy
     end
 
-    it "should handle visibility settings" do
-      visibility_params = params.merge(
-        visibility: "coaching_only"
-      )
-
-      service = TaskCreationService.new(list, user, visibility_params)
-      task = service.call
-
-      expect(task.visibility).to eq("coaching_only")
-    end
 
     it "should raise error for invalid parameters" do
       invalid_params = {

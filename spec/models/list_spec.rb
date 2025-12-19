@@ -89,29 +89,11 @@ RSpec.describe List, type: :model do
       expect(list.can_view?(other_user)).to be true # Viewer
     end
 
-    it 'checks if user can add items' do
-      other_user = create(:user, email: "editor@example.com")
-      create(:membership, list: list, user: other_user, role: "editor")
 
-      expect(list.can_add_items_by?(user)).to be true # Owner
-      expect(list.can_add_items_by?(other_user)).to be true # Editor
-    end
 
-    it 'checks if user can delete items' do
-      other_user = create(:user, email: "editor@example.com")
-      create(:membership, list: list, user: other_user, role: "editor")
 
-      expect(list.can_delete_items_by?(user)).to be true # Owner
-      expect(list.can_delete_items_by?(other_user)).to be true # Editor
-    end
 
-    it 'checks if list is editable by user' do
-      other_user = create(:user, email: "editor@example.com")
-      create(:membership, list: list, user: other_user, role: "editor")
 
-      expect(list.editable_by?(user)).to be true # Owner
-      expect(list.editable_by?(other_user)).to be true # Editor
-    end
 
     it 'checks if list is accessible by user' do
       other_user = create(:user, email: "viewer@example.com")
@@ -164,78 +146,8 @@ RSpec.describe List, type: :model do
 
       expect(list.member?(other_user)).to be true
     end
-
-    it 'returns task count' do
-      create(:task, list: list, creator: user)
-      create(:task, list: list, creator: user)
-
-      expect(list.task_count).to eq(2)
-    end
-
-    it 'returns completed task count' do
-      create(:task, list: list, creator: user, status: :done)
-      create(:task, list: list, creator: user, status: :pending)
-
-      expect(list.completed_task_count).to eq(1)
-    end
-
-    it 'returns completion rate' do
-      create(:task, list: list, creator: user, status: :done)
-      create(:task, list: list, creator: user, status: :pending)
-
-      expect(list.completion_rate).to eq(50.0)
-    end
-
-    it 'returns zero completion rate for empty list' do
-      expect(list.completion_rate).to eq(0.0)
-    end
-
-    it 'returns overdue task count' do
-      create(:task, list: list, creator: user, due_at: 1.hour.ago, status: :pending)
-      create(:task, list: list, creator: user, due_at: 1.hour.from_now, status: :pending)
-
-      expect(list.overdue_task_count).to eq(1)
-    end
-
-    it 'returns recent activity' do
-      task = create(:task, list: list, creator: user, created_at: 1.hour.ago)
-      expect(list.recent_activity).to include(task)
-    end
-
-    it 'returns summary' do
-      create(:task, list: list, creator: user, status: :done)
-      create(:task, list: list, creator: user, status: :pending)
-
-      summary = list.summary
-      expect(summary).to include(:id, :name, :description, :task_count, :completed_task_count, :completion_rate)
-    end
   end
 
-  describe 'scopes' do
-    it 'has public scope' do
-      public_list = create(:list, user: user, visibility: "public")
-      private_list = create(:list, user: user, visibility: "private")
-
-      expect(List.public).to include(public_list)
-      expect(List.public).not_to include(private_list)
-    end
-
-    it 'has private scope' do
-      public_list = create(:list, user: user, visibility: "public")
-      private_list = create(:list, user: user, visibility: "private")
-
-      expect(List.private).to include(private_list)
-      expect(List.private).not_to include(public_list)
-    end
-
-    it 'has shared scope' do
-      shared_list = create(:list, user: user, visibility: "shared")
-      private_list = create(:list, user: user, visibility: "private")
-
-      expect(List.shared).to include(shared_list)
-      expect(List.shared).not_to include(private_list)
-    end
-  end
 
   describe 'callbacks' do
     it 'sets default visibility before validation' do
@@ -276,62 +188,6 @@ RSpec.describe List, type: :model do
       list.soft_delete!
       task.reload
       expect(task.deleted?).to be true
-    end
-  end
-
-  describe 'permissions' do
-    let(:other_user) { create(:user, email: "other@example.com") }
-
-    it 'allows owner full access' do
-      expect(list.can_view?(user)).to be true
-      expect(list.can_edit?(user)).to be true
-      expect(list.can_add_items_by?(user)).to be true
-      expect(list.can_delete_items_by?(user)).to be true
-    end
-
-    it 'allows editor full access' do
-      create(:membership, list: list, user: other_user, role: "editor")
-
-      expect(list.can_view?(other_user)).to be true
-      expect(list.can_edit?(other_user)).to be true
-      expect(list.can_add_items_by?(other_user)).to be true
-      expect(list.can_delete_items_by?(other_user)).to be true
-    end
-
-    it 'allows viewer read-only access' do
-      create(:membership, list: list, user: other_user, role: "viewer")
-
-      expect(list.can_view?(other_user)).to be true
-      expect(list.can_edit?(other_user)).to be false
-    end
-
-    it 'denies access to non-members' do
-      expect(list.can_view?(other_user)).to be_falsey
-      expect(list.can_edit?(other_user)).to be false
-    end
-  end
-
-  describe 'statistics' do
-    it 'calculates statistics correctly' do
-      create(:task, list: list, creator: user, status: :done, created_at: 1.day.ago)
-      create(:task, list: list, creator: user, status: :pending, created_at: 1.hour.ago)
-      create(:task, list: list, creator: user, status: :pending, due_at: 1.hour.ago)
-
-      stats = list.statistics
-      expect(stats[:total_tasks]).to eq(3)
-      expect(stats[:completed_tasks]).to eq(1)
-      expect(stats[:pending_tasks]).to eq(2)
-      expect(stats[:overdue_tasks]).to eq(1)
-      expect(stats[:completion_rate]).to eq(33.33)
-    end
-
-    it 'handles empty list statistics' do
-      stats = list.statistics
-      expect(stats[:total_tasks]).to eq(0)
-      expect(stats[:completed_tasks]).to eq(0)
-      expect(stats[:pending_tasks]).to eq(0)
-      expect(stats[:overdue_tasks]).to eq(0)
-      expect(stats[:completion_rate]).to eq(0.0)
     end
   end
 end

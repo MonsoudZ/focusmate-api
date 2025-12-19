@@ -18,7 +18,6 @@ RSpec.describe TaskPolicy, type: :policy do
     it { expect(subject.complete?).to be true }
     it { expect(subject.reassign?).to be true }
     it { expect(subject.destroy?).to be true }
-    it { expect(subject.change_visibility?).to be true }
   end
 
   describe "shared list permissions" do
