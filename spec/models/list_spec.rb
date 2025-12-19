@@ -70,7 +70,6 @@ RSpec.describe List, type: :model do
 
       expect(list.members).to include(other_user)
     end
-
   end
 
   describe 'methods' do

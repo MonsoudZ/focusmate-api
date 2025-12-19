@@ -25,24 +25,17 @@ Rails.application.routes.draw do
   mount Sidekiq::Web => "/sidekiq"
 
   # ----------------------------
-  # API v1 (iOS frontend)
+  # API v1
   # ----------------------------
   namespace :api, defaults: { format: :json } do
     namespace :v1 do
-      # ---- Devices (APNs push) ----
-      resources :devices, only: %i[create destroy] do
-        collection { post :test_push }
-      end
+      resources :devices, only: %i[create destroy]
 
-      # ---- Cross-list tasks (Inbox / Today / Overdue) ----
       resources :tasks, only: %i[index]
 
-      # ---- Lists ----
       resources :lists do
-        # Sharing & permissions
         resources :memberships, only: %i[index create update destroy]
 
-        # Canonical task CRUD (scoped to list)
         resources :tasks do
           member do
             patch :complete
@@ -52,15 +45,6 @@ Rails.application.routes.draw do
             patch :unassign
           end
         end
-      end
-
-      # ---- Coaching (relationship only) ----
-      resources :coaching_relationships, only: %i[index show create update destroy]
-
-      # ---- Notifications ----
-      resources :notifications, only: %i[index] do
-        collection { patch :mark_all_read }
-        member { patch :mark_read }
       end
     end
   end

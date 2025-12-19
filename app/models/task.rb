@@ -317,4 +317,4 @@ class Task < ApplicationRecord
   def calculate_yearly_recurrence
     TaskRecurrenceService.new(self).send(:calculate_yearly_recurrence)
   end
-  end
+end

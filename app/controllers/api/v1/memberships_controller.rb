@@ -2,16 +2,14 @@
 
 module Api
   module V1
-    class MembershipsController <  BaseController
-      include Pundit::Authorization
-
-      before_action :authenticate_user!
+    class MembershipsController < BaseController
       before_action :set_list
-      before_action :set_membership, only: %i[show update destroy]
+      before_action :set_membership, only: %i[update destroy]
 
       after_action :verify_authorized
       after_action :verify_policy_scoped, only: :index
 
+      # GET /api/v1/lists/:list_id/memberships
       def index
         authorize @list, :show?
 
@@ -22,11 +20,7 @@ module Api
         render json: MembershipSerializer.collection(memberships), status: :ok
       end
 
-      def show
-        authorize @list, :show?
-        render json: MembershipSerializer.one(@membership), status: :ok
-      end
-
+      # POST /api/v1/lists/:list_id/memberships
       def create
         authorize @list, :manage_memberships?
 
@@ -40,6 +34,7 @@ module Api
         render json: MembershipSerializer.one(membership), status: :created
       end
 
+      # PATCH /api/v1/lists/:list_id/memberships/:id
       def update
         authorize @list, :manage_memberships?
 
@@ -52,6 +47,7 @@ module Api
         render json: MembershipSerializer.one(membership), status: :ok
       end
 
+      # DELETE /api/v1/lists/:list_id/memberships/:id
       def destroy
         authorize @list, :manage_memberships?
 
@@ -67,7 +63,7 @@ module Api
       end
 
       def set_membership
-        @membership = @list.memberships.includes(:user).find(params[:id])
+        @membership = @list.memberships.find(params[:id])
       end
 
       def create_params

@@ -62,14 +62,14 @@ RSpec.describe "Security", type: :request do
       b_headers = auth_headers_for(other_user)
 
       get "/api/v1/lists/#{list.id}", headers: b_headers
-      expect([403, 404]).to include(response.status)
+      expect([ 403, 404 ]).to include(response.status)
     end
 
     it "prevents user B from reading user A's tasks" do
       b_headers = auth_headers_for(other_user)
 
       get "/api/v1/lists/#{list.id}/tasks", headers: b_headers
-      expect([403, 404]).to include(response.status)
+      expect([ 403, 404 ]).to include(response.status)
     end
 
     it "allows the owner to read their own resources" do
@@ -102,7 +102,7 @@ RSpec.describe "Security", type: :request do
            params: { name: "test", user_id: attacker.id },
            headers: headers
 
-      expect([201, 400, 422]).to include(response.status)
+      expect([ 201, 400, 422 ]).to include(response.status)
 
       if response.status == 201
         created_id = json["id"]

@@ -8,23 +8,12 @@ module Api
       private
 
       def respond_with(resource, _opts = {})
-        render json: { user: user_json(resource) }, status: :ok
+        render json: { user: UserSerializer.one(resource) }, status: :ok
       end
 
       def respond_to_on_destroy
         head :no_content
       end
-
-      def user_json(user)
-        {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          timezone: user.timezone
-        }
-      end
     end
   end
 end
-

@@ -99,7 +99,6 @@ RSpec.describe User, type: :model do
       expect(user).to respond_to(:user_locations)
       expect(user.user_locations).to be_a(ActiveRecord::Associations::CollectionProxy)
     end
-
   end
 
   describe 'scopes' do
@@ -144,7 +143,6 @@ RSpec.describe User, type: :model do
     it 'returns nil current location when no user_locations' do
       expect(user.current_location).to be_nil
     end
-
   end
 
   describe 'callbacks' do
