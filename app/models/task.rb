@@ -108,7 +108,6 @@ class Task < ApplicationRecord
   # Callbacks
   after_create :record_creation_event
   after_update :handle_status_change_callbacks, if: :saved_change_to_status?
-  after_commit :invalidate_dashboard_cache, on: [ :create, :update, :destroy ]
 
   # Business logic
   def complete!
