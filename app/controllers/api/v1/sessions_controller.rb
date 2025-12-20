@@ -8,7 +8,8 @@ module Api
       private
 
       def respond_with(resource, _opts = {})
-        render json: { user: UserSerializer.one(resource) }, status: :ok
+        token = request.env["warden-jwt_auth.token"]
+        render json: { user: UserSerializer.one(resource), token: token }, status: :ok
       end
 
       def respond_to_on_destroy
