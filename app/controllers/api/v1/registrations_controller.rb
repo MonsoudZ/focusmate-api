@@ -2,23 +2,36 @@
 
 module Api
   module V1
-    class RegistrationsController < Devise::RegistrationsController
-      respond_to :json
+    class RegistrationsController < BaseController
+      skip_before_action :authenticate_user!
+
+      def create
+        user = Auth::Register.call!(
+          email: sign_up_params[:email],
+          password: sign_up_params[:password],
+          password_confirmation: sign_up_params[:password_confirmation],
+          name: sign_up_params[:name],
+          timezone: sign_up_params[:timezone]
+        )
+
+        token = Warden::JWTAuth::UserEncoder.new.call(user, :user, nil).first
+        render json: { user: UserSerializer.one(user), token: token }, status: :created
+      rescue Auth::Register::BadRequest => e
+        render json: { error: { message: e.message } }, status: :bad_request
+      rescue ActiveRecord::RecordInvalid => e
+        render json: {
+          error: {
+            code: "validation_error",
+            message: "Registration failed",
+            details: e.record.errors.to_hash
+          }
+        }, status: :unprocessable_entity
+      end
 
       private
 
-      def respond_with(resource, _opts = {})
-        if resource.persisted?
-          render json: { user: UserSerializer.one(resource) }, status: :created
-        else
-          render json: {
-            error: {
-              code: "validation_error",
-              message: "Validation failed",
-              details: resource.errors.to_hash
-            }
-          }, status: :unprocessable_content
-        end
+      def sign_up_params
+        params.require(:user).permit(:email, :password, :password_confirmation, :name, :timezone)
       end
     end
   end
