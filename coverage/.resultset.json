@@ -63,10 +63,10 @@
           1,
           null,
           1,
-          416,
+          415,
           null,
           null,
-          416,
+          415,
           null,
           1,
           null,
@@ -80,7 +80,7 @@
         "branches": {
           "[:if, 0, 37, 4, 37, 29]": {
             "[:then, 1, 37, 4, 37, 10]": 0,
-            "[:else, 2, 37, 4, 37, 29]": 416
+            "[:else, 2, 37, 4, 37, 29]": 415
           },
           "[:if, 3, 47, 4, 47, 39]": {
             "[:then, 4, 47, 4, 47, 24]": 0,
@@ -280,7 +280,7 @@
           null,
           null,
           1,
-          0,
+          1,
           null,
           null,
           1,
@@ -335,7 +335,7 @@
           1,
           null,
           1,
-          7,
+          8,
           null,
           null,
           1,
@@ -2689,30 +2689,38 @@
           1,
           null,
           1,
+          1,
           null,
-          1,
-          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          0,
           0,
           null,
+          0,
+          null,
+          0,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
           1,
           null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
+          1,
+          1,
           null,
           null,
           null,
           null
         ],
-        "branches": {
-          "[:if, 0, 11, 8, 21, 11]": {
-            "[:then, 1, 12, 10, 12, 79]": 0,
-            "[:else, 2, 14, 10, 20, 43]": 1
-          }
-        }
+        "branches": {}
       },
       "/Users/monsoudzanaty/Documents/focusmate-api/app/controllers/api/v1/memberships_controller.rb": {
         "lines": [
@@ -3276,6 +3284,6 @@
         "branches": {}
       }
     },
-    "timestamp": 1766179558
+    "timestamp": 1766200712
   }
 }
