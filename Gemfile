@@ -38,11 +38,6 @@ gem "strong_migrations"
 # Timezone data for Windows
 gem "tzinfo-data", platforms: %i[windows jruby]
 
-# Rails 8 adapters
-gem "solid_cache"
-gem "solid_queue"
-gem "solid_cable"
-
 # Performance
 gem "bootsnap", require: false
 
