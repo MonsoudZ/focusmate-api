@@ -4,6 +4,7 @@ gem "rails", "~> 8.0.3"
 gem "pg", "~> 1.1"
 gem "puma", ">= 5.0"
 
+gem "apple_id"
 # Authentication
 gem "bcrypt", "~> 3.1.7"
 gem "devise"
@@ -59,3 +60,4 @@ group :development, :test do
   gem "simplecov", require: false
   gem "dotenv-rails"
 end
+

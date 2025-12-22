@@ -29,6 +29,7 @@ Rails.application.routes.draw do
   namespace :api, defaults: { format: :json } do
     namespace :v1 do
       resources :devices, only: %i[create destroy]
+      post "auth/apple", to: "apple_auth#create"
       resources :tasks, only: %i[index]
       resources :lists do
         resources :memberships, only: %i[index create update destroy]
