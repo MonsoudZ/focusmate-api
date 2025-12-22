@@ -30,6 +30,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       resources :devices, only: %i[create destroy]
       post "auth/apple", to: "apple_auth#create"
+      get "today", to: "today#index"
       resources :tasks, only: %i[index]
       resources :lists do
         resources :memberships, only: %i[index create update destroy]

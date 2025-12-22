@@ -23,6 +23,9 @@ class TaskSerializer
       status: task.status,
       overdue: overdue?,
       minutes_overdue: minutes_overdue,
+      requires_explanation_if_missed: task.requires_explanation_if_missed || false,
+      missed_reason: task.missed_reason,
+      missed_reason_submitted_at: task.missed_reason_submitted_at&.iso8601,
 
       # Recurring
       is_recurring: task.is_recurring || false,

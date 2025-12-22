@@ -67,8 +67,17 @@ module Api
       # PATCH /api/v1/lists/:list_id/tasks/:id/complete
       def complete
         authorize @task, :update?
-        TaskCompletionService.new(task: @task, user: current_user).complete!
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+
+        begin
+          TaskCompletionService.new(
+            task: @task,
+            user: current_user,
+            missed_reason: params[:missed_reason]
+          ).complete!
+          render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        rescue TaskCompletionService::MissingReasonError => e
+          render json: { error: { code: "missing_reason", message: e.message } }, status: :unprocessable_entity
+        end
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/reopen
