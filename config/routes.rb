@@ -28,6 +28,9 @@ Rails.application.routes.draw do
   # ----------------------------
   namespace :api, defaults: { format: :json } do
     namespace :v1 do
+      resource :user, only: [ :show, :update, :destroy ], controller: "users", path: "users/me" do
+        put :password, to: "users#update_password", as: :password
+      end
       resources :devices, only: %i[create destroy]
       post "auth/apple", to: "apple_auth#create"
       get "today", to: "today#index"

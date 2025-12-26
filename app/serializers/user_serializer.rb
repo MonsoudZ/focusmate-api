@@ -7,7 +7,8 @@ class UserSerializer
       email: user.email,
       name: user.name,
       role: user.role,
-      timezone: user.timezone
+      timezone: user.timezone,
+      has_password: user.apple_user_id.blank?
     }
   end
 end
