@@ -44,7 +44,7 @@ module Api
         end
 
         @list ||= current_user.owned_lists.first
-        authorize @list, :update?
+        authorize @list, :create_task?
 
         task = TaskCreationService.new(@list, current_user, task_params).call
         render json: TaskSerializer.new(task, current_user: current_user).as_json, status: :created
