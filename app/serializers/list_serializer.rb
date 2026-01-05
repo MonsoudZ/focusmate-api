@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 class ListSerializer
   attr_reader :list, :current_user, :options
 
@@ -15,6 +13,7 @@ class ListSerializer
       name: list.name,
       description: list.description,
       visibility: list.visibility,
+      color: list.color || "blue",
       user: UserSerializer.one(list.user),
       role: role_for_current_user,
       tasks_count: list.tasks.count,

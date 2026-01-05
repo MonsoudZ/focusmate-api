@@ -59,7 +59,7 @@ module Api
 
       def list_params
         container = params[:list].present? ? params.require(:list) : params
-        container.permit(:name, :description, :visibility)
+        container.permit(:name, :description, :visibility, :color)
       end
 
       def safe_parse_time(value)
