@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_05_175044) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_05_183850) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -202,6 +202,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_05_175044) do
     t.bigint "assigned_to_id"
     t.boolean "is_template"
     t.integer "subtasks_count", default: 0, null: false
+    t.string "color"
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["completed_at"], name: "index_tasks_on_completed_at"

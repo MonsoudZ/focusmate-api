@@ -30,6 +30,8 @@ class Task < ApplicationRecord
   validate :due_at_not_in_past_on_create
   validate :prevent_circular_subtask_relationship
   validate :recurrence_constraints
+  COLORS = %w[blue green orange red purple pink teal yellow gray].freeze
+  validates :color, inclusion: { in: COLORS }, allow_nil: true
 
   after_initialize :set_defaults
   after_create :record_creation_event
