@@ -60,6 +60,13 @@ class Task < ApplicationRecord
       column => direction
     )
   }
+  scope :sorted_with_priority, ->(column = :created_at, direction = :desc) {
+    order(
+      Arel.sql("CASE WHEN priority = 4 THEN 0 WHEN starred = true THEN 1 ELSE 2 END"),
+      Arel.sql("COALESCE(position, 999999)"),
+      column => direction
+    )
+  }
 
   # Business logic
   def complete!

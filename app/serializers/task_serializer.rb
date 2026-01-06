@@ -20,6 +20,7 @@ class TaskSerializer
       completed_at: completed_at_value,
       priority: Task.priorities[task.priority],
       starred: task.starred,
+      position: task.position,
       can_be_snoozed: !task.strict_mode,
       notification_interval_minutes: task.notification_interval_minutes || 10,
       status: task.status,

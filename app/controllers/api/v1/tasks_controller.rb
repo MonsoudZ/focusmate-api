@@ -5,10 +5,10 @@ module Api
     class TasksController < BaseController
       include Paginatable
 
-      before_action :set_list, only: [ :index, :create ]
+      before_action :set_list, only: [ :index, :create, :reorder ]
       before_action :set_task, only: [ :show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign ]
 
-      after_action :verify_authorized, except: [ :index ]
+      after_action :verify_authorized, except: [ :index, :reorder, :search ]
       after_action :verify_policy_scoped, only: [ :index ]
 
       # GET /api/v1/tasks
@@ -122,6 +122,36 @@ module Api
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
 
+      # POST /api/v1/lists/:list_id/tasks/reorder
+      def reorder
+        params[:tasks].each do |task_data|
+          task = @list.tasks.find(task_data[:id])
+          task.update!(position: task_data[:position])
+        end
+
+        head :ok
+      end
+
+      # GET /api/v1/tasks/search?q=query
+      def search
+        query = params[:q].to_s.strip
+
+        if query.blank?
+          return render json: { tasks: [] }, status: :ok
+        end
+
+        tasks = policy_scope(Task)
+                  .where("title ILIKE :q OR note ILIKE :q", q: "%#{query}%")
+                  .where(parent_task_id: nil)
+                  .not_deleted
+                  .includes(:list)
+                  .limit(50)
+
+        render json: {
+          tasks: tasks.map { |t| TaskSerializer.new(t, current_user: current_user).as_json }
+        }, status: :ok
+      end
+
       private
 
       def set_list
@@ -153,9 +183,9 @@ module Api
 
       def permitted_task_attributes
         %i[
-    title note due_at priority can_be_snoozed strict_mode
-    notification_interval_minutes list_id visibility color starred
-  ]
+          title note due_at priority can_be_snoozed strict_mode
+          notification_interval_minutes list_id visibility color starred position
+        ]
       end
 
       def apply_filters(query)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_06_185502) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_06_195007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -223,6 +223,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_185502) do
     t.string "color"
     t.integer "priority", default: 0, null: false
     t.boolean "starred", default: false, null: false
+    t.integer "position"
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["completed_at"], name: "index_tasks_on_completed_at"
@@ -236,6 +237,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_185502) do
     t.index ["is_recurring"], name: "index_tasks_on_is_recurring"
     t.index ["list_id", "deleted_at"], name: "index_tasks_on_list_and_deleted"
     t.index ["list_id", "parent_task_id"], name: "index_tasks_on_list_and_parent"
+    t.index ["list_id", "position"], name: "index_tasks_on_list_id_and_position"
     t.index ["list_id", "status", "due_at"], name: "index_tasks_on_list_status_due_at"
     t.index ["list_id", "status"], name: "index_tasks_on_list_id_and_status"
     t.index ["list_id", "updated_at"], name: "index_tasks_on_list_id_and_updated_at"

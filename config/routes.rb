@@ -34,11 +34,15 @@ Rails.application.routes.draw do
       resources :devices, only: %i[create destroy]
       post "auth/apple", to: "apple_auth#create"
       get "today", to: "today#index"
-      post 'analytics/app_opened', to: 'analytics#app_opened'
+      post "analytics/app_opened", to: "analytics#app_opened"
+      get "tasks/search", to: "tasks#search"
       resources :tasks, only: %i[index]
       resources :lists do
         resources :memberships, only: %i[index create update destroy]
         resources :tasks do
+          collection do
+            post :reorder
+          end
           member do
             patch :complete
             patch :reopen
