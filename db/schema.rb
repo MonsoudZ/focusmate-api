@@ -10,9 +10,27 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_06_175910) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_06_185502) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "analytics_events", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "task_id"
+    t.bigint "list_id"
+    t.string "event_type", null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "occurred_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_type", "occurred_at"], name: "idx_analytics_event_time"
+    t.index ["list_id"], name: "index_analytics_events_on_list_id"
+    t.index ["occurred_at"], name: "index_analytics_events_on_occurred_at"
+    t.index ["task_id", "event_type"], name: "idx_analytics_task_event"
+    t.index ["task_id"], name: "index_analytics_events_on_task_id"
+    t.index ["user_id", "event_type", "occurred_at"], name: "idx_analytics_user_event_time"
+    t.index ["user_id"], name: "index_analytics_events_on_user_id"
+  end
 
   create_table "devices", force: :cascade do |t|
     t.bigint "user_id", null: false
@@ -297,6 +315,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_175910) do
     t.check_constraint "role::text = ANY (ARRAY['client'::character varying::text, 'coach'::character varying::text])", name: "check_users_role"
   end
 
+  add_foreign_key "analytics_events", "lists"
+  add_foreign_key "analytics_events", "tasks"
+  add_foreign_key "analytics_events", "users"
   add_foreign_key "devices", "users"
   add_foreign_key "lists", "users"
   add_foreign_key "memberships", "lists"

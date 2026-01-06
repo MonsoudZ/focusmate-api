@@ -34,6 +34,7 @@ module Api
       def create
         authorize List
         list = ListCreationService.new(user: current_user, params: list_params).create!
+        AnalyticsTracker.list_created(list, current_user)
         render json: ListSerializer.new(list, current_user: current_user).as_json, status: :created
       end
 
@@ -47,6 +48,7 @@ module Api
       # DELETE /api/v1/lists/:id
       def destroy
         authorize @list
+        AnalyticsTracker.list_deleted(@list, current_user)
         @list.destroy
         head :no_content
       end

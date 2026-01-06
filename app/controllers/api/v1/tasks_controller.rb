@@ -60,6 +60,7 @@ module Api
       # DELETE /api/v1/lists/:list_id/tasks/:id
       def destroy
         authorize @task
+        AnalyticsTracker.task_deleted(@task, current_user)
         @task.destroy
         head :no_content
       end
@@ -93,8 +94,12 @@ module Api
         duration = params[:duration].to_i
         duration = 60 if duration <= 0
 
+        snooze_count = AnalyticsEvent.where(task: @task, event_type: 'task_snoozed').count + 1
+
         new_due = (@task.due_at || Time.current) + duration.minutes
         @task.update!(due_at: new_due)
+
+        AnalyticsTracker.task_snoozed(@task, current_user, duration_minutes: duration, snooze_count: snooze_count)
 
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
@@ -168,7 +173,7 @@ module Api
         col = %w[created_at updated_at due_at title].include?(params[:sort_by].to_s) ? params[:sort_by].to_s : "created_at"
         dir = %w[asc desc].include?(params[:sort_order].to_s.downcase) ? params[:sort_order].to_s.downcase.to_sym : :desc
 
-        query.sorted_with_urgent_first(col, dir)
+        query.sorted_with_priority(col, dir)
       end
     end
   end

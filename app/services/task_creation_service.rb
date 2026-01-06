@@ -12,6 +12,7 @@ class TaskCreationService
     normalize_parameters
     create_task
     create_subtasks(subtasks) if subtasks.present?
+    track_analytics
     @task
   end
 
@@ -93,11 +94,9 @@ class TaskCreationService
   def create_task
     @task = @list.tasks.build(@attrs)
     @task.creator = @user
-
     if @task.due_at.blank? && @task.strict_mode
       @task.due_at = 1.hour.from_now
     end
-
     @task.save!
   end
 
@@ -105,7 +104,6 @@ class TaskCreationService
     subtasks.each do |subtask_title|
       title = subtask_title.to_s
       title = title[0, 255] if title.length > 255
-
       @task.subtasks.create!(
         list: @list,
         creator: @user,
@@ -114,5 +112,9 @@ class TaskCreationService
         strict_mode: @task.strict_mode
       )
     end
+  end
+
+  def track_analytics
+    AnalyticsTracker.task_created(@task, @user)
   end
 end
