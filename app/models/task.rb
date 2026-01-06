@@ -142,7 +142,11 @@ class Task < ApplicationRecord
     return unless new_record?
     return unless due_at.present?
     return if Rails.env.test?
-    errors.add(:due_at, "cannot be in the past") if due_at < Time.current
+
+    # Allow any time today, but not past days
+    if due_at < Time.current.beginning_of_day
+      errors.add(:due_at, "cannot be in the past")
+    end
   end
 
   def prevent_circular_subtask_relationship

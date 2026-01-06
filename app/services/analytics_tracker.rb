@@ -119,7 +119,7 @@ class AnalyticsTracker
         list: task.list,
         event_type: 'task_edited',
         metadata: {
-          fields_changed: changes.keys,
+          fields_changed: changes.is_a?(Array) ? changes : changes.keys,
           edit_count: AnalyticsEvent.where(task: task, event_type: 'task_edited').count + 1
         }
       )

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_06_195007) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_06_211406) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -308,6 +308,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_195007) do
     t.integer "coaching_relationships_as_coach_count", default: 0, null: false
     t.integer "coaching_relationships_as_client_count", default: 0, null: false
     t.string "apple_user_id"
+    t.integer "current_streak", default: 0, null: false
+    t.integer "longest_streak", default: 0, null: false
+    t.date "last_streak_date"
     t.index ["apple_user_id"], name: "index_users_on_apple_user_id", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["email"], name: "index_users_on_email_unique", unique: true
