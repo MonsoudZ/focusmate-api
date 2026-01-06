@@ -149,7 +149,7 @@ module Api
       def permitted_task_attributes
         %i[
     title note due_at priority can_be_snoozed strict_mode
-    notification_interval_minutes list_id visibility color
+    notification_interval_minutes list_id visibility color starred
   ]
       end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_06_170338) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_06_175910) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -204,6 +204,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_170338) do
     t.integer "subtasks_count", default: 0, null: false
     t.string "color"
     t.integer "priority", default: 0, null: false
+    t.boolean "starred", default: false, null: false
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["completed_at"], name: "index_tasks_on_completed_at"
@@ -226,6 +227,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_170338) do
     t.index ["parent_task_id"], name: "index_tasks_on_parent_task_id"
     t.index ["priority"], name: "index_tasks_on_priority"
     t.index ["recurring_template_id"], name: "index_tasks_on_recurring_template_id"
+    t.index ["starred"], name: "index_tasks_on_starred"
     t.index ["status", "completed_at"], name: "index_tasks_on_status_and_completed"
     t.index ["status", "due_at"], name: "index_tasks_on_status_and_due_at"
     t.index ["visibility"], name: "index_tasks_on_visibility"
