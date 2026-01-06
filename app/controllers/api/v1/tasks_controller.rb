@@ -165,14 +165,10 @@ module Api
       end
 
       def apply_ordering(query)
-        order(
-          query,
-          order_by: params[:sort_by],
-          order_direction: params[:sort_order],
-          valid_columns: %w[created_at updated_at due_at title],
-          default_column: :created_at,
-          default_direction: :desc
-        )
+        col = %w[created_at updated_at due_at title].include?(params[:sort_by].to_s) ? params[:sort_by].to_s : "created_at"
+        dir = %w[asc desc].include?(params[:sort_order].to_s.downcase) ? params[:sort_order].to_s.downcase.to_sym : :desc
+
+        query.sorted_with_urgent_first(col, dir)
       end
     end
   end

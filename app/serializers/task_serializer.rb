@@ -18,7 +18,7 @@ class TaskSerializer
       note: task.note,
       due_at: task.due_at&.iso8601,
       completed_at: completed_at_value,
-      priority: derive_priority,
+      priority: Task.priorities[task.priority],
       can_be_snoozed: !task.strict_mode,
       notification_interval_minutes: task.notification_interval_minutes || 10,
       status: task.status,
@@ -63,13 +63,6 @@ class TaskSerializer
   end
 
   private
-
-  def derive_priority
-    return 3 if task.strict_mode && overdue?
-    return 2 if task.strict_mode
-    return 1 if task.due_at && task.due_at < 24.hours.from_now
-    0
-  end
 
   def overdue?
     task.due_at.present? &&

@@ -14,6 +14,8 @@ class Task < ApplicationRecord
   # Enums
   enum :status, { pending: 0, in_progress: 1, done: 2, deleted: 3 }, default: :pending
   enum :visibility, { visible_to_all: 0, private_task: 1 }, default: :visible_to_all
+  enum :priority, { no_priority: 0, low: 1, medium: 2, high: 3, urgent: 4 }, default: :no_priority
+  COLORS = %w[blue green orange red purple pink teal yellow gray].freeze
 
   # Soft deletion
   default_scope { where(deleted_at: nil) }
@@ -30,7 +32,6 @@ class Task < ApplicationRecord
   validate :due_at_not_in_past_on_create
   validate :prevent_circular_subtask_relationship
   validate :recurrence_constraints
-  COLORS = %w[blue green orange red purple pink teal yellow gray].freeze
   validates :color, inclusion: { in: COLORS }, allow_nil: true
 
   after_initialize :set_defaults
@@ -50,6 +51,9 @@ class Task < ApplicationRecord
   scope :recurring, -> { where(is_recurring: true) }
   scope :by_list, ->(list_id) { where(list_id: list_id) }
   scope :by_creator, ->(creator_id) { where(creator_id: creator_id) }
+  scope :sorted_with_urgent_first, ->(column = :created_at, direction = :desc) {
+    order(Arel.sql("CASE WHEN priority = 4 THEN 0 ELSE 1 END"), column => direction)
+  }
 
   # Business logic
   def complete!
