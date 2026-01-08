@@ -5,11 +5,11 @@ module Api
     class TasksController < BaseController
       include Paginatable
 
-      before_action :set_list, only: [ :index, :create, :reorder ]
-      before_action :set_task, only: [ :show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign ]
+      before_action :set_list, only: [:index, :create, :reorder]
+      before_action :set_task, only: [:show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign]
 
-      after_action :verify_authorized, except: [ :index, :search ]
-      after_action :verify_policy_scoped, only: [ :index, :search ]
+      after_action :verify_authorized, except: [:index, :search]
+      after_action :verify_policy_scoped, only: [:index, :search]
 
       # GET /api/v1/tasks
       def index
@@ -19,9 +19,10 @@ module Api
           tasks = tasks.where(list_id: @list.id)
         end
 
-        tasks = tasks.where(parent_task_id: nil).where(is_template: [ false, nil ]).not_deleted
+        tasks = tasks.where(parent_task_id: nil).where(is_template: [false, nil]).not_deleted
         tasks = apply_filters(tasks)
         tasks = apply_ordering(tasks)
+        tasks = tasks.includes(:list, :tags, :creator, :subtasks)
         result = paginate(tasks, page: params[:page], per_page: params[:per_page])
 
         render json: {
@@ -153,7 +154,7 @@ module Api
                   .where("title ILIKE :q OR note ILIKE :q", q: "%#{query}%")
                   .where(parent_task_id: nil)
                   .not_deleted
-                  .includes(:list)
+                  .includes(:list, :tags, :creator, :subtasks)
                   .limit(50)
 
         render json: {
@@ -195,7 +196,7 @@ module Api
           title note due_at priority can_be_snoozed strict_mode
           notification_interval_minutes list_id visibility color starred position
           is_recurring recurrence_pattern recurrence_interval recurrence_end_date recurrence_count recurrence_time
-        ] + [ tag_ids: [], recurrence_days: [] ]
+        ] + [tag_ids: [], recurrence_days: []]
       end
 
       def apply_filters(query)

@@ -21,7 +21,7 @@ class TaskSerializer
       priority: Task.priorities[task.priority],
       starred: task.starred,
       position: task.position,
-      tags: task.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
+      tags: serialize_tags,
       can_be_snoozed: !task.strict_mode,
       notification_interval_minutes: task.notification_interval_minutes || 10,
       status: task.status,
@@ -82,7 +82,7 @@ class TaskSerializer
   end
 
   def creator_data
-    creator = task.creator || task.list.user
+    creator = task.creator
     return {} unless creator
 
     {
@@ -101,16 +101,25 @@ class TaskSerializer
     can_edit?
   end
 
+  # Use memoized subtasks collection to avoid N+1 queries
+  def subtasks_collection
+    @subtasks_collection ||= if task.subtasks.loaded?
+                               task.subtasks.to_a
+                             else
+                               task.subtasks.to_a
+                             end
+  end
+
   def has_subtasks?
-    task.subtasks.any?
+    subtasks_collection.any?
   end
 
   def subtasks_count
-    task.subtasks.count
+    subtasks_collection.size
   end
 
   def subtasks_completed_count
-    task.subtasks.where(status: "done").count
+    subtasks_collection.count { |s| s.status == "done" }
   end
 
   def subtask_percentage
@@ -122,5 +131,11 @@ class TaskSerializer
     if task.status == "done"
       task.completed_at&.iso8601 || task.updated_at.iso8601
     end
+  end
+
+  # Use loaded tags if available
+  def serialize_tags
+    tags = task.tags.loaded? ? task.tags.to_a : task.tags
+    tags.map { |t| { id: t.id, name: t.name, color: t.color } }
   end
 end

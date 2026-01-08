@@ -26,50 +26,50 @@ class TodayTasksQuery
   # Tasks that are past due and not completed
   def overdue
     base_scope
-      .where("due_at < ?", beginning_of_today)
+      .where("tasks.due_at < ?", beginning_of_today)
       .where.not(status: "done")
-      .order(due_at: :asc)
+      .order("tasks.due_at ASC")
   end
 
   # Tasks due today that are not completed
   def due_today
     base_scope
-      .where(due_at: today_range)
+      .where(tasks: { due_at: today_range })
       .where.not(status: "done")
-      .order(due_at: :asc)
+      .order("tasks.due_at ASC")
   end
 
   # Tasks that are due today (regardless of completion status)
   def all_due_today
     base_scope
-      .where(due_at: today_range)
-      .order(due_at: :asc)
+      .where(tasks: { due_at: today_range })
+      .order("tasks.due_at ASC")
   end
 
   # Tasks completed today
   def completed_today(limit: 10)
     base_scope
-      .where(completed_at: today_range)
+      .where(tasks: { completed_at: today_range })
       .where(status: "done")
-      .order(completed_at: :desc)
+      .order("tasks.completed_at DESC")
       .limit(limit)
   end
 
   # Tasks due in the next few days (not including today)
   def upcoming(days: 7, limit: 20)
     base_scope
-      .where(due_at: end_of_today..days.days.from_now.end_of_day)
+      .where(tasks: { due_at: end_of_today..days.days.from_now.end_of_day })
       .where.not(status: "done")
-      .order(due_at: :asc)
+      .order("tasks.due_at ASC")
       .limit(limit)
   end
 
   # Anytime tasks (due_at is nil or far future placeholder)
   def anytime
     base_scope
-      .where(due_at: nil)
+      .where(tasks: { due_at: nil })
       .where.not(status: "done")
-      .order(created_at: :desc)
+      .order("tasks.created_at DESC")
   end
 
   # Combined data for Today API endpoint
@@ -103,9 +103,9 @@ class TodayTasksQuery
       .joins(:list)
       .where(lists: { user_id: user.id, deleted_at: nil })
       .where(parent_task_id: nil)
-      .where(is_template: [ false, nil ])
+      .where(is_template: [false, nil])
       .where(deleted_at: nil)
-      .includes(:list, :tags, :creator)
+      .includes(:list, :tags, :creator, :subtasks)
   end
 
   def beginning_of_today
