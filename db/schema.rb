@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_06_211406) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_07_165149) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -139,8 +139,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_211406) do
     t.index ["notification_type"], name: "index_notification_logs_on_notification_type"
     t.index ["task_id", "created_at"], name: "index_notification_logs_on_task_created_at"
     t.index ["task_id"], name: "index_notification_logs_on_task_id"
-    t.index ["user_id", "created_at"], name: "idx_notification_logs_user_created_at"
-    t.index ["user_id", "created_at"], name: "index_notification_logs_on_user_created_at"
     t.index ["user_id", "created_at"], name: "index_notification_logs_on_user_id_and_created_at"
     t.index ["user_id", "delivered"], name: "index_notification_logs_on_user_and_delivered"
     t.index ["user_id"], name: "index_notification_logs_on_user_id"
@@ -164,6 +162,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_211406) do
     t.check_constraint "longitude >= '-180'::integer::numeric AND longitude <= 180::numeric", name: "saved_locations_longitude_range"
   end
 
+  create_table "tags", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.string "color"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "name"], name: "index_tags_on_user_id_and_name", unique: true
+    t.index ["user_id"], name: "index_tags_on_user_id"
+  end
+
   create_table "task_events", force: :cascade do |t|
     t.bigint "task_id", null: false
     t.bigint "user_id", null: false
@@ -182,6 +190,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_211406) do
     t.index ["user_id"], name: "index_task_events_on_user_id"
   end
 
+  create_table "task_tags", force: :cascade do |t|
+    t.bigint "task_id", null: false
+    t.bigint "tag_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tag_id"], name: "index_task_tags_on_tag_id"
+    t.index ["task_id", "tag_id"], name: "index_task_tags_on_task_id_and_tag_id", unique: true
+    t.index ["task_id"], name: "index_task_tags_on_task_id"
+  end
+
   create_table "tasks", force: :cascade do |t|
     t.text "title", null: false
     t.text "note"
@@ -198,7 +216,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_211406) do
     t.jsonb "recurrence_days"
     t.time "recurrence_time"
     t.datetime "recurrence_end_date"
-    t.bigint "recurring_template_id"
+    t.bigint "template_id"
     t.boolean "location_based", default: false
     t.decimal "location_latitude", precision: 10, scale: 6
     t.decimal "location_longitude", precision: 10, scale: 6
@@ -224,6 +242,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_211406) do
     t.integer "priority", default: 0, null: false
     t.boolean "starred", default: false, null: false
     t.integer "position"
+    t.string "template_type"
+    t.date "instance_date"
+    t.integer "instance_number"
+    t.integer "recurrence_count"
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["completed_at"], name: "index_tasks_on_completed_at"
@@ -234,7 +256,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_211406) do
     t.index ["due_at", "completed_at"], name: "index_tasks_on_due_at_and_completed_at"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_and_status"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_status"
+    t.index ["instance_date"], name: "index_tasks_on_instance_date"
     t.index ["is_recurring"], name: "index_tasks_on_is_recurring"
+    t.index ["is_template"], name: "index_tasks_on_is_template"
     t.index ["list_id", "deleted_at"], name: "index_tasks_on_list_and_deleted"
     t.index ["list_id", "parent_task_id"], name: "index_tasks_on_list_and_parent"
     t.index ["list_id", "position"], name: "index_tasks_on_list_id_and_position"
@@ -246,10 +270,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_211406) do
     t.index ["missed_reason_reviewed_by_id"], name: "index_tasks_on_missed_reason_reviewed_by_id"
     t.index ["parent_task_id"], name: "index_tasks_on_parent_task_id"
     t.index ["priority"], name: "index_tasks_on_priority"
-    t.index ["recurring_template_id"], name: "index_tasks_on_recurring_template_id"
     t.index ["starred"], name: "index_tasks_on_starred"
     t.index ["status", "completed_at"], name: "index_tasks_on_status_and_completed"
     t.index ["status", "due_at"], name: "index_tasks_on_status_and_due_at"
+    t.index ["template_id"], name: "index_tasks_on_template_id"
+    t.index ["template_type"], name: "index_tasks_on_template_type"
     t.index ["visibility"], name: "index_tasks_on_visibility"
     t.check_constraint "location_latitude >= '-90'::integer::numeric AND location_latitude <= 90::numeric", name: "tasks_latitude_range"
     t.check_constraint "location_longitude >= '-180'::integer::numeric AND location_longitude <= 180::numeric", name: "tasks_longitude_range"
@@ -305,19 +330,15 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_211406) do
     t.integer "lists_count", default: 0, null: false
     t.integer "notification_logs_count", default: 0, null: false
     t.integer "devices_count", default: 0, null: false
-    t.integer "coaching_relationships_as_coach_count", default: 0, null: false
-    t.integer "coaching_relationships_as_client_count", default: 0, null: false
     t.string "apple_user_id"
     t.integer "current_streak", default: 0, null: false
     t.integer "longest_streak", default: 0, null: false
     t.date "last_streak_date"
     t.index ["apple_user_id"], name: "index_users_on_apple_user_id", unique: true
-    t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["email"], name: "index_users_on_email_unique", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role"], name: "index_users_on_role"
     t.check_constraint "role::text = ANY (ARRAY['client'::character varying::text, 'coach'::character varying::text, 'admin'::character varying::text])", name: "users_role_check"
-    t.check_constraint "role::text = ANY (ARRAY['client'::character varying::text, 'coach'::character varying::text])", name: "check_users_role"
   end
 
   add_foreign_key "analytics_events", "lists"
@@ -330,12 +351,15 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_06_211406) do
   add_foreign_key "notification_logs", "tasks"
   add_foreign_key "notification_logs", "users"
   add_foreign_key "saved_locations", "users"
+  add_foreign_key "tags", "users"
   add_foreign_key "task_events", "tasks"
   add_foreign_key "task_events", "users"
+  add_foreign_key "task_tags", "tags"
+  add_foreign_key "task_tags", "tasks"
   add_foreign_key "tasks", "lists"
   add_foreign_key "tasks", "tasks", column: "parent_task_id"
-  add_foreign_key "tasks", "tasks", column: "recurring_template_id"
-  add_foreign_key "tasks", "users", column: "assigned_to_id", on_delete: :nullify, validate: false
+  add_foreign_key "tasks", "tasks", column: "template_id"
+  add_foreign_key "tasks", "users", column: "assigned_to_id", on_delete: :nullify
   add_foreign_key "tasks", "users", column: "creator_id"
   add_foreign_key "tasks", "users", column: "missed_reason_reviewed_by_id"
   add_foreign_key "user_locations", "users"

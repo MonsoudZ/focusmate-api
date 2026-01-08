@@ -48,7 +48,7 @@ RSpec.describe TaskRecurrenceService do
       it 'creates a new task instance' do
         instance = service.generate_next_instance
         expect(instance).to be_a(Task)
-        expect(instance.recurring_template_id).to eq(task.id)
+        expect(instance.template_id).to eq(task.id)
         expect(instance.is_recurring).to be false
       end
     end

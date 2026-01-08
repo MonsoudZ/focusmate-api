@@ -23,7 +23,11 @@ class TaskCompletionService
     end
 
     @task.complete!
+
     track_completion_analytics
+    generate_next_recurring_instance
+    update_streak
+
     @task
   end
 
@@ -89,5 +93,20 @@ class TaskCompletionService
 
   def track_reopen_analytics
     AnalyticsTracker.task_reopened(@task, @user)
+  end
+
+  def generate_next_recurring_instance
+    return unless @task.template_id.present?
+    return unless @task.template&.is_template && @task.template&.template_type == "recurring"
+
+    RecurringTaskService.new(@user).generate_next_instance(@task)
+  rescue StandardError => e
+    Rails.logger.error("Failed to generate next recurring instance: #{e.message}")
+  end
+
+  def update_streak
+    StreakService.new(@user).update_streak!
+  rescue StandardError => e
+    Rails.logger.error("Failed to update streak: #{e.message}")
   end
 end

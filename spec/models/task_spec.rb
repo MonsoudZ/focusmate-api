@@ -112,14 +112,14 @@ RSpec.describe Task, type: :model do
 
     it 'belongs to recurring template' do
       template = create(:task, list: list, creator: user, is_recurring: true, is_template: true)
-      instance = create(:task, list: list, creator: user, recurring_template: template)
-      expect(instance.recurring_template).to eq(template)
+      instance = create(:task, list: list, creator: user, template: template)
+      expect(instance.template).to eq(template)
     end
 
     it 'has many recurring instances' do
       template = create(:task, list: list, creator: user, is_recurring: true, is_template: true)
-      instance = create(:task, list: list, creator: user, recurring_template: template)
-      expect(template.recurring_instances).to include(instance)
+      instance = create(:task, list: list, creator: user, template: template)
+      expect(template.instances).to include(instance)
     end
   end
 
@@ -229,7 +229,7 @@ RSpec.describe Task, type: :model do
     it 'generates next instance' do
       instance = template.generate_next_instance
       expect(instance).to be_a(Task)
-      expect(instance.recurring_template).to eq(template)
+      expect(instance.template).to eq(template)
       expect(instance.is_recurring).to be false
     end
 

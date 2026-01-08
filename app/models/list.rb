@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class List < ApplicationRecord
+  include SoftDeletable
   belongs_to :user
   has_many :memberships, dependent: :destroy
   has_many :members, through: :memberships, source: :user

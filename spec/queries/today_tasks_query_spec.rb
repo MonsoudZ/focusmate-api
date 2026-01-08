@@ -1,0 +1,176 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+RSpec.describe TodayTasksQuery do
+  let(:user) { create(:user, timezone: "UTC") }
+  let(:list) { create(:list, user: user) }
+
+  # Use travel_to to freeze time for consistent testing
+  around do |example|
+    travel_to Time.zone.local(2024, 1, 15, 12, 0, 0) do
+      example.run
+    end
+  end
+
+  describe "#overdue" do
+    let!(:overdue_task) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending) }
+    let!(:today_task) { create(:task, list: list, creator: user, due_at: Time.current, status: :pending) }
+    let!(:completed_overdue) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :done) }
+
+    it "includes tasks past due" do
+      query = described_class.new(user)
+      expect(query.overdue).to include(overdue_task)
+    end
+
+    it "excludes tasks due today" do
+      query = described_class.new(user)
+      expect(query.overdue).not_to include(today_task)
+    end
+
+    it "excludes completed tasks" do
+      query = described_class.new(user)
+      expect(query.overdue).not_to include(completed_overdue)
+    end
+  end
+
+  describe "#due_today" do
+    let!(:today_morning) { create(:task, list: list, creator: user, due_at: Time.current.beginning_of_day + 1.hour, status: :pending) }
+    let!(:today_evening) { create(:task, list: list, creator: user, due_at: Time.current.end_of_day - 1.hour, status: :pending) }
+    let!(:yesterday) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending) }
+    let!(:tomorrow) { create(:task, list: list, creator: user, due_at: 1.day.from_now, status: :pending) }
+    let!(:completed_today) { create(:task, list: list, creator: user, due_at: Time.current, status: :done) }
+
+    it "includes tasks due today" do
+      query = described_class.new(user)
+      result = query.due_today
+      expect(result).to include(today_morning, today_evening)
+    end
+
+    it "excludes tasks from other days" do
+      query = described_class.new(user)
+      result = query.due_today
+      expect(result).not_to include(yesterday, tomorrow)
+    end
+
+    it "excludes completed tasks" do
+      query = described_class.new(user)
+      expect(query.due_today).not_to include(completed_today)
+    end
+  end
+
+  describe "#completed_today" do
+    let!(:completed_today) { create(:task, list: list, creator: user, status: :done, completed_at: Time.current) }
+    let!(:completed_yesterday) { create(:task, list: list, creator: user, status: :done, completed_at: 1.day.ago) }
+    let!(:pending_task) { create(:task, list: list, creator: user, status: :pending) }
+
+    it "includes tasks completed today" do
+      query = described_class.new(user)
+      expect(query.completed_today).to include(completed_today)
+    end
+
+    it "excludes tasks completed on other days" do
+      query = described_class.new(user)
+      expect(query.completed_today).not_to include(completed_yesterday)
+    end
+
+    it "excludes pending tasks" do
+      query = described_class.new(user)
+      expect(query.completed_today).not_to include(pending_task)
+    end
+
+    it "respects limit" do
+      15.times { create(:task, list: list, creator: user, status: :done, completed_at: Time.current) }
+      query = described_class.new(user)
+      expect(query.completed_today(limit: 5).count).to eq(5)
+    end
+  end
+
+  describe "#upcoming" do
+    let!(:tomorrow) { create(:task, list: list, creator: user, due_at: 1.day.from_now, status: :pending) }
+    let!(:next_week) { create(:task, list: list, creator: user, due_at: 5.days.from_now, status: :pending) }
+    let!(:today) { create(:task, list: list, creator: user, due_at: Time.current, status: :pending) }
+    let!(:far_future) { create(:task, list: list, creator: user, due_at: 30.days.from_now, status: :pending) }
+
+    it "includes tasks in the specified range" do
+      query = described_class.new(user)
+      result = query.upcoming(days: 7)
+      expect(result).to include(tomorrow, next_week)
+    end
+
+    it "excludes tasks due today" do
+      query = described_class.new(user)
+      expect(query.upcoming(days: 7)).not_to include(today)
+    end
+
+    it "excludes tasks beyond the range" do
+      query = described_class.new(user)
+      expect(query.upcoming(days: 7)).not_to include(far_future)
+    end
+  end
+
+  describe "#stats" do
+    before do
+      create(:task, list: list, creator: user, due_at: Time.current, status: :done, completed_at: Time.current)
+      create(:task, list: list, creator: user, due_at: Time.current, status: :pending)
+      create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending)
+    end
+
+    it "returns correct statistics" do
+      query = described_class.new(user)
+      stats = query.stats
+
+      expect(stats[:total_due_today]).to eq(2)
+      expect(stats[:completed_today]).to eq(1)
+      expect(stats[:remaining_today]).to eq(1)
+      expect(stats[:overdue_count]).to eq(1)
+      expect(stats[:completion_percentage]).to eq(50)
+    end
+  end
+
+  describe "#all_for_today" do
+    it "returns hash with all sections" do
+      query = described_class.new(user)
+      result = query.all_for_today
+
+      expect(result).to have_key(:overdue)
+      expect(result).to have_key(:due_today)
+      expect(result).to have_key(:completed_today)
+    end
+  end
+
+  describe "filtering" do
+    let(:other_user) { create(:user) }
+    let(:other_list) { create(:list, user: other_user) }
+    let!(:other_task) { create(:task, list: other_list, creator: other_user, due_at: Time.current) }
+
+    it "only returns tasks from user's lists" do
+      query = described_class.new(user)
+      expect(query.due_today).not_to include(other_task)
+    end
+
+    it "excludes subtasks" do
+      parent = create(:task, list: list, creator: user, due_at: Time.current)
+      subtask = create(:task, list: list, creator: user, due_at: Time.current, parent_task: parent)
+
+      query = described_class.new(user)
+      expect(query.due_today).to include(parent)
+      expect(query.due_today).not_to include(subtask)
+    end
+
+    it "excludes templates" do
+      template = create(:task, list: list, creator: user, due_at: Time.current, is_template: true)
+
+      query = described_class.new(user)
+      expect(query.due_today).not_to include(template)
+    end
+
+    it "excludes deleted tasks" do
+      deleted_task = create(:task, list: list, creator: user, due_at: Time.current)
+      deleted_task.soft_delete!
+
+      query = described_class.new(user)
+      expect(query.due_today).not_to include(deleted_task)
+    end
+  end
+end

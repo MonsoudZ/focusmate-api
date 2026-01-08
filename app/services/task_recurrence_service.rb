@@ -38,7 +38,7 @@ class TaskRecurrenceService
       notify_on_arrival: @task.notify_on_arrival,
       notify_on_departure: @task.notify_on_departure,
       is_recurring: false,
-      recurring_template_id: @task.id,
+      template_id: @task.id,
       creator: @task.creator,
       status: :pending
     )

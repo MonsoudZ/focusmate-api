@@ -3,7 +3,15 @@
 class MembershipPolicy < ApplicationPolicy
   class Scope < ApplicationPolicy::Scope
     def resolve
-      scope.all
+      # Only return memberships for lists the user can access
+      # User can access a list if they own it OR are a member of it
+      accessible_list_ids = List
+                              .left_outer_joins(:memberships)
+                              .where("lists.user_id = :uid OR memberships.user_id = :uid", uid: user.id)
+                              .where(deleted_at: nil)
+                              .select(:id)
+
+      scope.where(list_id: accessible_list_ids)
     end
   end
 
@@ -12,18 +20,28 @@ class MembershipPolicy < ApplicationPolicy
   end
 
   def show?
-    true
+    user_can_access_list?
   end
 
   def create?
-    record.list.user_id == user.id
+    user_owns_list?
   end
 
   def update?
-    record.list.user_id == user.id
+    user_owns_list?
   end
 
   def destroy?
+    user_owns_list?
+  end
+
+  private
+
+  def user_owns_list?
     record.list.user_id == user.id
+  end
+
+  def user_can_access_list?
+    record.list.user_id == user.id || record.list.memberships.exists?(user_id: user.id)
   end
 end

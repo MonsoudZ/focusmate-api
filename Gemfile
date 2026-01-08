@@ -61,3 +61,5 @@ group :development, :test do
   gem "dotenv-rails"
 end
 
+gem "rack-timeout", "~> 0.7"
+gem "sidekiq-cron", "~> 1.12"

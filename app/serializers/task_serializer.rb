@@ -21,6 +21,7 @@ class TaskSerializer
       priority: Task.priorities[task.priority],
       starred: task.starred,
       position: task.position,
+      tags: task.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
       can_be_snoozed: !task.strict_mode,
       notification_interval_minutes: task.notification_interval_minutes || 10,
       status: task.status,
@@ -35,6 +36,9 @@ class TaskSerializer
       recurrence_pattern: task.recurrence_pattern,
       recurrence_interval: task.recurrence_interval || 1,
       recurrence_days: task.recurrence_days,
+      template_id: task.template_id,
+      instance_date: task.instance_date&.iso8601,
+      instance_number: task.instance_number,
 
       # Location
       location_based: task.location_based || false,

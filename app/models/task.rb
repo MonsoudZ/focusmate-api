@@ -1,30 +1,31 @@
 # frozen_string_literal: true
 
 class Task < ApplicationRecord
+  include SoftDeletable
+
   belongs_to :list
   belongs_to :creator, class_name: "User", foreign_key: :creator_id
   belongs_to :assigned_to, class_name: "User", optional: true
   belongs_to :parent_task, class_name: "Task", optional: true
-  belongs_to :recurring_template, class_name: "Task", optional: true
+  belongs_to :template, class_name: "Task", optional: true
+  has_many :instances, class_name: "Task", foreign_key: :template_id, dependent: :destroy
 
   has_many :subtasks, class_name: "Task", foreign_key: :parent_task_id, dependent: :destroy
-  has_many :recurring_instances, class_name: "Task", foreign_key: :recurring_template_id, dependent: :destroy
   has_many :task_events, dependent: :destroy
+  has_many :task_tags, dependent: :destroy
+  has_many :tags, through: :task_tags
 
   # Enums
-  enum :status, { pending: 0, in_progress: 1, done: 2, deleted: 3 }, default: :pending
+  enum :status, { pending: 0, in_progress: 1, done: 2, }, default: :pending
   enum :visibility, { visible_to_all: 0, private_task: 1 }, default: :visible_to_all
   enum :priority, { no_priority: 0, low: 1, medium: 2, high: 3, urgent: 4 }, default: :no_priority
   COLORS = %w[blue green orange red purple pink teal yellow gray].freeze
-
-  # Soft deletion
-  default_scope { where(deleted_at: nil) }
 
   # Validations
   validates :title, presence: true, length: { maximum: 255 }
   validates :note, length: { maximum: 1000 }, allow_nil: true
   validates :due_at, presence: true
-  validates :strict_mode, inclusion: { in: [ true, false ] }
+  validates :strict_mode, inclusion: { in: [true, false] }
   validates :notification_interval_minutes, numericality: { greater_than: 0 }, allow_nil: true
   validates :recurrence_pattern, inclusion: { in: %w[daily weekly monthly yearly] }, allow_nil: true
   validates :recurrence_interval, numericality: { greater_than: 0 }, allow_nil: true
@@ -37,29 +38,20 @@ class Task < ApplicationRecord
   after_initialize :set_defaults
   after_create :record_creation_event
   after_update :handle_status_change_callbacks, if: :saved_change_to_status?
+  accepts_nested_attributes_for :task_tags, allow_destroy: true
 
-  # Scopes
+  # Scopes (SoftDeletable provides: with_deleted, only_deleted, not_deleted)
   scope :completed, -> { where(status: :done) }
   scope :pending, -> { where(status: :pending) }
   scope :in_progress, -> { where(status: :in_progress) }
-  scope :not_deleted, -> { where(deleted_at: nil) }
-  scope :deleted, -> { where.not(deleted_at: nil) }
-  scope :with_deleted, -> { unscoped }
   scope :overdue, -> { pending.where("due_at < ?", Time.current) }
   scope :due_soon, -> { where("due_at <= ?", 1.day.from_now) }
   scope :incomplete, -> { where.not(status: :done) }
   scope :recurring, -> { where(is_recurring: true) }
   scope :by_list, ->(list_id) { where(list_id: list_id) }
   scope :by_creator, ->(creator_id) { where(creator_id: creator_id) }
-  scope :sorted_with_urgent_first, ->(column = :created_at, direction = :desc) {
-    order(Arel.sql("CASE WHEN priority = 4 THEN 0 ELSE 1 END"), column => direction)
-  }
-  scope :sorted_with_priority, ->(column = :created_at, direction = :desc) {
-    order(
-      Arel.sql("CASE WHEN priority = 4 THEN 0 WHEN starred = true THEN 1 ELSE 2 END"),
-      column => direction
-    )
-  }
+
+  # Primary sorting scope - urgent tasks first, then starred, then by position/column
   scope :sorted_with_priority, ->(column = :created_at, direction = :desc) {
     order(
       Arel.sql("CASE WHEN priority = 4 THEN 0 WHEN starred = true THEN 1 ELSE 2 END"),
@@ -67,6 +59,10 @@ class Task < ApplicationRecord
       column => direction
     )
   }
+
+  scope :visible, -> { where(is_template: [false, nil]) }
+  scope :templates, -> { where(is_template: true) }
+  scope :recurring_templates, -> { where(is_template: true, template_type: "recurring") }
 
   # Business logic
   def complete!
@@ -80,18 +76,6 @@ class Task < ApplicationRecord
   def snooze!(duration)
     raise ArgumentError, "duration required" if duration.blank?
     update!(due_at: (due_at || Time.current) + duration)
-  end
-
-  def soft_delete!
-    update!(deleted_at: Time.current)
-  end
-
-  def restore!
-    update!(deleted_at: nil, status: :pending)
-  end
-
-  def deleted?
-    deleted_at.present?
   end
 
   def overdue?

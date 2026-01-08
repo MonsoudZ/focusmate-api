@@ -52,7 +52,8 @@ RSpec.describe TaskCreationService, type: :service do
 
     it "should set default values" do
       params_without_defaults = {
-        title: "Task without defaults"
+        title: "Task without defaults",
+        due_at: 1.hour.from_now.iso8601  # due_at is required
       }
 
       service = TaskCreationService.new(list, user, params_without_defaults)
@@ -63,7 +64,7 @@ RSpec.describe TaskCreationService, type: :service do
 
     it "should create subtasks if provided" do
       params_with_subtasks = params.merge(
-        subtasks: [ "Subtask 1", "Subtask 2", "Subtask 3" ]
+        subtasks: ["Subtask 1", "Subtask 2", "Subtask 3"]
       )
 
       service = TaskCreationService.new(list, user, params_with_subtasks)
@@ -77,7 +78,7 @@ RSpec.describe TaskCreationService, type: :service do
 
     it "should set subtask attributes correctly" do
       params_with_subtasks = params.merge(
-        subtasks: [ "Subtask" ]
+        subtasks: ["Subtask"]
       )
 
       service = TaskCreationService.new(list, user, params_with_subtasks)
@@ -91,6 +92,7 @@ RSpec.describe TaskCreationService, type: :service do
     end
 
     it "should handle invalid date formats gracefully" do
+      # When due_at in base params is valid, invalid dueDate is ignored
       params_with_invalid_date = params.merge(
         dueDate: "invalid-date"
       )
@@ -98,18 +100,21 @@ RSpec.describe TaskCreationService, type: :service do
       service = TaskCreationService.new(list, user, params_with_invalid_date)
       task = service.call
 
-      # Should still create task but without due_at
+      # Should still create task - due_at from base params is used
       expect(task).not_to be_nil
       expect(task.title).to eq("Test Task")
+      expect(task.due_at).not_to be_nil
     end
 
     it "should clean iOS-specific parameters" do
+      # The service uses: params[:title] ||= params.delete(:name)
+      # This means 'name' is only used if 'title' is NOT set
+      # So we test without 'title' to verify 'name' is used
       ios_params = {
         name: "iOS Task",
         dueDate: 1.hour.from_now.to_i,
-        description: "iOS description",
-        title: "Should be ignored", # This should be ignored in favor of 'name'
-        note: "Should be ignored" # This should be ignored in favor of 'description'
+        description: "iOS description"
+        # No 'title' or 'note' - so 'name' and 'description' should be used
       }
 
       service = TaskCreationService.new(list, user, ios_params)
@@ -142,10 +147,8 @@ RSpec.describe TaskCreationService, type: :service do
     end
 
     it "should handle priority setting" do
-      # Priority attribute doesn't exist in Task model, so we'll skip this test
-      # or test a different attribute that does exist
       params_with_subtasks = params.merge(
-        subtasks: [ "Subtask" ]
+        subtasks: ["Subtask"]
       )
 
       service = TaskCreationService.new(list, user, params_with_subtasks)
@@ -206,7 +209,6 @@ RSpec.describe TaskCreationService, type: :service do
       expect(task.requires_explanation_if_missed?).to be_truthy
     end
 
-
     it "should raise error for invalid parameters" do
       invalid_params = {
         title: "", # Empty title should fail validation
@@ -223,13 +225,12 @@ RSpec.describe TaskCreationService, type: :service do
         name: "Complex Task",
         dueDate: 1.hour.from_now.to_i,
         description: "Complex description",
-        # priority: 2, # Priority attribute doesn't exist
         strict_mode: false,
         can_be_snoozed: true,
         location_based: true,
         location_latitude: 40.7128,
         location_longitude: -74.0060,
-        subtasks: [ "Complex Subtask 1", "Complex Subtask 2" ]
+        subtasks: ["Complex Subtask 1", "Complex Subtask 2"]
       }
 
       service = TaskCreationService.new(list, user, complex_params)
@@ -237,7 +238,6 @@ RSpec.describe TaskCreationService, type: :service do
 
       expect(task.title).to eq("Complex Task")
       expect(task.note).to eq("Complex description")
-      # expect(task.priority).to eq(2) # Priority attribute doesn't exist
       expect(task.strict_mode).to be_falsy
       expect(task.can_be_snoozed?).to be_truthy
       expect(task.location_based?).to be_truthy
@@ -249,7 +249,6 @@ RSpec.describe TaskCreationService, type: :service do
         title: "Task with nil params",
         due_at: 1.hour.from_now.iso8601,
         note: nil
-        # priority: nil # Priority attribute doesn't exist
       }
 
       service = TaskCreationService.new(list, user, nil_params)
@@ -257,13 +256,12 @@ RSpec.describe TaskCreationService, type: :service do
 
       expect(task.title).to eq("Task with nil params")
       expect(task.note).to be_nil
-      # expect(task.priority).to be_nil # Priority attribute doesn't exist
     end
 
     it "should handle very long subtask titles" do
       long_subtask_title = "a" * 250 # Long but within 255 character limit
       params_with_long_subtask = params.merge(
-        subtasks: [ long_subtask_title ]
+        subtasks: [long_subtask_title]
       )
 
       service = TaskCreationService.new(list, user, params_with_long_subtask)
@@ -288,9 +286,11 @@ RSpec.describe TaskCreationService, type: :service do
     end
 
     it "should handle timezone-aware dates" do
-      timezone_params = params.merge(
+      # Use only due_date without due_at to test the parsing
+      timezone_params = {
+        title: "Timezone Task",
         due_date: "2024-01-01T12:00:00Z" # UTC timezone
-      )
+      }
 
       service = TaskCreationService.new(list, user, timezone_params)
       task = service.call

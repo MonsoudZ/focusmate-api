@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class TaskEvent < ApplicationRecord
+  include SoftDeletable
   belongs_to :task
   belongs_to :user
 

@@ -49,7 +49,7 @@ module Api
       def destroy
         authorize @list
         AnalyticsTracker.list_deleted(@list, current_user)
-        @list.destroy
+        @list.soft_delete!
         head :no_content
       end
 

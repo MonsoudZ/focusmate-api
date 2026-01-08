@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ListSerializer
   attr_reader :list, :current_user, :options
 
@@ -16,7 +18,7 @@ class ListSerializer
       color: list.color || "blue",
       user: UserSerializer.one(list.user),
       role: role_for_current_user,
-      tasks_count: list.tasks.count,
+      tasks_count: list.tasks_count,
       created_at: list.created_at.iso8601,
       updated_at: list.updated_at.iso8601
     }.tap do |hash|
@@ -31,7 +33,7 @@ class ListSerializer
   private
 
   def role_for_current_user
-    if list.user == current_user
+    if list.user_id == current_user.id
       "owner"
     elsif list.memberships.exists?(user_id: current_user.id, role: "editor")
       "editor"

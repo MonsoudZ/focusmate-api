@@ -32,6 +32,7 @@ Rails.application.routes.draw do
         put :password, to: "users#update_password", as: :password
       end
       resources :devices, only: %i[create destroy]
+      resources :tags
       post "auth/apple", to: "apple_auth#create"
       get "today", to: "today#index"
       post "analytics/app_opened", to: "analytics#app_opened"

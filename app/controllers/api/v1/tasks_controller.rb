@@ -5,11 +5,11 @@ module Api
     class TasksController < BaseController
       include Paginatable
 
-      before_action :set_list, only: [ :index, :create, :reorder ]
-      before_action :set_task, only: [ :show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign ]
+      before_action :set_list, only: [:index, :create, :reorder]
+      before_action :set_task, only: [:show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign]
 
-      after_action :verify_authorized, except: [ :index, :reorder, :search ]
-      after_action :verify_policy_scoped, only: [ :index ]
+      after_action :verify_authorized, except: [:index, :search]
+      after_action :verify_policy_scoped, only: [:index, :search]
 
       # GET /api/v1/tasks
       def index
@@ -19,7 +19,7 @@ module Api
           tasks = tasks.where(list_id: @list.id)
         end
 
-        tasks = tasks.where(parent_task_id: nil).not_deleted
+        tasks = tasks.where(parent_task_id: nil).where(is_template: [false, nil]).not_deleted
         tasks = apply_filters(tasks)
         tasks = apply_ordering(tasks)
         result = paginate(tasks, page: params[:page], per_page: params[:per_page])
@@ -61,7 +61,7 @@ module Api
       def destroy
         authorize @task
         AnalyticsTracker.task_deleted(@task, current_user)
-        @task.destroy
+        @task.soft_delete!
         head :no_content
       end
 
@@ -94,7 +94,7 @@ module Api
         duration = params[:duration].to_i
         duration = 60 if duration <= 0
 
-        snooze_count = AnalyticsEvent.where(task: @task, event_type: 'task_snoozed').count + 1
+        snooze_count = AnalyticsEvent.where(task: @task, event_type: "task_snoozed").count + 1
 
         new_due = (@task.due_at || Time.current) + duration.minutes
         @task.update!(due_at: new_due)
@@ -111,6 +111,12 @@ module Api
           return render json: { error: { message: "assigned_to is required" } }, status: :bad_request
         end
 
+        # Validate assignee has access to the list
+        assignee = User.find_by(id: params[:assigned_to])
+        unless assignee && @task.list.accessible_by?(assignee)
+          return render json: { error: { message: "User cannot be assigned to this task" } }, status: :unprocessable_entity
+        end
+
         @task.update!(assigned_to_id: params[:assigned_to])
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
@@ -124,6 +130,8 @@ module Api
 
       # POST /api/v1/lists/:list_id/tasks/reorder
       def reorder
+        authorize @list, :update?
+
         params[:tasks].each do |task_data|
           task = @list.tasks.find(task_data[:id])
           task.update!(position: task_data[:position])
@@ -137,6 +145,7 @@ module Api
         query = params[:q].to_s.strip
 
         if query.blank?
+          skip_policy_scope
           return render json: { tasks: [] }, status: :ok
         end
 
@@ -185,7 +194,8 @@ module Api
         %i[
           title note due_at priority can_be_snoozed strict_mode
           notification_interval_minutes list_id visibility color starred position
-        ]
+          is_recurring recurrence_pattern recurrence_interval recurrence_end_date recurrence_count recurrence_time
+        ] + [tag_ids: [], recurrence_days: []]
       end
 
       def apply_filters(query)

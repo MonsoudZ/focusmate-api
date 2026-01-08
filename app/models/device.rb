@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Device < ApplicationRecord
+  include SoftDeletable
   belongs_to :user
 
   before_validation :normalize_fields

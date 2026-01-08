@@ -21,7 +21,7 @@ class ListPolicy < ApplicationPolicy
   end
 
   def update?
-    owner?
+    owner? || editor?
   end
 
   def destroy?
@@ -44,5 +44,9 @@ class ListPolicy < ApplicationPolicy
 
   def member?
     record.memberships.exists?(user_id: user.id)
+  end
+
+  def editor?
+    record.memberships.exists?(user_id: user.id, role: "editor")
   end
 end

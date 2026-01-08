@@ -3,50 +3,49 @@
 module Api
   module V1
     class TodayController < BaseController
+      # Today endpoint doesn't use Pundit - it's inherently user-scoped
+      skip_after_action :verify_authorized, raise: false
+      skip_after_action :verify_policy_scoped, raise: false
+
       # GET /api/v1/today
       def index
-        # Update streak on app open
-        StreakService.new(current_user).update_streak!
-
-        beginning_of_day = Time.current.beginning_of_day
-        end_of_day = Time.current.end_of_day
-
-        # Get all user's tasks (from owned lists)
-        base_tasks = Task.joins(:list)
-                         .where(lists: { user_id: current_user.id })
-                         .where(parent_task_id: nil)
-                         .not_deleted
-
-        overdue_tasks = base_tasks
-                          .where("due_at < ?", Time.current)
-                          .where.not(status: "done")
-                          .order(due_at: :asc)
-
-        due_today_tasks = base_tasks
-                            .where(due_at: beginning_of_day..end_of_day)
-                            .where.not(status: "done")
-                            .order(due_at: :asc)
-
-        completed_today_tasks = base_tasks
-                                  .where(completed_at: beginning_of_day..end_of_day)
-                                  .where(status: "done")
-                                  .order(completed_at: :desc)
-                                  .limit(10)
+        query = TodayTasksQuery.new(current_user, timezone: current_user.timezone)
+        data = query.all_for_today
+        stats = query.stats
 
         render json: {
-          overdue: overdue_tasks.map { |t| TaskSerializer.new(t, current_user: current_user).as_json },
-          due_today: due_today_tasks.map { |t| TaskSerializer.new(t, current_user: current_user).as_json },
-          completed_today: completed_today_tasks.map { |t| TaskSerializer.new(t, current_user: current_user).as_json },
-          stats: {
-            overdue_count: overdue_tasks.count,
-            due_today_count: due_today_tasks.count,
-            completed_today_count: completed_today_tasks.count
-          },
-          streak: {
-            current: current_user.current_streak,
-            longest: current_user.longest_streak
-          }
+          overdue: serialize_tasks(data[:overdue]),
+          due_today: serialize_tasks(data[:due_today]),
+          completed_today: serialize_tasks(data[:completed_today]),
+          stats: stats
         }, status: :ok
+      end
+
+      # GET /api/v1/today/stats
+      def stats
+        query = TodayTasksQuery.new(current_user, timezone: current_user.timezone)
+
+        render json: { stats: query.stats }, status: :ok
+      end
+
+      # GET /api/v1/today/upcoming
+      def upcoming
+        days = params.fetch(:days, 7).to_i.clamp(1, 30)
+        limit = params.fetch(:limit, 20).to_i.clamp(1, 100)
+
+        query = TodayTasksQuery.new(current_user, timezone: current_user.timezone)
+        tasks = query.upcoming(days: days, limit: limit)
+
+        render json: {
+          upcoming: serialize_tasks(tasks),
+          days: days
+        }, status: :ok
+      end
+
+      private
+
+      def serialize_tasks(tasks)
+        tasks.map { |t| TaskSerializer.new(t, current_user: current_user).as_json }
       end
     end
   end
