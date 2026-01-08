@@ -16,7 +16,7 @@ class Task < ApplicationRecord
   has_many :tags, through: :task_tags
 
   # Enums
-  enum :status, { pending: 0, in_progress: 1, done: 2, }, default: :pending
+  enum :status, { pending: 0, in_progress: 1, done: 2 }, default: :pending
   enum :visibility, { visible_to_all: 0, private_task: 1 }, default: :visible_to_all
   enum :priority, { no_priority: 0, low: 1, medium: 2, high: 3, urgent: 4 }, default: :no_priority
   COLORS = %w[blue green orange red purple pink teal yellow gray].freeze
@@ -25,7 +25,7 @@ class Task < ApplicationRecord
   validates :title, presence: true, length: { maximum: 255 }
   validates :note, length: { maximum: 1000 }, allow_nil: true
   validates :due_at, presence: true
-  validates :strict_mode, inclusion: { in: [true, false] }
+  validates :strict_mode, inclusion: { in: [ true, false ] }
   validates :notification_interval_minutes, numericality: { greater_than: 0 }, allow_nil: true
   validates :recurrence_pattern, inclusion: { in: %w[daily weekly monthly yearly] }, allow_nil: true
   validates :recurrence_interval, numericality: { greater_than: 0 }, allow_nil: true
@@ -60,7 +60,7 @@ class Task < ApplicationRecord
     )
   }
 
-  scope :visible, -> { where(is_template: [false, nil]) }
+  scope :visible, -> { where(is_template: [ false, nil ]) }
   scope :templates, -> { where(is_template: true) }
   scope :recurring_templates, -> { where(is_template: true, template_type: "recurring") }
 

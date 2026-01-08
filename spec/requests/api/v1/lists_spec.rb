@@ -97,7 +97,7 @@ RSpec.describe "Lists API", type: :request do
       it "returns error for missing name" do
         auth_post "/api/v1/lists", user: user, params: { list: { description: "No name" } }
 
-        expect(response.status).to be_in([400, 422])
+        expect(response.status).to be_in([ 400, 422 ])
       end
     end
   end

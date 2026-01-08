@@ -72,7 +72,7 @@ class TaskUpdateService
     end
 
     # Track general edits (if other fields changed)
-    other_changes = @changes - [:priority, :starred]
+    other_changes = @changes - [ :priority, :starred ]
     if other_changes.any?
       AnalyticsTracker.task_edited(@task, @user, changes: other_changes)
     end

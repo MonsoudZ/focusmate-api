@@ -35,7 +35,7 @@ module Users
     def validate_timezone!
       Time.find_zone!(@attrs[:timezone])
     rescue ArgumentError
-      raise ValidationError.new("Invalid timezone", { timezone: ["is not a valid timezone"] })
+      raise ValidationError.new("Invalid timezone", { timezone: [ "is not a valid timezone" ] })
     end
   end
 end

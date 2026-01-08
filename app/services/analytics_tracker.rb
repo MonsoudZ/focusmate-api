@@ -8,7 +8,7 @@ class AnalyticsTracker
         user: user,
         task: task,
         list: task.list,
-        event_type: 'task_created',
+        event_type: "task_created",
         metadata: {
           priority: task.priority,
           starred: task.starred,
@@ -23,7 +23,7 @@ class AnalyticsTracker
         user: user,
         task: task,
         list: task.list,
-        event_type: 'task_completed',
+        event_type: "task_completed",
         metadata: {
           priority: task.priority,
           starred: task.starred,
@@ -31,7 +31,7 @@ class AnalyticsTracker
           minutes_overdue: minutes_overdue,
           missed_reason: missed_reason,
           time_to_complete_hours: ((Time.current - task.created_at) / 1.hour).round(1),
-          completed_day_of_week: Time.current.strftime('%A'),
+          completed_day_of_week: Time.current.strftime("%A"),
           completed_hour: Time.current.hour
         }
       )
@@ -42,7 +42,7 @@ class AnalyticsTracker
         user: user,
         task: task,
         list: task.list,
-        event_type: 'task_reopened',
+        event_type: "task_reopened",
         metadata: {}
       )
     end
@@ -52,7 +52,7 @@ class AnalyticsTracker
         user: user,
         task: task,
         list: task.list,
-        event_type: 'task_deleted',
+        event_type: "task_deleted",
         metadata: {
           was_completed: task.completed_at.present?,
           was_overdue: task.due_at.present? && task.due_at < Time.current && task.completed_at.nil?,
@@ -66,7 +66,7 @@ class AnalyticsTracker
         user: user,
         task: task,
         list: task.list,
-        event_type: 'task_snoozed',
+        event_type: "task_snoozed",
         metadata: {
           duration_minutes: duration_minutes,
           snooze_count: snooze_count,
@@ -80,7 +80,7 @@ class AnalyticsTracker
         user: user,
         task: task,
         list: task.list,
-        event_type: 'task_starred',
+        event_type: "task_starred",
         metadata: {
           priority: task.priority,
           age_hours: ((Time.current - task.created_at) / 1.hour).round(1)
@@ -93,7 +93,7 @@ class AnalyticsTracker
         user: user,
         task: task,
         list: task.list,
-        event_type: 'task_unstarred',
+        event_type: "task_unstarred",
         metadata: {}
       )
     end
@@ -103,7 +103,7 @@ class AnalyticsTracker
         user: user,
         task: task,
         list: task.list,
-        event_type: 'task_priority_changed',
+        event_type: "task_priority_changed",
         metadata: {
           from: from,
           to: to,
@@ -117,10 +117,10 @@ class AnalyticsTracker
         user: user,
         task: task,
         list: task.list,
-        event_type: 'task_edited',
+        event_type: "task_edited",
         metadata: {
           fields_changed: changes.is_a?(Array) ? changes : changes.keys,
-          edit_count: AnalyticsEvent.where(task: task, event_type: 'task_edited').count + 1
+          edit_count: AnalyticsEvent.where(task: task, event_type: "task_edited").count + 1
         }
       )
     end
@@ -130,7 +130,7 @@ class AnalyticsTracker
       record(
         user: user,
         list: list,
-        event_type: 'list_created',
+        event_type: "list_created",
         metadata: {
           visibility: list.visibility
         }
@@ -141,7 +141,7 @@ class AnalyticsTracker
       record(
         user: user,
         list: list,
-        event_type: 'list_deleted',
+        event_type: "list_deleted",
         metadata: {
           task_count: list.tasks.count,
           age_days: ((Time.current - list.created_at) / 1.day).round
@@ -153,7 +153,7 @@ class AnalyticsTracker
       record(
         user: user,
         list: list,
-        event_type: 'list_shared',
+        event_type: "list_shared",
         metadata: {
           shared_with_user_id: shared_with.id,
           role: role
@@ -165,11 +165,11 @@ class AnalyticsTracker
     def app_opened(user, platform:, version: nil)
       record(
         user: user,
-        event_type: 'app_opened',
+        event_type: "app_opened",
         metadata: {
           platform: platform,
           version: version,
-          day_of_week: Time.current.strftime('%A'),
+          day_of_week: Time.current.strftime("%A"),
           hour: Time.current.hour
         }
       )
@@ -178,7 +178,7 @@ class AnalyticsTracker
     def session_started(user, platform:, version: nil)
       record(
         user: user,
-        event_type: 'session_started',
+        event_type: "session_started",
         metadata: {
           platform: platform,
           version: version

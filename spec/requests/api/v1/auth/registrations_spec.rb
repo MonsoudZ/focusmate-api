@@ -44,7 +44,7 @@ RSpec.describe "Auth Registrations", type: :request do
              params: { user: { password: "password123", password_confirmation: "password123" } }.to_json,
              headers: { "Content-Type" => "application/json" }
 
-        expect(response.status).to be_in([400, 422])
+        expect(response.status).to be_in([ 400, 422 ])
       end
 
       it "returns error for missing password" do
@@ -52,7 +52,7 @@ RSpec.describe "Auth Registrations", type: :request do
              params: { user: { email: "test@example.com" } }.to_json,
              headers: { "Content-Type" => "application/json" }
 
-        expect(response.status).to be_in([400, 422])
+        expect(response.status).to be_in([ 400, 422 ])
       end
 
       it "returns error for password mismatch" do
@@ -60,7 +60,7 @@ RSpec.describe "Auth Registrations", type: :request do
              params: { user: { email: "test@example.com", password: "password123", password_confirmation: "different" } }.to_json,
              headers: { "Content-Type" => "application/json" }
 
-        expect(response.status).to be_in([400, 422])
+        expect(response.status).to be_in([ 400, 422 ])
       end
 
       it "returns error for duplicate email" do
@@ -70,7 +70,7 @@ RSpec.describe "Auth Registrations", type: :request do
              params: { user: { email: "existing@example.com", password: "password123", password_confirmation: "password123" } }.to_json,
              headers: { "Content-Type" => "application/json" }
 
-        expect(response.status).to be_in([400, 422])
+        expect(response.status).to be_in([ 400, 422 ])
       end
 
       it "returns error for short password" do
@@ -78,7 +78,7 @@ RSpec.describe "Auth Registrations", type: :request do
              params: { user: { email: "test@example.com", password: "short", password_confirmation: "short" } }.to_json,
              headers: { "Content-Type" => "application/json" }
 
-        expect(response.status).to be_in([400, 422])
+        expect(response.status).to be_in([ 400, 422 ])
       end
 
       it "returns error for invalid email format" do
@@ -86,7 +86,7 @@ RSpec.describe "Auth Registrations", type: :request do
              params: { user: { email: "notanemail", password: "password123", password_confirmation: "password123" } }.to_json,
              headers: { "Content-Type" => "application/json" }
 
-        expect(response.status).to be_in([400, 422])
+        expect(response.status).to be_in([ 400, 422 ])
       end
     end
   end

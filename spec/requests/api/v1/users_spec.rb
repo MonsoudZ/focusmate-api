@@ -66,7 +66,7 @@ RSpec.describe "Users API", type: :request do
           password_confirmation: "newpassword456"
         }
 
-        expect(response.status).to be_in([401, 422])
+        expect(response.status).to be_in([ 401, 422 ])
       end
     end
 
@@ -78,7 +78,7 @@ RSpec.describe "Users API", type: :request do
           password_confirmation: "differentpassword"
         }
 
-        expect(response.status).to be_in([400, 422])
+        expect(response.status).to be_in([ 400, 422 ])
       end
     end
   end
@@ -88,7 +88,7 @@ RSpec.describe "Users API", type: :request do
       it "deletes the account" do
         auth_delete "/api/v1/users/profile", user: user
 
-        expect(response.status).to be_in([200, 204, 422])
+        expect(response.status).to be_in([ 200, 204, 422 ])
       end
     end
   end

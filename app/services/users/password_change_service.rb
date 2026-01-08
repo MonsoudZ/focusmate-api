@@ -49,20 +49,20 @@ module Users
     def validate_current_password!
       return if @user.valid_password?(@current_password)
 
-      raise ValidationError.new("Current password is incorrect", { current_password: ["is incorrect"] })
+      raise ValidationError.new("Current password is incorrect", { current_password: [ "is incorrect" ] })
     end
 
     def validate_new_password!
       if @password.blank?
-        raise ValidationError.new("Password is required", { password: ["can't be blank"] })
+        raise ValidationError.new("Password is required", { password: [ "can't be blank" ] })
       end
 
       if @password.length < 6
-        raise ValidationError.new("Password too short", { password: ["must be at least 6 characters"] })
+        raise ValidationError.new("Password too short", { password: [ "must be at least 6 characters" ] })
       end
 
       if @password != @password_confirmation
-        raise ValidationError.new("Password confirmation doesn't match", { password_confirmation: ["doesn't match"] })
+        raise ValidationError.new("Password confirmation doesn't match", { password_confirmation: [ "doesn't match" ] })
       end
     end
   end

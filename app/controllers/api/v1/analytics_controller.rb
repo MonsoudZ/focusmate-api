@@ -10,7 +10,7 @@ module Api
       def app_opened
         AnalyticsTracker.app_opened(
           current_user,
-          platform: params[:platform] || 'ios',
+          platform: params[:platform] || "ios",
           version: params[:version]
         )
 

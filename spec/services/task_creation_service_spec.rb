@@ -64,7 +64,7 @@ RSpec.describe TaskCreationService, type: :service do
 
     it "should create subtasks if provided" do
       params_with_subtasks = params.merge(
-        subtasks: ["Subtask 1", "Subtask 2", "Subtask 3"]
+        subtasks: [ "Subtask 1", "Subtask 2", "Subtask 3" ]
       )
 
       service = TaskCreationService.new(list, user, params_with_subtasks)
@@ -78,7 +78,7 @@ RSpec.describe TaskCreationService, type: :service do
 
     it "should set subtask attributes correctly" do
       params_with_subtasks = params.merge(
-        subtasks: ["Subtask"]
+        subtasks: [ "Subtask" ]
       )
 
       service = TaskCreationService.new(list, user, params_with_subtasks)
@@ -148,7 +148,7 @@ RSpec.describe TaskCreationService, type: :service do
 
     it "should handle priority setting" do
       params_with_subtasks = params.merge(
-        subtasks: ["Subtask"]
+        subtasks: [ "Subtask" ]
       )
 
       service = TaskCreationService.new(list, user, params_with_subtasks)
@@ -230,7 +230,7 @@ RSpec.describe TaskCreationService, type: :service do
         location_based: true,
         location_latitude: 40.7128,
         location_longitude: -74.0060,
-        subtasks: ["Complex Subtask 1", "Complex Subtask 2"]
+        subtasks: [ "Complex Subtask 1", "Complex Subtask 2" ]
       }
 
       service = TaskCreationService.new(list, user, complex_params)
@@ -261,7 +261,7 @@ RSpec.describe TaskCreationService, type: :service do
     it "should handle very long subtask titles" do
       long_subtask_title = "a" * 250 # Long but within 255 character limit
       params_with_long_subtask = params.merge(
-        subtasks: [long_subtask_title]
+        subtasks: [ long_subtask_title ]
       )
 
       service = TaskCreationService.new(list, user, params_with_long_subtask)

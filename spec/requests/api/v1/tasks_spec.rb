@@ -78,7 +78,7 @@ RSpec.describe "Tasks API", type: :request do
       it "returns error for missing title" do
         auth_post "/api/v1/lists/#{list.id}/tasks", user: user, params: { task: { due_at: 1.day.from_now.iso8601 } }
 
-        expect(response.status).to be_in([400, 422])
+        expect(response.status).to be_in([ 400, 422 ])
       end
     end
 
@@ -199,7 +199,7 @@ RSpec.describe "Tasks API", type: :request do
 
       it "returns forbidden" do
         auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: other_user, params: {
-          tasks: [{ id: task1.id, position: 1 }]
+          tasks: [ { id: task1.id, position: 1 } ]
         }
 
         expect(response).to have_http_status(:forbidden)

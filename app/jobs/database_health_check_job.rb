@@ -67,7 +67,7 @@ class DatabaseHealthCheckJob < ApplicationJob
 
   def table_sizes
     result = ActiveRecord::Base.connection.execute(<<~SQL)
-      SELECT 
+      SELECT#{' '}
         relname as table_name,
         pg_size_pretty(pg_total_relation_size(relid)) as total_size,
         pg_total_relation_size(relid) as size_bytes

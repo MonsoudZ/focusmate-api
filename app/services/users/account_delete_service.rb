@@ -36,7 +36,7 @@ module Users
       # Email users must confirm with password
       return if @password.present? && @user.valid_password?(@password)
 
-      raise ValidationError.new("Password is incorrect", { password: ["is incorrect"] })
+      raise ValidationError.new("Password is incorrect", { password: [ "is incorrect" ] })
     end
   end
 end

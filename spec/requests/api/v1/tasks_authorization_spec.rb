@@ -26,7 +26,7 @@ RSpec.describe "Tasks Authorization", type: :request do
   end
 
   describe "POST /api/v1/lists/:list_id/tasks/reorder" do
-    let(:reorder_params) { { tasks: [{ id: task.id, position: 1 }] } }
+    let(:reorder_params) { { tasks: [ { id: task.id, position: 1 } ] } }
 
     context "as list owner" do
       it "allows reordering" do

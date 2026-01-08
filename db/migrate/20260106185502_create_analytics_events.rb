@@ -12,9 +12,9 @@ class CreateAnalyticsEvents < ActiveRecord::Migration[8.0]
     end
 
     safety_assured do
-      add_index :analytics_events, [:user_id, :event_type, :occurred_at], name: 'idx_analytics_user_event_time'
-      add_index :analytics_events, [:task_id, :event_type], name: 'idx_analytics_task_event'
-      add_index :analytics_events, [:event_type, :occurred_at], name: 'idx_analytics_event_time'
+      add_index :analytics_events, [ :user_id, :event_type, :occurred_at ], name: 'idx_analytics_user_event_time'
+      add_index :analytics_events, [ :task_id, :event_type ], name: 'idx_analytics_task_event'
+      add_index :analytics_events, [ :event_type, :occurred_at ], name: 'idx_analytics_event_time'
       add_index :analytics_events, :occurred_at
     end
   end

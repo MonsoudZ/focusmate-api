@@ -22,7 +22,7 @@ RSpec.describe "Health API", type: :request do
       get "/health/ready"
 
       # May return 200 or 503 depending on service health
-      expect([200, 503]).to include(response.status)
+      expect([ 200, 503 ]).to include(response.status)
       expect(json_response["status"]).to be_present
       expect(json_response["checks"]).to be_an(Array)
     end
@@ -38,7 +38,7 @@ RSpec.describe "Health API", type: :request do
     it "returns detailed health info" do
       get "/health/detailed"
 
-      expect([200, 503]).to include(response.status)
+      expect([ 200, 503 ]).to include(response.status)
       expect(json_response["status"]).to be_present
       expect(json_response["checks"]).to be_an(Array)
       expect(json_response["environment"]).to be_present
@@ -56,7 +56,7 @@ RSpec.describe "Health API", type: :request do
       get "/health/metrics"
 
       expect(response).to have_http_status(:ok)
-      expect(json_response["health"]).to be_in([0, 1])
+      expect(json_response["health"]).to be_in([ 0, 1 ])
       expect(json_response["timestamp"]).to be_present
     end
   end

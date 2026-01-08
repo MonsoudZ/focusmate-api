@@ -53,10 +53,10 @@ class ApplicationMonitor
     # Send an alert (shows up prominently in Sentry)
     def alert(message, severity: :warning, **context)
       level = case severity
-              when :critical, :error then :error
-              when :warning then :warning
-              else :info
-              end
+      when :critical, :error then :error
+      when :warning then :warning
+      else :info
+      end
 
       Rails.logger.send(level == :info ? :info : :warn,
                         event: "alert",

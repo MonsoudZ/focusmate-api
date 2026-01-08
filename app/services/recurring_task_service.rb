@@ -90,7 +90,7 @@ class RecurringTaskService
       next_date = last_due_date.to_date + interval.days
       combine_date_and_time(next_date, base_time)
     when "weekly"
-      days = template.recurrence_days || [last_due_date.wday]
+      days = template.recurrence_days || [ last_due_date.wday ]
       next_date = find_next_weekday(last_due_date.to_date + 1.day, days, interval)
       combine_date_and_time(next_date, base_time)
     when "monthly"

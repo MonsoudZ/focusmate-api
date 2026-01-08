@@ -42,7 +42,7 @@ RSpec.describe "Devices API", type: :request do
       it "returns error" do
         auth_post "/api/v1/devices", user: user, params: { device: { platform: "ios", bundle_id: "com.test" } }
 
-        expect(response.status).to be_in([400, 422])
+        expect(response.status).to be_in([ 400, 422 ])
       end
     end
   end
@@ -63,7 +63,7 @@ RSpec.describe "Devices API", type: :request do
       it "returns not found or forbidden" do
         auth_delete "/api/v1/devices/#{device.id}", user: other_user
 
-        expect(response.status).to be_in([403, 404])
+        expect(response.status).to be_in([ 403, 404 ])
       end
     end
   end

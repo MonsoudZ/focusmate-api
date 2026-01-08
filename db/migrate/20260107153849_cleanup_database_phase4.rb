@@ -34,11 +34,11 @@ class CleanupDatabasePhase4 < ActiveRecord::Migration[8.0]
     # =====================================================
     # Keep: index_notification_logs_on_user_id_and_created_at
     # Remove duplicates with different names
-    if index_exists?(:notification_logs, [:user_id, :created_at], name: :idx_notification_logs_user_created_at)
+    if index_exists?(:notification_logs, [ :user_id, :created_at ], name: :idx_notification_logs_user_created_at)
       remove_index :notification_logs, name: :idx_notification_logs_user_created_at, algorithm: :concurrently
     end
 
-    if index_exists?(:notification_logs, [:user_id, :created_at], name: :index_notification_logs_on_user_created_at)
+    if index_exists?(:notification_logs, [ :user_id, :created_at ], name: :index_notification_logs_on_user_created_at)
       remove_index :notification_logs, name: :index_notification_logs_on_user_created_at, algorithm: :concurrently
     end
 
@@ -92,8 +92,8 @@ class CleanupDatabasePhase4 < ActiveRecord::Migration[8.0]
     # =====================================================
     # Restore indexes (if needed)
     # =====================================================
-    unless index_exists?(:notification_logs, [:user_id, :created_at], name: :idx_notification_logs_user_created_at)
-      add_index :notification_logs, [:user_id, :created_at],
+    unless index_exists?(:notification_logs, [ :user_id, :created_at ], name: :idx_notification_logs_user_created_at)
+      add_index :notification_logs, [ :user_id, :created_at ],
                 name: :idx_notification_logs_user_created_at,
                 algorithm: :concurrently
     end
