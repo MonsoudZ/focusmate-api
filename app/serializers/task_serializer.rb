@@ -82,7 +82,7 @@ class TaskSerializer
   end
 
   def creator_data
-    creator = task.creator
+    creator = task.creator || task.list.user
     return {} unless creator
 
     {

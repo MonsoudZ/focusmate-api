@@ -88,11 +88,9 @@ class TodayTasksQuery
     total = all_today.count
 
     {
-      total_due_today: total,
-      completed_today: completed,
-      remaining_today: total - completed,
       overdue_count: overdue.count,
-      completion_percentage: total > 0 ? (completed.to_f / total * 100).round : 0
+      due_today_count: total,
+      completed_today_count: completed
     }
   end
 
