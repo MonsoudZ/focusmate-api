@@ -13,6 +13,7 @@ class TaskSerializer
     {
       id: task.id,
       list_id: task.list_id,
+      list_name: task.list.name,
       color: task.color,
       title: task.title,
       note: task.note,
