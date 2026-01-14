@@ -152,9 +152,7 @@ class Task < ApplicationRecord
 
   def recurrence_constraints
     return if recurrence_pattern.blank?
-    if recurrence_pattern == "daily" && recurrence_time.blank?
-      errors.add(:recurrence_time, "is required for daily recurring tasks")
-    end
+
     if recurrence_pattern == "weekly" && recurrence_days.blank?
       errors.add(:recurrence_days, "is required for weekly recurring tasks")
     end
