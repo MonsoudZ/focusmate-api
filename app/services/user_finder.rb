@@ -51,13 +51,17 @@ class UserFinder
     def find_or_create_by_apple(apple_user_id:, email: nil, name: nil)
       # First try to find by Apple ID
       user = User.find_by(apple_user_id: apple_user_id)
-      return user if user
+      if user
+        # Update name if provided and user doesn't have one
+        user.update!(name: name) if name.present? && user.name.blank?
+        return user
+      end
 
       # Try to find by email and link Apple ID
       if email.present?
         user = User.find_by(email: email.downcase)
         if user
-          user.update!(apple_user_id: apple_user_id)
+          user.update!(apple_user_id: apple_user_id, name: name.presence || user.name)
           return user
         end
       end
@@ -66,7 +70,7 @@ class UserFinder
       User.create!(
         email: email.presence || generate_private_relay_email(apple_user_id),
         apple_user_id: apple_user_id,
-        name: name,
+        name: name.presence || "User",
         password: SecureRandom.hex(16),
         timezone: "UTC"
       )
