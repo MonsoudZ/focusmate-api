@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_07_165149) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_20_151841) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -143,6 +143,18 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_07_165149) do
     t.index ["user_id", "delivered"], name: "index_notification_logs_on_user_and_delivered"
     t.index ["user_id"], name: "index_notification_logs_on_user_id"
     t.check_constraint "delivery_method IS NULL OR (delivery_method::text = ANY (ARRAY['email'::character varying::text, 'push'::character varying::text, 'sms'::character varying::text, 'in_app'::character varying::text]))", name: "chk_notification_log_delivery_method"
+  end
+
+  create_table "nudges", force: :cascade do |t|
+    t.bigint "task_id", null: false
+    t.bigint "from_user_id", null: false
+    t.bigint "to_user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["from_user_id"], name: "index_nudges_on_from_user_id"
+    t.index ["task_id", "from_user_id", "created_at"], name: "index_nudges_on_task_id_and_from_user_id_and_created_at"
+    t.index ["task_id"], name: "index_nudges_on_task_id"
+    t.index ["to_user_id"], name: "index_nudges_on_to_user_id"
   end
 
   create_table "saved_locations", force: :cascade do |t|
@@ -350,6 +362,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_07_165149) do
   add_foreign_key "memberships", "users"
   add_foreign_key "notification_logs", "tasks"
   add_foreign_key "notification_logs", "users"
+  add_foreign_key "nudges", "tasks"
+  add_foreign_key "nudges", "users", column: "from_user_id"
+  add_foreign_key "nudges", "users", column: "to_user_id"
   add_foreign_key "saved_locations", "users"
   add_foreign_key "tags", "users"
   add_foreign_key "task_events", "tasks"

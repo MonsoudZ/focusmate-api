@@ -6,7 +6,7 @@ module Api
       include Paginatable
 
       before_action :set_list, only: [:index, :create, :reorder]
-      before_action :set_task, only: [:show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign]
+      before_action :set_task, only: [:show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign, :nudge]
 
       after_action :verify_authorized, except: [:index, :search]
       after_action :verify_policy_scoped, only: [:index, :search]
@@ -112,7 +112,6 @@ module Api
           return render json: { error: { message: "assigned_to is required" } }, status: :bad_request
         end
 
-        # Validate assignee has access to the list
         assignee = User.find_by(id: params[:assigned_to])
         unless assignee && @task.list.accessible_by?(assignee)
           return render json: { error: { message: "User cannot be assigned to this task" } }, status: :unprocessable_entity
@@ -127,6 +126,37 @@ module Api
         authorize @task, :update?
         @task.update!(assigned_to_id: nil)
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
+      end
+
+      # POST /api/v1/lists/:list_id/tasks/:id/nudge
+      def nudge
+        authorize @task, :nudge?
+
+        task_owner = @task.creator || @task.list.user
+
+        if task_owner.id == current_user.id
+          return render json: { error: { message: "You cannot nudge yourself" } }, status: :unprocessable_entity
+        end
+
+        nudge = Nudge.new(
+          task: @task,
+          from_user: current_user,
+          to_user: task_owner
+        )
+
+        unless nudge.valid?
+          return render json: { error: { message: nudge.errors.full_messages.join(", ") } }, status: :unprocessable_entity
+        end
+
+        nudge.save!
+
+        PushNotifications::Sender.send_nudge(
+          from_user: current_user,
+          to_user: task_owner,
+          task: @task
+        )
+
+        render json: { message: "Nudge sent" }, status: :ok
       end
 
       # POST /api/v1/lists/:list_id/tasks/reorder

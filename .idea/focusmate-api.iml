@@ -41,6 +41,7 @@
     <orderEntry type="library" scope="PROVIDED" name="activesupport (v8.0.4, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="addressable (v2.8.8, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="aes_key_wrap (v1.1.0, ruby-3.3.5) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="apnotic (v1.8.0, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="apple_id (v1.6.4, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="ast (v2.4.3, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="attr_required (v1.0.2, ruby-3.3.5) [gem]" level="application" />
@@ -103,6 +104,7 @@
     <orderEntry type="library" scope="PROVIDED" name="fugit (v1.12.1, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="git (v2.3.3, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="globalid (v1.3.0, ruby-3.3.5) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="http-2 (v1.1.1, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="i18n (v1.14.7, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="ice_nine (v0.11.2, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="io-console (v0.8.1, ruby-3.3.5) [gem]" level="application" />
@@ -126,6 +128,7 @@
     <orderEntry type="library" scope="PROVIDED" name="msgpack (v1.8.0, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="nap (v1.1.0, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="net-http (v0.6.0, ruby-3.3.5) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="net-http2 (v0.19.0, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="net-imap (v0.5.12, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="net-pop (v0.1.2, ruby-3.3.5) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="net-protocol (v0.2.2, ruby-3.3.5) [gem]" level="application" />
@@ -262,9 +265,6 @@
     <entry key="config/cable">
       <value>file://$MODULE_DIR$/config/cable.yml</value>
     </entry>
-    <entry key="config/cache">
-      <value>file://$MODULE_DIR$/config/cache.yml</value>
-    </entry>
     <entry key="config/database">
       <value>file://$MODULE_DIR$/config/database.yml</value>
     </entry>
@@ -285,9 +285,6 @@
     </entry>
     <entry key="config/routes.rb">
       <value>file://$MODULE_DIR$/config/routes.rb</value>
-    </entry>
-    <entry key="config/solid_cache">
-      <value>file://$MODULE_DIR$/config/solid_cache.yml</value>
     </entry>
     <entry key="db">
       <value>file://$MODULE_DIR$/db</value>
