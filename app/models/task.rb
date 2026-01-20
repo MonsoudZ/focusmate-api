@@ -107,6 +107,10 @@ class Task < ApplicationRecord
     TaskRecurrenceService.new(self).generate_next_instance
   end
 
+  def subtask?
+    parent_task_id.present?
+  end
+
   private
 
   def set_defaults
@@ -168,7 +172,5 @@ class Task < ApplicationRecord
     end
   end
 
-  def subtask?
-    parent_task_id.present?
-  end
+
 end
