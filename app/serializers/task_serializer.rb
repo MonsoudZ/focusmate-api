@@ -10,7 +10,7 @@ class TaskSerializer
   end
 
   def as_json
-    {
+    result = {
       id: task.id,
       list_id: task.list_id,
       list_name: task.list.name,
@@ -57,7 +57,8 @@ class TaskSerializer
       can_edit: can_edit?,
       can_delete: can_delete?,
 
-      # Subtasks
+      # Subtasks metadata
+      parent_task_id: task.parent_task_id,
       has_subtasks: has_subtasks?,
       subtasks_count: subtasks_count,
       subtasks_completed_count: subtasks_completed_count,
@@ -67,6 +68,13 @@ class TaskSerializer
       created_at: task.created_at.iso8601,
       updated_at: task.updated_at.iso8601
     }
+
+    # Include subtasks array if this is a parent task (not a subtask itself)
+    if task.parent_task_id.nil? && options[:include_subtasks] != false
+      result[:subtasks] = serialize_subtasks
+    end
+
+    result
   end
 
   private
@@ -105,9 +113,9 @@ class TaskSerializer
   # Use memoized subtasks collection to avoid N+1 queries
   def subtasks_collection
     @subtasks_collection ||= if task.subtasks.loaded?
-                               task.subtasks.to_a
+                               task.subtasks.reject(&:deleted?).sort_by { |s| s.position || 0 }
                              else
-                               task.subtasks.to_a
+                               task.subtasks.where(deleted_at: nil).order(:position).to_a
                              end
   end
 
@@ -126,6 +134,20 @@ class TaskSerializer
   def subtask_percentage
     return 0 if subtasks_count.zero?
     (subtasks_completed_count.to_f / subtasks_count * 100).round
+  end
+
+  def serialize_subtasks
+    subtasks_collection.map do |subtask|
+      {
+        id: subtask.id,
+        title: subtask.title,
+        note: subtask.note,
+        status: subtask.status,
+        completed_at: subtask.status == "done" ? (subtask.completed_at&.iso8601 || subtask.updated_at.iso8601) : nil,
+        position: subtask.position,
+        created_at: subtask.created_at.iso8601
+      }
+    end
   end
 
   def completed_at_value

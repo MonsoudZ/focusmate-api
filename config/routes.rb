@@ -51,6 +51,7 @@ Rails.application.routes.draw do
             patch :assign
             patch :unassign
             post :nudge
+            get :subtasks
           end
         end
       end

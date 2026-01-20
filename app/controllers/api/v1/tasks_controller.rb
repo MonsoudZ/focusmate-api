@@ -6,7 +6,7 @@ module Api
       include Paginatable
 
       before_action :set_list, only: [:index, :create, :reorder]
-      before_action :set_task, only: [:show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign, :nudge]
+      before_action :set_task, only: [:show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign, :nudge, :subtasks]
 
       after_action :verify_authorized, except: [:index, :search]
       after_action :verify_policy_scoped, only: [:index, :search]
@@ -159,6 +159,17 @@ module Api
         render json: { message: "Nudge sent" }, status: :ok
       end
 
+      # GET /api/v1/lists/:list_id/tasks/:id/subtasks
+      def subtasks
+        authorize @task, :show?
+
+        subtasks = @task.subtasks.where(deleted_at: nil).order(:position)
+
+        render json: {
+          subtasks: subtasks.map { |s| SubtaskSerializer.new(s).as_json }
+        }, status: :ok
+      end
+
       # POST /api/v1/lists/:list_id/tasks/reorder
       def reorder
         authorize @list, :update?
@@ -226,6 +237,7 @@ module Api
           title note due_at priority can_be_snoozed strict_mode
           notification_interval_minutes list_id visibility color starred position
           is_recurring recurrence_pattern recurrence_interval recurrence_end_date recurrence_count recurrence_time
+          parent_task_id
         ] + [tag_ids: [], recurrence_days: []]
       end
 
