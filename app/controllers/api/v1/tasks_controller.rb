@@ -40,10 +40,6 @@ module Api
 
       # POST /api/v1/lists/:list_id/tasks
       def create
-        Rails.logger.info "=== CREATE TASK PARAMS ==="
-        Rails.logger.info params.inspect
-        Rails.logger.info "task_params: #{task_params.inspect}"
-        Rails.logger.info "==========================="
         if empty_json_body?
           return render json: { error: { message: "Bad Request" } }, status: :bad_request
         end

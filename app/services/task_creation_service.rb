@@ -54,6 +54,7 @@ class TaskCreationService
       notification_interval_minutes: @params[:notification_interval_minutes],
       requires_explanation_if_missed: @params[:requires_explanation_if_missed] || false,
       visibility: @params[:visibility] || :visible_to_all,
+      parent_task_id: @params[:parent_task_id],
 
       # Location-based
       location_based: @params[:location_based] || false,
