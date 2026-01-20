@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "apnotic"
+require "base64"
 
 module PushNotifications
   class Sender
@@ -50,11 +51,24 @@ module PushNotifications
 
       def connection
         @connection ||= begin
-                          key_path = ENV.fetch("APNS_KEY_PATH", "config/apns/sandbox.p8")
+                          # Check if key content is provided via env var (for Railway/production)
+                          if ENV["APNS_KEY_CONTENT"].present?
+                            key_content = Base64.decode64(ENV["APNS_KEY_CONTENT"])
+
+                            # Write to a temp file since apnotic requires a file path
+                            temp_file = Tempfile.new(["apns_key", ".p8"])
+                            temp_file.write(key_content)
+                            temp_file.rewind
+                            cert_path = temp_file.path
+                          else
+                            # Fall back to file path for local development
+                            key_path = ENV.fetch("APNS_KEY_PATH", "config/apns/sandbox.p8")
+                            cert_path = Rails.root.join(key_path)
+                          end
 
                           Apnotic::Connection.new(
                             auth_method: :token,
-                            cert_path: Rails.root.join(key_path),
+                            cert_path: cert_path,
                             key_id: ENV.fetch("APNS_KEY_ID"),
                             team_id: ENV.fetch("APNS_TEAM_ID"),
                             topic: ENV.fetch("APNS_BUNDLE_ID")
