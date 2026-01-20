@@ -24,7 +24,7 @@ class Task < ApplicationRecord
   # Validations
   validates :title, presence: true, length: { maximum: 255 }
   validates :note, length: { maximum: 1000 }, allow_nil: true
-  validates :due_at, presence: true
+  validates :due_at, presence: true, unless: :subtask?
   validates :strict_mode, inclusion: { in: [ true, false ] }
   validates :notification_interval_minutes, numericality: { greater_than: 0 }, allow_nil: true
   validates :recurrence_pattern, inclusion: { in: %w[daily weekly monthly yearly] }, allow_nil: true
@@ -166,5 +166,9 @@ class Task < ApplicationRecord
       # Task was restored - increment counter
       List.increment_counter(:tasks_count, list_id)
     end
-    end
+  end
+
+  def subtask?
+    parent_task_id.present?
+  end
 end
