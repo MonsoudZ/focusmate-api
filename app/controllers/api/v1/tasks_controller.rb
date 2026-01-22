@@ -217,7 +217,7 @@ module Api
       end
 
       def set_task
-        @task = Task.find(params[:id])
+        @task = policy_scope(Task).find(params[:id])
       end
 
       def empty_json_body?

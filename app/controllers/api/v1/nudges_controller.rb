@@ -9,7 +9,7 @@ module Api
         authorize @task, :nudge?
 
         # Find the task owner
-        task_owner = @task.user || @task.list.user
+        task_owner = @task.creator || @task.list.user
 
         # Don't nudge yourself
         if task_owner.id == current_user.id

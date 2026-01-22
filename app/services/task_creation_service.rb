@@ -3,10 +3,10 @@
 class TaskCreationService
   include TimeParsing
 
-  def initialize(list, user, params)
+  def initialize(list:, user:, params:)
     @list = list
     @user = user
-    @params = normalize_params(params)
+    @params = params
   end
 
   def call

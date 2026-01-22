@@ -10,11 +10,9 @@ module Api
       def create
         self.resource = resource_class.send_reset_password_instructions(resource_params)
 
-        if successfully_sent?(resource)
-          render json: { message: "Reset password instructions sent to email" }, status: :ok
-        else
-          render json: { error: { message: resource.errors.full_messages.first || "Email not found" } }, status: :unprocessable_entity
-        end
+        render json: {
+          message: "If an account exists with that email, password reset instructions have been sent."
+        }, status: :ok
       end
 
       # PUT /api/v1/auth/password
