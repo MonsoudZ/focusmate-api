@@ -6,7 +6,7 @@ class TaskCreationService
   def initialize(list:, user:, params:)
     @list = list
     @user = user
-    @params = params
+    @params = normalize_params(params)
   end
 
   def call
