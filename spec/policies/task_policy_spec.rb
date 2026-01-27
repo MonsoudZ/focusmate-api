@@ -52,7 +52,6 @@ RSpec.describe TaskPolicy, type: :policy do
     end
   end
 
-
   describe "deleted lists" do
     before do
       list.soft_delete!
@@ -63,6 +62,42 @@ RSpec.describe TaskPolicy, type: :policy do
       policy = described_class.new(owner, task)
       expect(policy.show?).to be false
       expect(policy.update?).to be false
+    end
+  end
+
+  describe "nudge permissions" do
+    let(:member) { create(:user) }
+    let(:viewer) { create(:user) }
+
+    before do
+      create(:membership, list: list, user: member, role: "editor")
+      create(:membership, list: list, user: viewer, role: "viewer")
+    end
+
+    it "allows list members to nudge" do
+      policy = described_class.new(member, task)
+      expect(policy.nudge?).to be true
+    end
+
+    it "allows viewers to nudge" do
+      policy = described_class.new(viewer, task)
+      expect(policy.nudge?).to be true
+    end
+
+    it "allows owner to nudge" do
+      policy = described_class.new(owner, task)
+      expect(policy.nudge?).to be true
+    end
+
+    it "blocks non-members from nudging" do
+      policy = described_class.new(other_user, task)
+      expect(policy.nudge?).to be false
+    end
+
+    it "blocks nudging deleted tasks" do
+      task.soft_delete!
+      policy = described_class.new(member, task)
+      expect(policy.nudge?).to be false
     end
   end
 end

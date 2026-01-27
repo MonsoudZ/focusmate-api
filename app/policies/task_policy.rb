@@ -25,6 +25,13 @@ class TaskPolicy < ApplicationPolicy
     update?
   end
 
+  def nudge?
+    return false unless user && record
+    return false if record.deleted?
+    return false unless record.list
+    record.list.accessible_by?(user)
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       list_ids = List

@@ -1,0 +1,63 @@
+# Sidekiq-Cron Schedule Configuration
+# =====================================
+# This file defines scheduled jobs for background processing.
+#
+# To enable scheduled jobs:
+# 1. Add `gem "sidekiq-cron"` to Gemfile
+# 2. Ensure REDIS_URL is configured
+# 3. Jobs will auto-load on Sidekiq startup
+#
+# Format:
+#   job_name:
+#     cron: "cron expression"
+#     class: "JobClassName"
+#     queue: "queue_name"
+#     description: "Human-readable description"
+
+# ====================
+# Maintenance Jobs
+# ====================
+
+jwt_cleanup:
+  cron: "0 3 * * *"  # Daily at 3 AM UTC
+  class: "JwtCleanupJob"
+  queue: "maintenance"
+  description: "Remove expired JWT tokens from denylist"
+
+analytics_cleanup:
+  cron: "0 4 * * 0"  # Weekly on Sunday at 4 AM UTC
+  class: "AnalyticsCleanupJob"
+  queue: "maintenance"
+  description: "Remove analytics events older than retention period"
+
+stale_device_cleanup:
+  cron: "0 5 * * 0"  # Weekly on Sunday at 5 AM UTC
+  class: "StaleDeviceCleanupJob"
+  queue: "maintenance"
+  description: "Soft-delete devices not seen recently"
+
+# ====================
+# Health & Monitoring
+# ====================
+
+database_health_check:
+  cron: "0 * * * *"  # Every hour at :00
+  class: "DatabaseHealthCheckJob"
+  queue: "critical"
+  description: "Check database health metrics and alert on issues"
+
+alerting_check:
+  cron: "*/5 * * * *"  # Every 5 minutes
+  class: "AlertingCheckJob"
+  queue: "critical"
+  description: "Check alerting thresholds and fire alerts"
+
+# ====================
+# Business Logic
+# ====================
+
+recurring_task_generation:
+  cron: "0 * * * *"  # Every hour at :00
+  class: "RecurringTaskGenerationJob"
+  queue: "default"
+  description: "Generate upcoming recurring task instances"

@@ -3,7 +3,6 @@
 class ListPolicy < ApplicationPolicy
   class Scope < ApplicationPolicy::Scope
     def resolve
-      # Lists the user owns OR is a member of
       member_list_ids = Membership.where(user_id: user.id).select(:list_id)
       scope.where(user_id: user.id).or(scope.where(id: member_list_ids))
     end
@@ -22,16 +21,19 @@ class ListPolicy < ApplicationPolicy
   end
 
   def update?
-    owner?
+    owner? || editor?
   end
 
   def destroy?
     owner?
   end
 
-  # OWNER ONLY
   def manage_memberships?
     owner?
+  end
+
+  def create_task?
+    record.can_edit?(user)
   end
 
   private
@@ -42,5 +44,9 @@ class ListPolicy < ApplicationPolicy
 
   def member?
     record.memberships.exists?(user_id: user.id)
+  end
+
+  def editor?
+    record.memberships.exists?(user_id: user.id, role: "editor")
   end
 end

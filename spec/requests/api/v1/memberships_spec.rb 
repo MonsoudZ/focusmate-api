@@ -1,0 +1,145 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+RSpec.describe "Memberships API", type: :request do
+  let(:owner) { create(:user) }
+  let(:member) { create(:user) }
+  let(:stranger) { create(:user) }
+  let(:list) { create(:list, user: owner) }
+  let!(:membership) { list.memberships.create!(user: member, role: "editor") }
+
+  # Create another list with memberships that should NOT be visible
+  let(:other_owner) { create(:user) }
+  let(:other_list) { create(:list, user: other_owner) }
+  let!(:other_membership) { other_list.memberships.create!(user: create(:user), role: "viewer") }
+
+  def auth_headers_for(user)
+    post "/api/v1/auth/sign_in",
+         params: { user: { email: user.email, password: "password123" } }.to_json,
+         headers: { "CONTENT_TYPE" => "application/json" }
+
+    token = response.headers["Authorization"]
+    { "Authorization" => token, "Accept" => "application/json", "Content-Type" => "application/json" }
+  end
+
+  describe "GET /api/v1/lists/:list_id/memberships" do
+    context "as list owner" do
+      it "returns memberships for the list" do
+        get "/api/v1/lists/#{list.id}/memberships",
+            headers: auth_headers_for(owner)
+
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+
+        membership_ids = json["memberships"].map { |m| m["id"] }
+        expect(membership_ids).to include(membership.id)
+        expect(membership_ids).not_to include(other_membership.id)
+      end
+    end
+
+    context "as list member" do
+      it "returns memberships for the list" do
+        get "/api/v1/lists/#{list.id}/memberships",
+            headers: auth_headers_for(member)
+
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+
+        membership_ids = json["memberships"].map { |m| m["id"] }
+        expect(membership_ids).to include(membership.id)
+      end
+    end
+
+    context "as stranger" do
+      it "returns forbidden" do
+        get "/api/v1/lists/#{list.id}/memberships",
+            headers: auth_headers_for(stranger)
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "policy scope prevents data leakage" do
+      it "does not return memberships from other lists" do
+        get "/api/v1/lists/#{list.id}/memberships",
+            headers: auth_headers_for(owner)
+
+        json = JSON.parse(response.body)
+        membership_ids = json["memberships"].map { |m| m["id"] }
+
+        # Should only see memberships from this list
+        expect(membership_ids).not_to include(other_membership.id)
+      end
+    end
+  end
+
+  describe "POST /api/v1/lists/:list_id/memberships" do
+    let(:new_user) { create(:user) }
+
+    context "as list owner" do
+      it "creates a membership" do
+        post "/api/v1/lists/#{list.id}/memberships",
+             params: { membership: { user_identifier: new_user.email, role: "viewer" } }.to_json,
+             headers: auth_headers_for(owner)
+
+        expect(response).to have_http_status(:created)
+        expect(list.memberships.exists?(user: new_user)).to be true
+      end
+    end
+
+    context "as list member (non-owner)" do
+      it "returns forbidden" do
+        post "/api/v1/lists/#{list.id}/memberships",
+             params: { membership: { user_identifier: new_user.email, role: "viewer" } }.to_json,
+             headers: auth_headers_for(member)
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+  end
+
+  describe "PATCH /api/v1/lists/:list_id/memberships/:id" do
+    context "as list owner" do
+      it "updates the membership role" do
+        patch "/api/v1/lists/#{list.id}/memberships/#{membership.id}",
+              params: { membership: { role: "viewer" } }.to_json,
+              headers: auth_headers_for(owner)
+
+        expect(response).to have_http_status(:ok)
+        expect(membership.reload.role).to eq("viewer")
+      end
+    end
+
+    context "as the member themselves" do
+      it "returns forbidden (only owner can change roles)" do
+        patch "/api/v1/lists/#{list.id}/memberships/#{membership.id}",
+              params: { membership: { role: "viewer" } }.to_json,
+              headers: auth_headers_for(member)
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+  end
+
+  describe "DELETE /api/v1/lists/:list_id/memberships/:id" do
+    context "as list owner" do
+      it "deletes the membership" do
+        delete "/api/v1/lists/#{list.id}/memberships/#{membership.id}",
+               headers: auth_headers_for(owner)
+
+        expect(response).to have_http_status(:no_content)
+        expect(list.memberships.exists?(membership.id)).to be false
+      end
+    end
+
+    context "as the member themselves" do
+      it "returns forbidden (only owner can remove members)" do
+        delete "/api/v1/lists/#{list.id}/memberships/#{membership.id}",
+               headers: auth_headers_for(member)
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+  end
+end

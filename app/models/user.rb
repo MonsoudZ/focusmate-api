@@ -11,6 +11,8 @@ class User < ApplicationRecord
   validates :timezone, presence: true
   validates :role, presence: true, inclusion: { in: %w[client coach] }
   validate :valid_timezone
+  validates :name, presence: true
+  before_validation :set_default_name
 
   # Associations
   has_many :owned_lists, class_name: "List", foreign_key: "user_id", dependent: :destroy
@@ -18,6 +20,7 @@ class User < ApplicationRecord
   has_many :lists, through: :memberships, source: :list
   has_many :devices, dependent: :destroy
   has_many :created_tasks, class_name: "Task", foreign_key: "creator_id", dependent: :destroy
+  has_many :tags, dependent: :destroy
 
   def coach?
     role == "coach"
@@ -32,6 +35,10 @@ class User < ApplicationRecord
   end
 
   private
+
+  def set_default_name
+    self.name = "User" if name.blank?
+  end
 
   def valid_timezone
     return if timezone.blank?

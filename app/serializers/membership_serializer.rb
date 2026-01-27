@@ -1,3 +1,4 @@
+# app/serializers/membership_serializer.rb
 # frozen_string_literal: true
 
 class MembershipSerializer
@@ -12,7 +13,11 @@ class MembershipSerializer
   def self.serialize(m)
     {
       id: m.id,
-      user: { id: m.user_id, email: m.user&.email },
+      user: {
+        id: m.user_id,
+        email: m.user&.email,
+        name: m.user&.name
+      },
       role: m.role,
       created_at: m.created_at,
       updated_at: m.updated_at

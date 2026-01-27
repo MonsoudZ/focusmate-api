@@ -21,26 +21,32 @@ module Memberships
     end
 
     def call!
-      raise BadRequest, "user_identifier is required" if @user_identifier.blank?
-      raise BadRequest, "Invalid role" unless ALLOWED_ROLES.include?(@role)
-
-      target_user = find_user(@user_identifier)
-      raise NotFound, "User not found" unless target_user
-
-      raise Conflict, "Cannot invite yourself" if target_user.id == @inviter.id
-      raise Conflict, "User is already a member of this list" if @list.memberships.exists?(user_id: target_user.id)
-
-      @list.memberships.create!(user: target_user, role: @role)
+      validate_inputs!
+      target_user = find_target_user!
+      validate_membership!(target_user)
+      create_membership!(target_user)
     end
 
     private
 
-    def find_user(identifier)
-      if identifier.match?(/\A\d+\z/)
-        User.find_by(id: identifier)
-      else
-        User.find_by(email: identifier.downcase)
-      end
+    def validate_inputs!
+      raise BadRequest, "user_identifier is required" if @user_identifier.blank?
+      raise BadRequest, "Invalid role" unless ALLOWED_ROLES.include?(@role)
+    end
+
+    def find_target_user!
+      user = UserFinder.find_by_identifier(@user_identifier)
+      raise NotFound, "User not found" unless user
+      user
+    end
+
+    def validate_membership!(target_user)
+      raise Conflict, "Cannot invite yourself" if target_user.id == @inviter.id
+      raise Conflict, "User is already a member of this list" if @list.memberships.exists?(user_id: target_user.id)
+    end
+
+    def create_membership!(target_user)
+      @list.memberships.create!(user: target_user, role: @role)
     end
   end
 end

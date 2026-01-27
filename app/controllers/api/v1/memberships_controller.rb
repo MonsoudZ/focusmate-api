@@ -31,6 +31,8 @@ module Api
           role: create_params[:role]
         )
 
+        AnalyticsTracker.list_shared(@list, current_user, shared_with: membership.user, role: membership.role)
+
         render json: MembershipSerializer.one(membership), status: :created
       end
 

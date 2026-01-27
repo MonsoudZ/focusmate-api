@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class List < ApplicationRecord
+  include SoftDeletable
   belongs_to :user
   has_many :memberships, dependent: :destroy
   has_many :members, through: :memberships, source: :user
@@ -18,8 +19,12 @@ class List < ApplicationRecord
   VISIBILITIES = %w[public private shared].freeze
   validates :visibility, inclusion: { in: VISIBILITIES }
 
+  COLORS = %w[blue green orange red purple pink teal yellow gray].freeze
+  validates :color, inclusion: { in: COLORS }, allow_nil: true
+
   before_validation do
     self.visibility ||= "private"
+    self.color ||= "blue"
   end
 
   # Scopes

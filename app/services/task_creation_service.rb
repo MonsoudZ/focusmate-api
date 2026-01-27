@@ -1,118 +1,104 @@
 # frozen_string_literal: true
 
 class TaskCreationService
-  def initialize(list, user, params)
+  include TimeParsing
+
+  def initialize(list:, user:, params:)
     @list = list
     @user = user
-    @params = params
+    @params = normalize_params(params)
   end
 
   def call
-    subtasks = @params[:subtasks]
-    normalize_parameters
-    create_task
-    create_subtasks(subtasks) if subtasks.present?
-    @task
+    task = @list.tasks.new(task_attributes)
+    task.creator = @user
+    task.save!
+
+    create_subtasks(task) if subtask_titles.present?
+    track_analytics(task)
+
+    task
   end
 
   private
 
-  def normalize_parameters
-    @attrs = @params.to_h
-    handle_ios_parameters
-    set_default_values
-    clean_parameters
+  def normalize_params(params)
+    # Convert ActionController::Parameters to hash if needed
+    params = params.to_unsafe_h if params.respond_to?(:to_unsafe_h)
+    params = params.with_indifferent_access
+
+    # Handle iOS naming conventions
+    params[:title] ||= params.delete(:name)
+    params[:note] ||= params.delete(:description)
+    params[:due_at] ||= parse_due_date(params)
+
+    params
   end
 
-  def handle_ios_parameters
-    @attrs[:title] = @params[:name] if @params[:name].present?
-    @attrs[:note] = @params[:description] if @params[:description].present?
-    handle_date_parameters
+  def parse_due_date(params)
+    # Priority: due_at > dueDate > due_date
+    raw_value = params[:due_at] || params[:dueDate] || params[:due_date]
+    parse_time(raw_value)
   end
 
-  def handle_date_parameters
-    @attrs[:due_at] = extract_due_at(@params)
+  def task_attributes
+    {
+      title: @params[:title],
+      note: @params[:note],
+      due_at: @params[:due_at],
+      priority: @params[:priority] || :no_priority,
+      color: @params[:color],
+      starred: @params[:starred] || false,
+      strict_mode: @params.fetch(:strict_mode, true),
+      can_be_snoozed: @params.fetch(:can_be_snoozed, true),
+      notification_interval_minutes: @params[:notification_interval_minutes],
+      requires_explanation_if_missed: @params[:requires_explanation_if_missed] || false,
+      visibility: @params[:visibility] || :visible_to_all,
+      parent_task_id: @params[:parent_task_id],
+
+      # Location-based
+      location_based: @params[:location_based] || false,
+      location_name: @params[:location_name],
+      location_latitude: @params[:location_latitude],
+      location_longitude: @params[:location_longitude],
+      location_radius_meters: @params[:location_radius_meters],
+      notify_on_arrival: @params[:notify_on_arrival],
+      notify_on_departure: @params[:notify_on_departure],
+
+      # Recurrence
+      is_recurring: @params[:is_recurring] || false,
+      recurrence_pattern: @params[:recurrence_pattern],
+      recurrence_interval: @params[:recurrence_interval],
+      recurrence_days: @params[:recurrence_days],
+      recurrence_time: @params[:recurrence_time],
+      recurrence_end_date: @params[:recurrence_end_date],
+      recurrence_count: @params[:recurrence_count],
+
+      # Tags
+      tag_ids: @params[:tag_ids]
+    }.compact
   end
 
-  def extract_due_at(h)
-    return parse_epoch(h[:dueDate]) if h.key?(:dueDate)
-    return parse_time(h[:due_date]) if h.key?(:due_date)
-    return parse_time(h[:due_at]) if h.key?(:due_at)
-    nil
-  rescue ArgumentError
-    nil
+  def subtask_titles
+    @params[:subtasks]
   end
 
-  def parse_epoch(v)
-    return nil if v.blank?
-    Time.at(v.to_i)
-  rescue ArgumentError
-    nil
-  end
+  def create_subtasks(parent_task)
+    subtask_titles.each do |title|
+      next if title.blank?
 
-  def parse_time(v)
-    return nil if v.blank?
-    case v
-    when Time then v.in_time_zone
-    when String
-      begin
-        Time.iso8601(v).in_time_zone
-      rescue ArgumentError
-        Time.zone.parse(v.to_s)
-      end
-    end
-  rescue StandardError
-    nil
-  end
-
-  def set_default_values
-    @attrs[:strict_mode] = true if @attrs[:strict_mode].nil?
-    @attrs[:can_be_snoozed] = boolean(@attrs[:can_be_snoozed]) unless @attrs[:can_be_snoozed].nil?
-    @attrs[:requires_explanation_if_missed] = boolean(@attrs[:requires_explanation_if_missed]) unless @attrs[:requires_explanation_if_missed].nil?
-    @attrs[:location_based] = boolean(@attrs[:location_based]) unless @attrs[:location_based].nil?
-    @attrs[:is_recurring] = boolean(@attrs[:is_recurring]) unless @attrs[:is_recurring].nil?
-  end
-
-  def boolean(value)
-    case value
-    when true, false then value
-    when "true", "1", 1 then true
-    when "false", "0", 0, nil then false
-    else false
-    end
-  end
-
-  def clean_parameters
-    @attrs.delete(:name)
-    @attrs.delete(:dueDate)
-    @attrs.delete(:description)
-    @attrs.delete(:due_date)
-    @attrs.delete(:subtasks)
-  end
-
-  def create_task
-    @task = @list.tasks.build(@attrs)
-    @task.creator = @user
-
-    if @task.due_at.blank? && @task.strict_mode
-      @task.due_at = 1.hour.from_now
-    end
-
-    @task.save!
-  end
-
-  def create_subtasks(subtasks)
-    subtasks.each do |subtask_title|
-      title = subtask_title.to_s
-      title = title[0, 255] if title.length > 255
-
-      @task.subtasks.create!(
-        list: @list,
-        creator: @user,
+      @list.tasks.create!(
         title: title,
-        due_at: @task.due_at,
-        strict_mode: @task.strict_mode
+        creator: @user,
+        parent_task: parent_task,
+        due_at: parent_task.due_at,
+        strict_mode: parent_task.strict_mode,
+        status: :pending
       )
     end
+  end
+
+  def track_analytics(task)
+    AnalyticsTracker.task_created(task, @user)
   end
 end

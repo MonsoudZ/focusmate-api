@@ -5,6 +5,16 @@ module Api
     extend ActiveSupport::Concern
 
     included do
+      # === Users ===
+      rescue_from Users::PasswordChangeService::Forbidden do |e|
+        render_error(e.message, status: :forbidden)
+      end
+
+      rescue_from Users::ProfileUpdateService::ValidationError,
+                  Users::PasswordChangeService::ValidationError,
+                  Users::AccountDeleteService::ValidationError do |e|
+        render_validation_error(e.details, message: e.message)
+      end
       # === Standard Rails/Gems ===
       rescue_from ActiveRecord::RecordNotFound do
         render_error("Not found", status: :not_found)

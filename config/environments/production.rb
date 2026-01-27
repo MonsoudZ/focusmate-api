@@ -1,4 +1,4 @@
-require "active_support/core_ext/integer/time"
+# frozen_string_literal: true
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
@@ -28,31 +28,60 @@ Rails.application.configure do
   config.force_ssl = true
 
   # Skip http-to-https redirect for the default health check endpoint.
-  # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
+  config.ssl_options = { redirect: { exclude: ->(request) { request.path.start_with?("/health") } } }
 
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]
-  config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
+  config.logger = ActiveSupport::TaggedLogging.logger($stdout)
 
   # Change to "debug" to log everything (including potentially personally-identifiable information!)
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
 
   # Prevent health checks from clogging up the logs.
-  config.silence_healthcheck_path = "/up"
+  config.silence_healthcheck_path = "/health/live"
 
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # Replace the default in-process and non-durable queuing backend for Active Job.
-  config.cache_store = :memory_store
-  config.active_job.queue_adapter = :async
+  # ====================
+  # CACHE STORE
+  # ====================
+  # Use Redis for caching in production (shared across processes, survives restarts)
+  # Falls back to memory_store if REDIS_URL not configured
+  if ENV["REDIS_URL"].present?
+    config.cache_store = :redis_cache_store, {
+      url: ENV["REDIS_URL"],
+      expires_in: 1.day,
+      namespace: "intentia_cache",
+      error_handler: lambda { |method:, returning:, exception:|
+        Rails.logger.error("Redis cache error: #{method} - #{exception.message}")
+        Sentry.capture_exception(exception) if defined?(Sentry)
+      }
+    }
+  else
+    config.cache_store = :memory_store, { size: 64.megabytes }
+  end
 
+  # ====================
+  # BACKGROUND JOBS
+  # ====================
+  # Use Sidekiq for background jobs in production (requires Redis)
+  # Falls back to async (in-process) if REDIS_URL not configured
+  if ENV["REDIS_URL"].present?
+    config.active_job.queue_adapter = :sidekiq
+  else
+    config.active_job.queue_adapter = :async
+  end
+
+  # ====================
+  # EMAIL
+  # ====================
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
   # config.action_mailer.raise_delivery_errors = false
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "example.com" }
+  config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST", "intentia.app") }
 
   # Specify outgoing SMTP server. Remember to add smtp/* credentials via rails credentials:edit.
   # config.action_mailer.smtp_settings = {
@@ -73,12 +102,16 @@ Rails.application.configure do
   # Only use :id for inspections in production.
   config.active_record.attributes_for_inspect = [ :id ]
 
+  # ====================
+  # HOST AUTHORIZATION
+  # ====================
   # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  config.hosts = [
+    ENV.fetch("APP_HOST", "localhost"),
+    /.*\.railway\.app/,  # Railway deployment domains
+    /.*\.up\.railway\.app/
+  ]
+
+  # Skip DNS rebinding protection for health check endpoints.
+  config.host_authorization = { exclude: ->(request) { request.path.start_with?("/health") } }
 end

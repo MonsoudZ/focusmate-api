@@ -9,7 +9,9 @@ module Api
 
       # GET /api/v1/lists
       def index
-        lists = policy_scope(List).where(deleted_at: nil)
+        lists = policy_scope(List)
+                  .includes(:user, :memberships)
+                  .where(deleted_at: nil)
 
         if params[:since].present?
           since_time = safe_parse_time(params[:since])
@@ -34,6 +36,7 @@ module Api
       def create
         authorize List
         list = ListCreationService.new(user: current_user, params: list_params).create!
+        AnalyticsTracker.list_created(list, current_user)
         render json: ListSerializer.new(list, current_user: current_user).as_json, status: :created
       end
 
@@ -47,7 +50,8 @@ module Api
       # DELETE /api/v1/lists/:id
       def destroy
         authorize @list
-        @list.destroy
+        AnalyticsTracker.list_deleted(@list, current_user)
+        @list.soft_delete!
         head :no_content
       end
 
@@ -59,7 +63,7 @@ module Api
 
       def list_params
         container = params[:list].present? ? params.require(:list) : params
-        container.permit(:name, :description, :visibility)
+        container.permit(:name, :description, :visibility, :color)
       end
 
       def safe_parse_time(value)

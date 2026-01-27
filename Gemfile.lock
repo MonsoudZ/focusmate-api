@@ -74,7 +74,17 @@ GEM
       uri (>= 0.13.1)
     addressable (2.8.8)
       public_suffix (>= 2.0.2, < 8.0)
+    aes_key_wrap (1.1.0)
+    apnotic (1.8.0)
+      base64
+      connection_pool (>= 2, < 4)
+      net-http2 (>= 0.18.3, < 2)
+    apple_id (1.6.4)
+      json-jwt (~> 1.16)
+      openid_connect (~> 2.2)
+      rack-oauth2 (~> 2.0)
     ast (2.4.3)
+    attr_required (1.0.2)
     axiom-types (0.1.1)
       descendants_tracker (~> 0.0.4)
       ice_nine (~> 0.11.0)
@@ -85,6 +95,7 @@ GEM
     bcrypt_pbkdf (1.1.1-arm64-darwin)
     benchmark (0.5.0)
     bigdecimal (3.3.1)
+    bindata (2.5.1)
     bootsnap (1.19.0)
       msgpack (~> 1.2)
     brakeman (7.1.1)
@@ -177,8 +188,12 @@ GEM
       dry-logic (~> 1.4)
       zeitwerk (~> 2.6)
     ed25519 (1.4.0)
+    email_validator (2.2.4)
+      activemodel
     erb (6.0.0)
     erubi (1.13.1)
+    et-orbi (1.4.0)
+      tzinfo
     factory_bot (6.5.6)
       activesupport (>= 6.1.0)
     factory_bot_rails (6.5.1)
@@ -190,6 +205,8 @@ GEM
       faraday-net_http (>= 2.0, < 3.5)
       json
       logger
+    faraday-follow_redirects (0.4.0)
+      faraday (>= 1, < 3)
     faraday-http-cache (2.5.1)
       faraday (>= 0.8)
     faraday-net_http (3.4.1)
@@ -208,6 +225,9 @@ GEM
       path_expander (~> 1.0)
       ruby_parser (~> 3.1, > 3.1.0)
       sexp_processor (~> 4.8)
+    fugit (1.12.1)
+      et-orbi (~> 1.4)
+      raabro (~> 1.4)
     git (2.3.3)
       activesupport (>= 5.0)
       addressable (~> 2.8)
@@ -215,6 +235,7 @@ GEM
       rchardet (~> 1.8)
     globalid (1.3.0)
       activesupport (>= 6.1)
+    http-2 (1.1.1)
     i18n (1.14.7)
       concurrent-ruby (~> 1.0)
     ice_nine (0.11.2)
@@ -224,6 +245,13 @@ GEM
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     json (2.16.0)
+    json-jwt (1.17.0)
+      activesupport (>= 4.2)
+      aes_key_wrap
+      base64
+      bindata
+      faraday (~> 2.0)
+      faraday-follow_redirects
     jwt (3.1.2)
       base64
     kamal (2.9.0)
@@ -269,6 +297,8 @@ GEM
     nap (1.1.0)
     net-http (0.6.0)
       uri
+    net-http2 (0.19.0)
+      http-2 (>= 1.0)
     net-imap (0.5.12)
       date
       net-protocol
@@ -292,6 +322,19 @@ GEM
       faraday (>= 1, < 3)
       sawyer (~> 0.9)
     open4 (1.3.4)
+    openid_connect (2.3.1)
+      activemodel
+      attr_required (>= 1.0.0)
+      email_validator
+      faraday (~> 2.0)
+      faraday-follow_redirects
+      json-jwt (>= 1.16)
+      mail
+      rack-oauth2 (~> 2.2)
+      swd (~> 2.0)
+      tzinfo
+      validate_url
+      webfinger (~> 2.0)
     orm_adapter (0.5.0)
     ostruct (0.6.3)
     parallel (1.27.0)
@@ -315,15 +358,24 @@ GEM
       nio4r (~> 2.0)
     pundit (2.5.2)
       activesupport (>= 3.0.0)
+    raabro (1.4.0)
     racc (1.8.1)
     rack (3.2.4)
     rack-attack (6.8.0)
       rack (>= 1.0, < 4)
+    rack-oauth2 (2.3.0)
+      activesupport
+      attr_required
+      faraday (~> 2.0)
+      faraday-follow_redirects
+      json-jwt (>= 1.11.0)
+      rack (>= 2.1.0)
     rack-session (2.1.1)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
     rack-test (2.2.0)
       rack (>= 1.3)
+    rack-timeout (0.7.0)
     rackup (2.2.1)
       rack (>= 3)
     rails (8.0.4)
@@ -462,6 +514,10 @@ GEM
       logger (>= 1.6.2)
       rack (>= 3.1.0)
       redis-client (>= 0.23.2)
+    sidekiq-cron (1.12.0)
+      fugit (~> 1.8)
+      globalid (>= 1.0.1)
+      sidekiq (>= 6)
     simplecov (0.22.0)
       docile (~> 1.1)
       simplecov-html (~> 0.11)
@@ -478,6 +534,11 @@ GEM
     stringio (3.1.8)
     strong_migrations (2.5.1)
       activerecord (>= 7.1)
+    swd (2.0.3)
+      activesupport (>= 3)
+      attr_required (>= 0.0.5)
+      faraday (~> 2.0)
+      faraday-follow_redirects
     terminal-table (4.0.0)
       unicode-display_width (>= 1.1.1, < 4)
     thor (1.4.0)
@@ -494,6 +555,9 @@ GEM
     unicode-emoji (4.1.0)
     uri (1.1.1)
     useragent (0.16.11)
+    validate_url (1.0.15)
+      activemodel (>= 3.0.0)
+      public_suffix
     virtus (2.0.0)
       axiom-types (~> 0.1)
       coercible (~> 1.0)
@@ -505,6 +569,10 @@ GEM
       dry-configurable (>= 0.13, < 2)
       jwt (>= 2.1, < 4)
       warden (~> 1.2)
+    webfinger (2.1.3)
+      activesupport
+      faraday (~> 2.0)
+      faraday-follow_redirects
     websocket-driver (0.8.0)
       base64
       websocket-extensions (>= 0.1.0)
@@ -516,6 +584,8 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  apnotic
+  apple_id
   bcrypt (~> 3.1.7)
   bootsnap
   brakeman
@@ -535,6 +605,7 @@ DEPENDENCIES
   puma (>= 5.0)
   pundit
   rack-attack
+  rack-timeout (~> 0.7)
   rails (~> 8.0.3)
   redis (~> 5.0)
   rspec-rails
@@ -544,6 +615,7 @@ DEPENDENCIES
   sentry-ruby
   shoulda-matchers
   sidekiq
+  sidekiq-cron (~> 1.12)
   simplecov
   strong_migrations
   thruster
