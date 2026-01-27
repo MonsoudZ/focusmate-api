@@ -50,7 +50,7 @@ Devise.setup do |config|
     ]
 
     # Token lifetime
-    jwt.expiration_time = 1.day.to_i
+    jwt.expiration_time = 30.days.to_i
   end
 
   # ==> Warden configuration

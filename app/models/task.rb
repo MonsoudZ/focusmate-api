@@ -147,7 +147,14 @@ class Task < ApplicationRecord
       return
     end
     current = parent_task
+    depth = 0
+    max_depth = 10
     while current
+      depth += 1
+      if depth > max_depth
+        errors.add(:parent_task, "exceeds maximum nesting depth of #{max_depth}")
+        break
+      end
       if current.id == id
         errors.add(:parent_task, "would create a circular relationship")
         break
