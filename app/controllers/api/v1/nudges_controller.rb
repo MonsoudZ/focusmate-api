@@ -37,7 +37,7 @@ module Api
       private
 
       def set_task
-        @task = Task.find(params[:task_id])
+        @task = policy_scope(Task).find(params[:task_id])
       end
     end
   end

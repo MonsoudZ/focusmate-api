@@ -84,13 +84,18 @@ class TodayTasksQuery
   # Statistics for Today view
   def stats
     all_today = all_due_today.to_a
+    overdue_tasks = overdue.to_a
+
+    total = all_today.size
     completed = all_today.count { |t| t.status == "done" }
-    total = all_today.count
+    remaining = total - completed
 
     {
-      overdue_count: overdue.count,
-      due_today_count: total,
-      completed_today_count: completed
+      total_due_today: total,
+      completed_today: completed,
+      remaining_today: remaining,
+      overdue_count: overdue_tasks.size,
+      completion_percentage: total > 0 ? ((completed.to_f / total) * 100).round : 0
     }
   end
 

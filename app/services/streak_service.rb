@@ -7,8 +7,11 @@ class StreakService
 
   # Call this when user opens the app or completes a task
   def update_streak!
-    check_previous_days!
-    check_today!
+    @user.with_lock do
+      check_previous_days!
+      check_today!
+      @user.save!
+    end
   end
 
   private
@@ -39,8 +42,6 @@ class StreakService
 
       date_to_check += 1.day
     end
-
-    @user.save!
   end
 
   def check_today!
@@ -52,14 +53,12 @@ class StreakService
       @user.current_streak += 1
       update_longest_streak!
       @user.last_streak_date = today
-      @user.save!
     elsif had_tasks_due?(today)
       # Tasks due but not all completed yet - don't update last_streak_date
       # Streak will be evaluated at end of day or next app open
     else
       # No tasks due today - neutral day, just mark as checked
       @user.last_streak_date = today
-      @user.save!
     end
   end
 

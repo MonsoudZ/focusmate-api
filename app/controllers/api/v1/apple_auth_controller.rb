@@ -41,8 +41,10 @@ module Api
       private
 
       def decode_apple_token(id_token)
-        # Decode without verification first to get the key id
-        header = JSON.parse(Base64.decode64(id_token.split(".").first))
+        header_segment = id_token.to_s.split(".").first
+        return nil if header_segment.blank?
+
+        header = JSON.parse(Base64.decode64(header_segment))
         kid = header["kid"]
 
         # Fetch Apple's public keys
@@ -69,11 +71,19 @@ module Api
         )
 
         decoded.first
+      rescue JSON::ParserError, ArgumentError
+        nil
       end
 
       def fetch_apple_public_keys
-        response = Net::HTTP.get(URI("https://appleid.apple.com/auth/keys"))
-        JSON.parse(response)["keys"]
+        Rails.cache.fetch("apple_auth_public_keys", expires_in: 5.minutes) do
+          uri = URI("https://appleid.apple.com/auth/keys")
+          response = Net::HTTP.start(uri.host, uri.port, use_ssl: true,
+                                     open_timeout: 5, read_timeout: 5) do |http|
+            http.get(uri.path)
+          end
+          JSON.parse(response.body)["keys"]
+        end
       end
 
       def render_error(message, status)

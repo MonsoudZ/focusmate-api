@@ -33,12 +33,7 @@ class Rack::Attack
     req.ip if req.path.start_with?("/users/password")
   end
 
-  # Block suspicious requests
-  Rack::Attack.blocklist("block bad user agents") do |req|
-    req.user_agent =~ /(bot|crawler|spider|scraper)/i
-  end
-
-  # Custom response for blocked requests
+  # Custom response for throttled requests
   Rack::Attack.throttled_responder = lambda do |env|
     headers = { "Content-Type" => "application/json" }
     error_response = {
