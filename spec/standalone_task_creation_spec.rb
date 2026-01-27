@@ -23,7 +23,7 @@ RSpec.describe "Standalone Task Creation", type: :model do
       strict_mode: true
     }
 
-    service = TaskCreationService.new(list, user, params)
+    service = TaskCreationService.new(list: list, user: user, params: params)
     task = service.call
 
     expect(task.title).to eq("Test Task")
@@ -55,7 +55,7 @@ RSpec.describe "Standalone Task Creation", type: :model do
       subtasks: [ "Subtask 1", "Subtask 2" ]
     }
 
-    service = TaskCreationService.new(list, user, params)
+    service = TaskCreationService.new(list: list, user: user, params: params)
     task = service.call
 
     expect(task.title).to eq("Parent Task")
@@ -87,7 +87,7 @@ RSpec.describe "Standalone Task Creation", type: :model do
       strict_mode: false
     }
 
-    service = TaskCreationService.new(list, user, params)
+    service = TaskCreationService.new(list: list, user: user, params: params)
     task = service.call
 
     expect(task.title).to eq("iOS Task")

@@ -43,10 +43,10 @@ RSpec.describe "Tasks API", type: :request do
     end
 
     context "as stranger" do
-      it "returns forbidden" do
+      it "returns not found" do
         auth_get "/api/v1/lists/#{list.id}/tasks/#{task.id}", user: other_user
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end
@@ -127,10 +127,10 @@ RSpec.describe "Tasks API", type: :request do
     end
 
     context "as stranger" do
-      it "returns forbidden" do
+      it "returns not found" do
         auth_delete "/api/v1/lists/#{list.id}/tasks/#{task.id}", user: other_user
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end

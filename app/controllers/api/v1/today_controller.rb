@@ -21,27 +21,6 @@ module Api
         }, status: :ok
       end
 
-      # GET /api/v1/today/stats
-      def stats
-        query = TodayTasksQuery.new(current_user, timezone: current_user.timezone)
-
-        render json: { stats: query.stats }, status: :ok
-      end
-
-      # GET /api/v1/today/upcoming
-      def upcoming
-        days = params.fetch(:days, 7).to_i.clamp(1, 30)
-        limit = params.fetch(:limit, 20).to_i.clamp(1, 100)
-
-        query = TodayTasksQuery.new(current_user, timezone: current_user.timezone)
-        tasks = query.upcoming(days: days, limit: limit)
-
-        render json: {
-          upcoming: serialize_tasks(tasks),
-          days: days
-        }, status: :ok
-      end
-
       private
 
       def serialize_tasks(tasks)

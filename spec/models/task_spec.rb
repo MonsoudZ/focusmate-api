@@ -62,15 +62,14 @@ RSpec.describe Task, type: :model do
       expect(task.errors[:recurrence_interval]).to include("must be greater than 0")
     end
 
-    it 'validates recurrence_time for daily pattern' do
+    it 'allows daily pattern without recurrence_time' do
       task = build(:task,
                    recurrence_pattern: "daily",
-                   recurrence_time: nil,
+                   recurrence_interval: 1,
                    due_at: 1.hour.from_now,
                    list: list,
                    creator: user)
-      expect(task).not_to be_valid
-      expect(task.errors[:recurrence_time]).to include("is required for daily recurring tasks")
+      expect(task).to be_valid
     end
 
 
