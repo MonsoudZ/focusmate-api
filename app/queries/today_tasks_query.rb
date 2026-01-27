@@ -108,7 +108,7 @@ class TodayTasksQuery
       .where(parent_task_id: nil)
       .where(is_template: [false, nil])
       .where(deleted_at: nil)
-      .includes(:list, :tags, :creator, :subtasks)
+      .includes(:tags, :creator, :subtasks, list: :user)
   end
 
   def beginning_of_today

@@ -22,7 +22,7 @@ module Api
         tasks = tasks.where(parent_task_id: nil).where(is_template: [false, nil]).not_deleted
         tasks = apply_filters(tasks)
         tasks = apply_ordering(tasks)
-        tasks = tasks.includes(:list, :tags, :creator, :subtasks)
+        tasks = tasks.includes(:tags, :creator, :subtasks, list: :user)
         result = paginate(tasks, page: params[:page], per_page: params[:per_page])
 
         render json: {
@@ -195,7 +195,7 @@ module Api
                   .where("title ILIKE :q OR note ILIKE :q", q: "%#{query}%")
                   .where(parent_task_id: nil)
                   .not_deleted
-                  .includes(:list, :tags, :creator, :subtasks)
+                  .includes(:tags, :creator, :subtasks, list: :user)
                   .limit(50)
 
         render json: {
@@ -217,7 +217,7 @@ module Api
       end
 
       def set_task
-        @task = policy_scope(Task).find(params[:id])
+        @task = policy_scope(Task).includes(:tags, :creator, :subtasks, list: :user).find(params[:id])
       end
 
       def empty_json_body?

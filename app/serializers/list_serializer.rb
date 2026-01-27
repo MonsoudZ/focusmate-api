@@ -23,7 +23,7 @@ class ListSerializer
       updated_at: list.updated_at.iso8601
     }.tap do |hash|
       if options[:include_tasks]
-        hash[:tasks] = list.tasks.includes(:tags, :creator, :subtasks).map do |task|
+        hash[:tasks] = list.tasks.includes(:tags, :creator, :subtasks, list: :user).map do |task|
           TaskSerializer.new(task, current_user: current_user).as_json
         end
       end
