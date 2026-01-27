@@ -52,8 +52,9 @@ class TaskRecurrenceService
   end
 
   def calculate_daily_recurrence
-    day_anchor = (@task.due_at || Time.current).beginning_of_day
-    next_time  = day_anchor + base_time.seconds_since_midnight
+    day_anchor = (@task.due_at || Time.current).to_date
+    next_time  = Time.zone.local(day_anchor.year, day_anchor.month, day_anchor.day,
+                                  base_time.hour, base_time.min, base_time.sec)
     next_time += 1.day if next_time <= Time.current
     next_time
   end
@@ -76,27 +77,35 @@ class TaskRecurrenceService
 
   def calculate_monthly_recurrence
     now = Time.current
-    candidate = begin
-      now.change(day: (@task.due_at || now).day,
-                 hour: base_time.hour, min: base_time.min, sec: base_time.sec)
-    rescue
-      nil
+    target_day = (@task.due_at || now).day
+    # Snap to last day of month when target day doesn't exist (e.g. day 31 in a 30-day month)
+    actual_day = [target_day, Time.days_in_month(now.month, now.year)].min
+    candidate = now.change(day: actual_day,
+                           hour: base_time.hour, min: base_time.min, sec: base_time.sec)
+    if candidate <= now
+      next_month = now.next_month
+      actual_day = [target_day, Time.days_in_month(next_month.month, next_month.year)].min
+      candidate = next_month.change(day: actual_day,
+                                    hour: base_time.hour, min: base_time.min, sec: base_time.sec)
     end
-    candidate ||= (now.beginning_of_month + base_time.seconds_since_midnight)
-    candidate = candidate.next_month if candidate <= now
     candidate
   end
 
   def calculate_yearly_recurrence
     now = Time.current
-    candidate = begin
-      now.change(month: (@task.due_at || now).month, day: (@task.due_at || now).day,
-                 hour: base_time.hour, min: base_time.min, sec: base_time.sec)
-    rescue
-      nil
+    target = @task.due_at || now
+    target_month = target.month
+    target_day = target.day
+    # Snap to last day of month when target day doesn't exist (e.g. Feb 29 in non-leap year)
+    actual_day = [target_day, Time.days_in_month(target_month, now.year)].min
+    candidate = now.change(month: target_month, day: actual_day,
+                           hour: base_time.hour, min: base_time.min, sec: base_time.sec)
+    if candidate <= now
+      next_year = now.year + 1
+      actual_day = [target_day, Time.days_in_month(target_month, next_year)].min
+      candidate = Time.zone.local(next_year, target_month, actual_day,
+                                  base_time.hour, base_time.min, base_time.sec)
     end
-    candidate ||= now.beginning_of_year + base_time.seconds_since_midnight
-    candidate = candidate.next_year if candidate <= now
     candidate
   end
 end

@@ -33,6 +33,7 @@ class Task < ApplicationRecord
   validate :due_at_not_in_past_on_create
   validate :prevent_circular_subtask_relationship
   validate :recurrence_constraints
+  validate :assigned_to_has_list_access
   validates :color, inclusion: { in: COLORS }, allow_nil: true
 
   after_initialize :set_defaults
@@ -160,6 +161,16 @@ class Task < ApplicationRecord
 
     if recurrence_pattern == "weekly" && recurrence_days.blank?
       errors.add(:recurrence_days, "is required for weekly recurring tasks")
+    end
+  end
+
+  def assigned_to_has_list_access
+    return unless assigned_to_id.present?
+    return unless list.present?
+
+    assignee = User.find_by(id: assigned_to_id)
+    unless assignee && list.accessible_by?(assignee)
+      errors.add(:assigned_to, "does not have access to this list")
     end
   end
 

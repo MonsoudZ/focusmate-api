@@ -90,7 +90,7 @@ module Api
           message: message,
           details: details
         }
-      }, status: :unprocessable_content
+      }, status: :unprocessable_entity
     end
   end
 end
