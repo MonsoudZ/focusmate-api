@@ -6,7 +6,7 @@ class Task < ApplicationRecord
   belongs_to :list, counter_cache: true
   belongs_to :creator, class_name: "User", foreign_key: :creator_id
   belongs_to :assigned_to, class_name: "User", optional: true
-  belongs_to :parent_task, class_name: "Task", optional: true
+  belongs_to :parent_task, class_name: "Task", optional: true, counter_cache: :subtasks_count
   belongs_to :template, class_name: "Task", optional: true
   has_many :instances, class_name: "Task", foreign_key: :template_id, dependent: :destroy
 
@@ -39,6 +39,7 @@ class Task < ApplicationRecord
   after_create :record_creation_event
   after_update :handle_status_change_callbacks, if: :saved_change_to_status?
   after_update :adjust_list_counter_on_soft_delete, if: :saved_change_to_deleted_at?
+  after_update :adjust_parent_subtasks_counter_on_soft_delete, if: :saved_change_to_deleted_at?
   accepts_nested_attributes_for :task_tags, allow_destroy: true
 
   # Scopes (SoftDeletable provides: with_deleted, only_deleted, not_deleted)
@@ -169,6 +170,16 @@ class Task < ApplicationRecord
     else
       # Task was restored - increment counter
       List.increment_counter(:tasks_count, list_id)
+    end
+  end
+
+  def adjust_parent_subtasks_counter_on_soft_delete
+    return unless parent_task_id.present?
+
+    if deleted_at.present?
+      Task.decrement_counter(:subtasks_count, parent_task_id)
+    else
+      Task.increment_counter(:subtasks_count, parent_task_id)
     end
   end
 
