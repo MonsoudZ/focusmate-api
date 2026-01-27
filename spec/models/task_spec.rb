@@ -203,11 +203,6 @@ RSpec.describe Task, type: :model do
       expect(task.completed_at).to be_nil
     end
 
-    it 'snoozes task' do
-      task.snooze!(1.hour)
-      expect(task.due_at).to be > 1.hour.from_now
-    end
-
     it 'soft deletes task' do
       task.soft_delete!
       expect(task.deleted?).to be true

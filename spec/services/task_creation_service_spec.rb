@@ -196,7 +196,6 @@ RSpec.describe TaskCreationService, type: :service do
 
     it "should handle accountability features" do
       accountability_params = params.merge(
-        can_be_snoozed: false,
         notification_interval_minutes: 15,
         requires_explanation_if_missed: true
       )
@@ -204,7 +203,6 @@ RSpec.describe TaskCreationService, type: :service do
       service = TaskCreationService.new(list: list, user: user, params: accountability_params)
       task = service.call
 
-      expect(task.can_be_snoozed?).to be_falsy
       expect(task.notification_interval_minutes).to eq(15)
       expect(task.requires_explanation_if_missed?).to be_truthy
     end
@@ -226,7 +224,6 @@ RSpec.describe TaskCreationService, type: :service do
         dueDate: 1.hour.from_now.to_i,
         description: "Complex description",
         strict_mode: false,
-        can_be_snoozed: true,
         location_based: true,
         location_latitude: 40.7128,
         location_longitude: -74.0060,
@@ -239,7 +236,6 @@ RSpec.describe TaskCreationService, type: :service do
       expect(task.title).to eq("Complex Task")
       expect(task.note).to eq("Complex description")
       expect(task.strict_mode).to be_falsy
-      expect(task.can_be_snoozed?).to be_truthy
       expect(task.location_based?).to be_truthy
       expect(task.subtasks.count).to eq(2)
     end

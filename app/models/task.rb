@@ -76,11 +76,6 @@ class Task < ApplicationRecord
     update!(status: :pending, completed_at: nil)
   end
 
-  def snooze!(duration)
-    raise ArgumentError, "duration required" if duration.blank?
-    update!(due_at: (due_at || Time.current) + duration)
-  end
-
   def overdue?
     pending? && due_at.present? && due_at < Time.current
   end

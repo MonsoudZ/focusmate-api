@@ -23,7 +23,6 @@ class TaskSerializer
       starred: task.starred,
       position: task.position,
       tags: serialize_tags,
-      can_be_snoozed: !task.strict_mode,
       notification_interval_minutes: task.notification_interval_minutes || 10,
       status: task.status,
       overdue: overdue?,

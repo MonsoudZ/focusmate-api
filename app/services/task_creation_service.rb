@@ -50,7 +50,6 @@ class TaskCreationService
       color: @params[:color],
       starred: @params[:starred] || false,
       strict_mode: @params.fetch(:strict_mode, true),
-      can_be_snoozed: @params.fetch(:can_be_snoozed, true),
       notification_interval_minutes: @params[:notification_interval_minutes],
       requires_explanation_if_missed: @params[:requires_explanation_if_missed] || false,
       visibility: @params[:visibility] || :visible_to_all,

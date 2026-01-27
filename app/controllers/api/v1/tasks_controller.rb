@@ -6,7 +6,7 @@ module Api
       include Paginatable
 
       before_action :set_list, only: [:index, :create, :reorder]
-      before_action :set_task, only: [:show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign, :nudge, :subtasks]
+      before_action :set_task, only: [:show, :update, :destroy, :complete, :reopen, :assign, :unassign, :nudge, :subtasks]
 
       after_action :verify_authorized, except: [:index, :search]
       after_action :verify_policy_scoped, only: [:index, :search]
@@ -86,22 +86,6 @@ module Api
       def reopen
         authorize @task, :update?
         TaskCompletionService.new(task: @task, user: current_user).uncomplete!
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
-      end
-
-      # PATCH /api/v1/lists/:list_id/tasks/:id/snooze
-      def snooze
-        authorize @task, :update?
-        duration = params[:duration].to_i
-        duration = 60 if duration <= 0
-
-        snooze_count = AnalyticsEvent.where(task: @task, event_type: "task_snoozed").count + 1
-
-        new_due = (@task.due_at || Time.current) + duration.minutes
-        @task.update!(due_at: new_due)
-
-        AnalyticsTracker.task_snoozed(@task, current_user, duration_minutes: duration, snooze_count: snooze_count)
-
         render json: TaskSerializer.new(@task, current_user: current_user).as_json
       end
 
@@ -234,7 +218,7 @@ module Api
 
       def permitted_task_attributes
         %i[
-          title note due_at priority can_be_snoozed strict_mode
+          title note due_at priority strict_mode
           notification_interval_minutes list_id visibility color starred position
           is_recurring recurrence_pattern recurrence_interval recurrence_end_date recurrence_count recurrence_time
           parent_task_id

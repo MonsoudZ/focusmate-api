@@ -47,7 +47,6 @@ Rails.application.routes.draw do
           member do
             patch :complete
             patch :reopen
-            patch :snooze
             patch :assign
             patch :unassign
             post :nudge

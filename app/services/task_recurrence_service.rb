@@ -27,7 +27,6 @@ class TaskRecurrenceService
       note: @task.note,
       due_at: next_due_at,
       strict_mode: @task.strict_mode,
-      can_be_snoozed: @task.can_be_snoozed,
       notification_interval_minutes: @task.notification_interval_minutes,
       requires_explanation_if_missed: @task.requires_explanation_if_missed,
       location_based: @task.location_based,

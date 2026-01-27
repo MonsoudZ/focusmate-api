@@ -14,7 +14,6 @@ class AnalyticsEvent < ApplicationRecord
     task_completed
     task_reopened
     task_deleted
-    task_snoozed
     task_starred
     task_unstarred
     task_priority_changed
