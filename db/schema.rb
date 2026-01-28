@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_28_044816) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_28_051529) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -296,26 +296,26 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_044816) do
     t.check_constraint "role::text = ANY (ARRAY['client'::text, 'coach'::text])", name: "users_role_check"
   end
 
-  add_foreign_key "analytics_events", "lists"
-  add_foreign_key "analytics_events", "tasks"
-  add_foreign_key "analytics_events", "users"
-  add_foreign_key "devices", "users"
-  add_foreign_key "lists", "users"
-  add_foreign_key "memberships", "lists"
-  add_foreign_key "memberships", "users"
-  add_foreign_key "nudges", "tasks"
-  add_foreign_key "nudges", "users", column: "from_user_id"
-  add_foreign_key "nudges", "users", column: "to_user_id"
-  add_foreign_key "refresh_tokens", "users"
-  add_foreign_key "tags", "users"
-  add_foreign_key "task_events", "tasks"
-  add_foreign_key "task_events", "users"
-  add_foreign_key "task_tags", "tags"
-  add_foreign_key "task_tags", "tasks"
-  add_foreign_key "tasks", "lists"
-  add_foreign_key "tasks", "tasks", column: "parent_task_id"
-  add_foreign_key "tasks", "tasks", column: "template_id"
+  add_foreign_key "analytics_events", "lists", on_delete: :nullify
+  add_foreign_key "analytics_events", "tasks", on_delete: :nullify
+  add_foreign_key "analytics_events", "users", on_delete: :cascade
+  add_foreign_key "devices", "users", on_delete: :cascade
+  add_foreign_key "lists", "users", on_delete: :cascade
+  add_foreign_key "memberships", "lists", on_delete: :cascade
+  add_foreign_key "memberships", "users", on_delete: :cascade
+  add_foreign_key "nudges", "tasks", on_delete: :cascade
+  add_foreign_key "nudges", "users", column: "from_user_id", on_delete: :cascade
+  add_foreign_key "nudges", "users", column: "to_user_id", on_delete: :cascade
+  add_foreign_key "refresh_tokens", "users", on_delete: :cascade
+  add_foreign_key "tags", "users", on_delete: :cascade
+  add_foreign_key "task_events", "tasks", on_delete: :cascade
+  add_foreign_key "task_events", "users", on_delete: :cascade
+  add_foreign_key "task_tags", "tags", on_delete: :cascade
+  add_foreign_key "task_tags", "tasks", on_delete: :cascade
+  add_foreign_key "tasks", "lists", on_delete: :cascade
+  add_foreign_key "tasks", "tasks", column: "parent_task_id", on_delete: :cascade
+  add_foreign_key "tasks", "tasks", column: "template_id", on_delete: :cascade
   add_foreign_key "tasks", "users", column: "assigned_to_id", on_delete: :nullify
-  add_foreign_key "tasks", "users", column: "creator_id"
-  add_foreign_key "tasks", "users", column: "missed_reason_reviewed_by_id"
+  add_foreign_key "tasks", "users", column: "creator_id", on_delete: :cascade
+  add_foreign_key "tasks", "users", column: "missed_reason_reviewed_by_id", on_delete: :nullify
 end
