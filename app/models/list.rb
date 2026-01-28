@@ -7,10 +7,6 @@ class List < ApplicationRecord
   has_many :members, through: :memberships, source: :user
   has_many :tasks, dependent: :destroy
 
-  # Soft deletion
-  default_scope { where(deleted_at: nil) }
-  scope :with_deleted, -> { unscope(where: :deleted_at) }
-
   # Validations
   validates :user, presence: true
   validates :name, presence: true, length: { maximum: 255 }
@@ -32,20 +28,13 @@ class List < ApplicationRecord
   scope :accessible_by, ->(user) { left_joins(:memberships).where(memberships: { user: user }).or(where(user: user)) }
   scope :modified_since, ->(ts) { where("updated_at > ? OR deleted_at > ?", ts, ts) }
 
-  # Soft delete
+  # Override soft_delete! to cascade to tasks
   def soft_delete!
     transaction do
-      update!(deleted_at: Time.current)
-      tasks.find_each { |t| t.update!(deleted_at: Time.current) }
+      super
+      # Bulk update all tasks in one query instead of N individual updates
+      tasks.update_all(deleted_at: Time.current)
     end
-  end
-
-  def restore!
-    update!(deleted_at: nil)
-  end
-
-  def deleted?
-    deleted_at.present?
   end
 
   # Roles & permissions

@@ -84,7 +84,7 @@ Task.create!(
   creator: user1,
   status: 0, # pending
   requires_explanation_if_missed: true,
-  can_be_snoozed: false
+
 )
 
 Task.create!(
@@ -95,7 +95,7 @@ Task.create!(
   creator: user1,
   status: 0,
   requires_explanation_if_missed: true,
-  can_be_snoozed: false
+
 )
 
 # Due today
@@ -106,7 +106,7 @@ Task.create!(
   due_at: Time.current.change(hour: 9, min: 0),
   creator: user1,
   status: 0,
-  can_be_snoozed: false
+
 )
 
 Task.create!(
@@ -116,7 +116,7 @@ Task.create!(
   due_at: Time.current.change(hour: 14, min: 0),
   creator: user1,
   status: 0,
-  can_be_snoozed: false
+
 )
 
 Task.create!(
@@ -126,7 +126,7 @@ Task.create!(
   due_at: Time.current.change(hour: 18, min: 0),
   creator: user1,
   status: 0,
-  can_be_snoozed: false
+
 )
 
 # Due tomorrow
@@ -137,7 +137,7 @@ Task.create!(
   due_at: 1.day.from_now.change(hour: 10, min: 0),
   creator: user1,
   status: 0,
-  can_be_snoozed: false
+
 )
 
 # Due this week
@@ -148,7 +148,7 @@ Task.create!(
   due_at: 3.days.from_now.change(hour: 7, min: 0),
   creator: user1,
   status: 0,
-  can_be_snoozed: false
+
 )
 
 Task.create!(
@@ -159,7 +159,6 @@ Task.create!(
   creator: user1,
   status: 0,
   strict_mode: true,
-  can_be_snoozed: false,
   requires_explanation_if_missed: true
 )
 
@@ -202,7 +201,7 @@ Task.create!(
   due_at: 2.days.from_now,
   creator: user1,
   status: 0,
-  can_be_snoozed: false
+
 )
 
 puts "✅ Created #{Task.count} tasks"

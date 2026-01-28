@@ -42,8 +42,8 @@ RSpec.describe "Lists API", type: :request do
         auth_get "/api/v1/lists/#{list.id}", user: user
 
         expect(response).to have_http_status(:ok)
-        expect(json_response["id"]).to eq(list.id)
-        expect(json_response["name"]).to eq(list.name)
+        expect(json_response["list"]["id"]).to eq(list.id)
+        expect(json_response["list"]["name"]).to eq(list.name)
       end
     end
 
@@ -54,7 +54,7 @@ RSpec.describe "Lists API", type: :request do
         auth_get "/api/v1/lists/#{list.id}", user: other_user
 
         expect(response).to have_http_status(:ok)
-        expect(json_response["id"]).to eq(list.id)
+        expect(json_response["list"]["id"]).to eq(list.id)
       end
     end
 
@@ -73,8 +73,8 @@ RSpec.describe "Lists API", type: :request do
         auth_get "/api/v1/lists/#{list.id}", user: user
 
         expect(response).to have_http_status(:ok)
-        expect(json_response["tasks"]).to be_present
-        expect(json_response["tasks"].first["id"]).to eq(task.id)
+        expect(json_response["list"]["tasks"]).to be_present
+        expect(json_response["list"]["tasks"].first["id"]).to eq(task.id)
       end
     end
   end
@@ -89,7 +89,7 @@ RSpec.describe "Lists API", type: :request do
         }.to change(List, :count).by(1)
 
         expect(response).to have_http_status(:created)
-        expect(json_response["name"]).to eq("New List")
+        expect(json_response["list"]["name"]).to eq("New List")
       end
     end
 

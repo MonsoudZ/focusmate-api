@@ -17,14 +17,16 @@ class TaskCompletionService
     @was_overdue = task_overdue?
     @minutes_overdue = calculate_minutes_overdue
 
-    if @missed_reason.present?
-      @task.missed_reason = @missed_reason
-      @task.missed_reason_submitted_at = Time.current
+    ActiveRecord::Base.transaction do
+      if @missed_reason.present?
+        @task.missed_reason = @missed_reason
+        @task.missed_reason_submitted_at = Time.current
+      end
+
+      @task.complete!
+      track_completion_analytics
     end
 
-    @task.complete!
-
-    track_completion_analytics
     generate_next_recurring_instance
     update_streak
 
@@ -33,8 +35,12 @@ class TaskCompletionService
 
   def uncomplete!
     validate_access!
-    @task.uncomplete!
-    track_reopen_analytics
+
+    ActiveRecord::Base.transaction do
+      @task.uncomplete!
+      track_reopen_analytics
+    end
+
     @task
   end
 
@@ -101,12 +107,12 @@ class TaskCompletionService
 
     RecurringTaskService.new(@user).generate_next_instance(@task)
   rescue StandardError => e
-    Rails.logger.error("Failed to generate next recurring instance: #{e.message}")
+    Rails.error.report(e, handled: true, context: { task_id: @task.id, user_id: @user.id })
   end
 
   def update_streak
     StreakService.new(@user).update_streak!
   rescue StandardError => e
-    Rails.logger.error("Failed to update streak: #{e.message}")
+    Rails.error.report(e, handled: true, context: { user_id: @user.id })
   end
 end

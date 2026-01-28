@@ -62,15 +62,14 @@ RSpec.describe Task, type: :model do
       expect(task.errors[:recurrence_interval]).to include("must be greater than 0")
     end
 
-    it 'validates recurrence_time for daily pattern' do
+    it 'allows daily pattern without recurrence_time' do
       task = build(:task,
                    recurrence_pattern: "daily",
-                   recurrence_time: nil,
+                   recurrence_interval: 1,
                    due_at: 1.hour.from_now,
                    list: list,
                    creator: user)
-      expect(task).not_to be_valid
-      expect(task.errors[:recurrence_time]).to include("is required for daily recurring tasks")
+      expect(task).to be_valid
     end
 
 
@@ -204,11 +203,6 @@ RSpec.describe Task, type: :model do
       expect(task.completed_at).to be_nil
     end
 
-    it 'snoozes task' do
-      task.snooze!(1.hour)
-      expect(task.due_at).to be > 1.hour.from_now
-    end
-
     it 'soft deletes task' do
       task.soft_delete!
       expect(task.deleted?).to be true
@@ -224,20 +218,6 @@ RSpec.describe Task, type: :model do
   end
 
   describe 'recurring tasks' do
-    let(:template) { create(:task, list: list, creator: user, is_recurring: true, is_template: true, recurrence_pattern: "daily", recurrence_time: "09:00") }
-
-    it 'generates next instance' do
-      instance = template.generate_next_instance
-      expect(instance).to be_a(Task)
-      expect(instance.template).to eq(template)
-      expect(instance.is_recurring).to be false
-    end
-
-    it 'calculates next due date' do
-      next_due = template.calculate_next_due_date
-      expect(next_due).to be > Time.current
-    end
-
     it 'checks if task is overdue for recurring' do
       overdue_template = create(:task,
                                list: list,

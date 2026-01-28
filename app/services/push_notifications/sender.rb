@@ -55,11 +55,12 @@ module PushNotifications
                           if ENV["APNS_KEY_CONTENT"].present?
                             key_content = Base64.decode64(ENV["APNS_KEY_CONTENT"])
 
-                            # Write to a temp file since apnotic requires a file path
-                            temp_file = Tempfile.new(["apns_key", ".p8"])
-                            temp_file.write(key_content)
-                            temp_file.rewind
-                            cert_path = temp_file.path
+                            # Write to a temp file since apnotic requires a file path.
+                            # Store as @temp_key_file so the file persists alongside @connection.
+                            @temp_key_file = Tempfile.new([ "apns_key", ".p8" ])
+                            @temp_key_file.write(key_content)
+                            @temp_key_file.close
+                            cert_path = @temp_key_file.path
                           else
                             # Fall back to file path for local development
                             key_path = ENV.fetch("APNS_KEY_PATH", "config/apns/sandbox.p8")

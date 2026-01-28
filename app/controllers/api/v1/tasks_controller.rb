@@ -5,11 +5,11 @@ module Api
     class TasksController < BaseController
       include Paginatable
 
-      before_action :set_list, only: [:index, :create, :reorder]
-      before_action :set_task, only: [:show, :update, :destroy, :complete, :reopen, :snooze, :assign, :unassign, :nudge, :subtasks]
+      before_action :set_list, only: [ :index, :create, :reorder ]
+      before_action :set_task, only: [ :show, :update, :destroy, :complete, :reopen, :assign, :unassign, :nudge ]
 
-      after_action :verify_authorized, except: [:index, :search]
-      after_action :verify_policy_scoped, only: [:index, :search]
+      after_action :verify_authorized, except: [ :index, :search ]
+      after_action :verify_policy_scoped, only: [ :index, :search ]
 
       # GET /api/v1/tasks
       def index
@@ -19,10 +19,10 @@ module Api
           tasks = tasks.where(list_id: @list.id)
         end
 
-        tasks = tasks.where(parent_task_id: nil).where(is_template: [false, nil]).not_deleted
+        tasks = tasks.where(parent_task_id: nil).where(is_template: [ false, nil ]).not_deleted
         tasks = apply_filters(tasks)
         tasks = apply_ordering(tasks)
-        tasks = tasks.includes(:list, :tags, :creator, :subtasks)
+        tasks = tasks.includes(:tags, :creator, :subtasks, list: :user)
         result = paginate(tasks, page: params[:page], per_page: params[:per_page])
 
         render json: {
@@ -35,7 +35,7 @@ module Api
       # GET /api/v1/lists/:list_id/tasks/:id
       def show
         authorize @task
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # POST /api/v1/lists/:list_id/tasks
@@ -48,14 +48,14 @@ module Api
         authorize @list, :create_task?
 
         task = TaskCreationService.new(list: @list, user: current_user, params: task_params).call
-        render json: TaskSerializer.new(task, current_user: current_user).as_json, status: :created
+        render json: { task: TaskSerializer.new(task, current_user: current_user).as_json }, status: :created
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id
       def update
         authorize @task
         TaskUpdateService.new(task: @task, user: current_user).update!(attributes: task_params)
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # DELETE /api/v1/lists/:list_id/tasks/:id
@@ -76,7 +76,7 @@ module Api
             user: current_user,
             missed_reason: params[:missed_reason]
           ).complete!
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json
+          render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
         rescue TaskCompletionService::MissingReasonError => e
           render json: { error: { code: "missing_reason", message: e.message } }, status: :unprocessable_entity
         end
@@ -86,99 +86,41 @@ module Api
       def reopen
         authorize @task, :update?
         TaskCompletionService.new(task: @task, user: current_user).uncomplete!
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
-      end
-
-      # PATCH /api/v1/lists/:list_id/tasks/:id/snooze
-      def snooze
-        authorize @task, :update?
-        duration = params[:duration].to_i
-        duration = 60 if duration <= 0
-
-        snooze_count = AnalyticsEvent.where(task: @task, event_type: "task_snoozed").count + 1
-
-        new_due = (@task.due_at || Time.current) + duration.minutes
-        @task.update!(due_at: new_due)
-
-        AnalyticsTracker.task_snoozed(@task, current_user, duration_minutes: duration, snooze_count: snooze_count)
-
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/assign
       def assign
         authorize @task, :update?
-        unless params[:assigned_to].present?
-          return render json: { error: { message: "assigned_to is required" } }, status: :bad_request
-        end
-
-        assignee = User.find_by(id: params[:assigned_to])
-        unless assignee && @task.list.accessible_by?(assignee)
-          return render json: { error: { message: "User cannot be assigned to this task" } }, status: :unprocessable_entity
-        end
-
-        @task.update!(assigned_to_id: params[:assigned_to])
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        service = TaskAssignmentService.new(task: @task, user: current_user)
+        service.assign!(assigned_to_id: params[:assigned_to])
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
+      rescue TaskAssignmentService::BadRequest => e
+        render json: { error: { message: e.message } }, status: :bad_request
+      rescue TaskAssignmentService::InvalidAssignee => e
+        render json: { error: { message: e.message } }, status: :unprocessable_entity
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/unassign
       def unassign
         authorize @task, :update?
-        @task.update!(assigned_to_id: nil)
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        TaskAssignmentService.new(task: @task, user: current_user).unassign!
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # POST /api/v1/lists/:list_id/tasks/:id/nudge
       def nudge
         authorize @task, :nudge?
-
-        task_owner = @task.creator || @task.list.user
-
-        if task_owner.id == current_user.id
-          return render json: { error: { message: "You cannot nudge yourself" } }, status: :unprocessable_entity
-        end
-
-        nudge = Nudge.new(
-          task: @task,
-          from_user: current_user,
-          to_user: task_owner
-        )
-
-        unless nudge.valid?
-          return render json: { error: { message: nudge.errors.full_messages.join(", ") } }, status: :unprocessable_entity
-        end
-
-        nudge.save!
-
-        PushNotifications::Sender.send_nudge(
-          from_user: current_user,
-          to_user: task_owner,
-          task: @task
-        )
-
+        TaskNudgeService.new(task: @task, from_user: current_user).call!
         render json: { message: "Nudge sent" }, status: :ok
-      end
-
-      # GET /api/v1/lists/:list_id/tasks/:id/subtasks
-      def subtasks
-        authorize @task, :show?
-
-        subtasks = @task.subtasks.where(deleted_at: nil).order(:position)
-
-        render json: {
-          subtasks: subtasks.map { |s| SubtaskSerializer.new(s).as_json }
-        }, status: :ok
+      rescue TaskNudgeService::SelfNudge => e
+        render json: { error: { message: e.message } }, status: :unprocessable_entity
       end
 
       # POST /api/v1/lists/:list_id/tasks/reorder
       def reorder
         authorize @list, :update?
-
-        params[:tasks].each do |task_data|
-          task = @list.tasks.find(task_data[:id])
-          task.update!(position: task_data[:position])
-        end
-
+        TaskReorderService.new(list: @list).reorder!(params[:tasks].map { |t| t.permit(:id, :position).to_h.symbolize_keys })
         head :ok
       end
 
@@ -191,11 +133,16 @@ module Api
           return render json: { tasks: [] }, status: :ok
         end
 
+        if query.length > 255
+          skip_policy_scope
+          return render json: { error: { message: "Search query too long (max 255 characters)" } }, status: :bad_request
+        end
+
         tasks = policy_scope(Task)
                   .where("title ILIKE :q OR note ILIKE :q", q: "%#{query}%")
                   .where(parent_task_id: nil)
                   .not_deleted
-                  .includes(:list, :tags, :creator, :subtasks)
+                  .includes(:tags, :creator, :subtasks, list: :user)
                   .limit(50)
 
         render json: {
@@ -217,7 +164,7 @@ module Api
       end
 
       def set_task
-        @task = policy_scope(Task).find(params[:id])
+        @task = policy_scope(Task).includes(:tags, :creator, :subtasks, list: :user).find(params[:id])
       end
 
       def empty_json_body?
@@ -234,11 +181,11 @@ module Api
 
       def permitted_task_attributes
         %i[
-          title note due_at priority can_be_snoozed strict_mode
+          title note due_at priority strict_mode
           notification_interval_minutes list_id visibility color starred position
           is_recurring recurrence_pattern recurrence_interval recurrence_end_date recurrence_count recurrence_time
           parent_task_id
-        ] + [tag_ids: [], recurrence_days: []]
+        ] + [ tag_ids: [], recurrence_days: [] ]
       end
 
       def apply_filters(query)

@@ -7,8 +7,11 @@ class StreakService
 
   # Call this when user opens the app or completes a task
   def update_streak!
-    check_previous_days!
-    check_today!
+    @user.with_lock do
+      check_previous_days!
+      check_today!
+      @user.save!
+    end
   end
 
   private
@@ -27,20 +30,25 @@ class StreakService
     date_to_check = last_checked + 1.day
 
     while date_to_check < today
-      if had_tasks_due?(date_to_check) && !completed_all_tasks?(date_to_check)
-        # Streak broken
-        @user.current_streak = 0
-      elsif had_tasks_due?(date_to_check) && completed_all_tasks?(date_to_check)
-        # Streak continues
-        @user.current_streak += 1
-        update_longest_streak!
+      # Single query per day - fetch tasks and check status in Ruby
+      due_tasks = tasks_due_on(date_to_check).to_a
+
+      if due_tasks.any?
+        all_completed = due_tasks.all? { |task| task.status == "done" }
+
+        if all_completed
+          # Streak continues
+          @user.current_streak += 1
+          update_longest_streak!
+        else
+          # Streak broken
+          @user.current_streak = 0
+        end
       end
       # Days with no tasks due: streak unchanged
 
       date_to_check += 1.day
     end
-
-    @user.save!
   end
 
   def check_today!
@@ -48,30 +56,23 @@ class StreakService
 
     return if @user.last_streak_date == today
 
-    if had_tasks_due?(today) && completed_all_tasks?(today)
-      @user.current_streak += 1
-      update_longest_streak!
-      @user.last_streak_date = today
-      @user.save!
-    elsif had_tasks_due?(today)
+    # Single query - fetch tasks and check status in Ruby
+    due_tasks = tasks_due_on(today).to_a
+
+    if due_tasks.any?
+      all_completed = due_tasks.all? { |task| task.status == "done" }
+
+      if all_completed
+        @user.current_streak += 1
+        update_longest_streak!
+        @user.last_streak_date = today
+      end
       # Tasks due but not all completed yet - don't update last_streak_date
       # Streak will be evaluated at end of day or next app open
     else
       # No tasks due today - neutral day, just mark as checked
       @user.last_streak_date = today
-      @user.save!
     end
-  end
-
-  def had_tasks_due?(date)
-    tasks_due_on(date).exists?
-  end
-
-  def completed_all_tasks?(date)
-    due_tasks = tasks_due_on(date)
-    return false if due_tasks.empty?
-
-    due_tasks.all? { |task| task.status == "done" }
   end
 
   def tasks_due_on(date)

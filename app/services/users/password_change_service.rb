@@ -34,7 +34,7 @@ module Users
       validate_current_password!
       validate_new_password!
 
-      @user.update!(password: @password)
+      @user.update!(password: @password, password_confirmation: @password_confirmation)
       @user
     end
 
@@ -57,8 +57,8 @@ module Users
         raise ValidationError.new("Password is required", { password: [ "can't be blank" ] })
       end
 
-      if @password.length < 6
-        raise ValidationError.new("Password too short", { password: [ "must be at least 6 characters" ] })
+      if @password.length < 8
+        raise ValidationError.new("Password too short", { password: [ "must be at least 8 characters" ] })
       end
 
       if @password != @password_confirmation

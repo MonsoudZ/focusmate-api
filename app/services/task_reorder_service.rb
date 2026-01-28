@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+class TaskReorderService
+  def initialize(list:)
+    @list = list
+  end
+
+  def reorder!(task_positions)
+    ActiveRecord::Base.transaction do
+      task_positions.each do |entry|
+        task = @list.tasks.find(entry[:id])
+        task.update!(position: entry[:position])
+      end
+    end
+  end
+end

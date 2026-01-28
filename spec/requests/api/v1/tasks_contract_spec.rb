@@ -105,12 +105,14 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
         expect(response.content_type).to include('application/json')
 
         json = JSON.parse(response.body)
-        expect(json).to have_key('id')
-        expect(json).to have_key('title')
-        expect(json).to have_key('status')
-        expect(json).to have_key('created_at')
-        expect(json).to have_key('updated_at')
-        expect(json['title']).to eq('Test Task')
+        expect(json).to have_key('task')
+        task = json['task']
+        expect(task).to have_key('id')
+        expect(task).to have_key('title')
+        expect(task).to have_key('status')
+        expect(task).to have_key('created_at')
+        expect(task).to have_key('updated_at')
+        expect(task['title']).to eq('Test Task')
       end
     end
 
@@ -118,7 +120,7 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
       it 'returns validation error' do
         post "/api/v1/lists/#{list.id}/tasks", params: { title: '' }, headers: auth_headers
 
-        expect(response).to have_http_status(:unprocessable_content)
+        expect(response).to have_http_status(:unprocessable_entity)
         expect(response.content_type).to include('application/json')
 
         json = JSON.parse(response.body)
@@ -138,10 +140,12 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
         expect(response.content_type).to include('application/json')
 
         json = JSON.parse(response.body)
-        expect(json).to have_key('id')
-        expect(json).to have_key('title')
-        expect(json).to have_key('status')
-        expect(json['id']).to eq(task.id)
+        expect(json).to have_key('task')
+        task_json = json['task']
+        expect(task_json).to have_key('id')
+        expect(task_json).to have_key('title')
+        expect(task_json).to have_key('status')
+        expect(task_json['id']).to eq(task.id)
       end
     end
 

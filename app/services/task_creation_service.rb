@@ -10,11 +10,16 @@ class TaskCreationService
   end
 
   def call
-    task = @list.tasks.new(task_attributes)
-    task.creator = @user
-    task.save!
+    task = nil
 
-    create_subtasks(task) if subtask_titles.present?
+    ActiveRecord::Base.transaction do
+      task = @list.tasks.new(task_attributes)
+      task.creator = @user
+      task.save!
+
+      create_subtasks(task) if subtask_titles.present?
+    end
+
     track_analytics(task)
 
     task
@@ -50,7 +55,6 @@ class TaskCreationService
       color: @params[:color],
       starred: @params[:starred] || false,
       strict_mode: @params.fetch(:strict_mode, true),
-      can_be_snoozed: @params.fetch(:can_be_snoozed, true),
       notification_interval_minutes: @params[:notification_interval_minutes],
       requires_explanation_if_missed: @params[:requires_explanation_if_missed] || false,
       visibility: @params[:visibility] || :visible_to_all,

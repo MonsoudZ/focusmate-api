@@ -50,7 +50,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      expect(json["id"]).to eq(task.id)
+      expect(json["task"]["id"]).to eq(task.id)
     end
 
     it 'requires authentication' do
@@ -71,7 +71,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      expect(json["title"]).to eq("New Task")
+      expect(json["task"]["title"]).to eq("New Task")
     end
 
     it 'requires authentication' do
@@ -82,7 +82,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
     it 'validates required fields' do
       post "/api/v1/lists/#{list.id}/tasks", params: { note: "No title" }, headers: auth_headers
 
-      expect(response).to have_http_status(:unprocessable_content)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 
@@ -94,7 +94,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
 
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      expect(json["title"]).to eq("Updated Task")
+      expect(json["task"]["title"]).to eq("Updated Task")
     end
 
     it 'requires authentication' do

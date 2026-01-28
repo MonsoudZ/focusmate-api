@@ -2,27 +2,21 @@
 # frozen_string_literal: true
 
 class MembershipSerializer
-  def self.one(membership)
-    { membership: serialize(membership) }
+  def initialize(membership)
+    @membership = membership
   end
 
-  def self.collection(memberships)
-    { memberships: memberships.map { |m| serialize(m) } }
-  end
-
-  def self.serialize(m)
+  def as_json
     {
-      id: m.id,
+      id: @membership.id,
       user: {
-        id: m.user_id,
-        email: m.user&.email,
-        name: m.user&.name
+        id: @membership.user_id,
+        email: @membership.user&.email,
+        name: @membership.user&.name
       },
-      role: m.role,
-      created_at: m.created_at,
-      updated_at: m.updated_at
+      role: @membership.role,
+      created_at: @membership.created_at,
+      updated_at: @membership.updated_at
     }
   end
-
-  private_class_method :serialize
 end

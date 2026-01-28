@@ -44,11 +44,13 @@ class TaskUpdateService
   end
 
   def perform_update(attributes)
-    unless @task.update(attributes)
-      raise ValidationError.new("Validation failed", @task.errors.as_json)
-    end
+    ActiveRecord::Base.transaction do
+      unless @task.update(attributes)
+        raise ValidationError.new("Validation failed", @task.errors.as_json)
+      end
 
-    track_analytics(attributes)
+      track_analytics(attributes)
+    end
   end
 
   def track_analytics(attributes)

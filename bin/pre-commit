@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Pre-commit hook: auto-fixes lint and catches common mistakes.
+# Install with: bin/setup-hooks
+
+set -e
+
+FAILED=0
+
+# --- 1. RuboCop auto-fix on staged Ruby files ---
+
+STAGED_RB_FILES=$(git diff --cached --name-only --diff-filter=ACM -- '*.rb')
+
+if [ -n "$STAGED_RB_FILES" ]; then
+  echo "Running RuboCop auto-fix on staged files..."
+
+  # Auto-correct, suppressing normal output
+  # shellcheck disable=SC2086
+  bundle exec rubocop -A --force-exclusion $STAGED_RB_FILES > /dev/null 2>&1 || true
+
+  # Re-stage any files that were corrected
+  # shellcheck disable=SC2086
+  git add $STAGED_RB_FILES
+
+  # Check if unfixable offenses remain
+  # shellcheck disable=SC2086
+  if ! bundle exec rubocop --force-exclusion $STAGED_RB_FILES > /dev/null 2>&1; then
+    echo "RuboCop: unfixable offenses remain. Run 'bundle exec rubocop' to see details."
+    FAILED=1
+  fi
+fi
+
+# --- 2. Reject debug artifacts in app/lib code ---
+
+STAGED_APP_FILES=$(git diff --cached --name-only --diff-filter=ACM -- 'app/*.rb' 'lib/*.rb')
+
+if [ -n "$STAGED_APP_FILES" ]; then
+  # shellcheck disable=SC2086
+  if git diff --cached -- $STAGED_APP_FILES | grep -qE '^\+.*\b(binding\.pry|binding\.irb|byebug|debugger)\b'; then
+    echo "Debug statement detected (binding.pry, byebug, etc.). Remove before committing."
+    FAILED=1
+  fi
+fi
+
+# --- 3. Reject secrets and sensitive files ---
+
+SENSITIVE_PATTERNS='\.env$|\.env\.|credentials\.yml\.enc|\.pem$|\.key$|master\.key|secret'
+STAGED_ALL=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -n "$STAGED_ALL" ]; then
+  MATCHES=$(echo "$STAGED_ALL" | grep -iE "$SENSITIVE_PATTERNS" || true)
+  if [ -n "$MATCHES" ]; then
+    echo "Potentially sensitive file staged:"
+    echo "$MATCHES"
+    echo "If intentional, commit with --no-verify."
+    FAILED=1
+  fi
+fi
+
+# --- 4. Reject large files (>1MB) ---
+
+if [ -n "$STAGED_ALL" ]; then
+  for file in $STAGED_ALL; do
+    if [ -f "$file" ]; then
+      SIZE=$(wc -c < "$file" | tr -d ' ')
+      if [ "$SIZE" -gt 1048576 ]; then
+        echo "Large file staged: $file ($(( SIZE / 1024 ))KB). If intentional, commit with --no-verify."
+        FAILED=1
+      fi
+    fi
+  done
+fi
+
+if [ "$FAILED" -ne 0 ]; then
+  exit 1
+fi

@@ -21,6 +21,7 @@ class User < ApplicationRecord
   has_many :devices, dependent: :destroy
   has_many :created_tasks, class_name: "Task", foreign_key: "creator_id", dependent: :destroy
   has_many :tags, dependent: :destroy
+  has_many :refresh_tokens, dependent: :delete_all
 
   def coach?
     role == "coach"

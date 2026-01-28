@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Installs git hooks from bin/ into .git/hooks/
+
+set -e
+
+HOOKS_DIR="$(git rev-parse --git-dir)/hooks"
+
+ln -sf "$(pwd)/bin/pre-commit" "$HOOKS_DIR/pre-commit"
+
+echo "Git hooks installed."

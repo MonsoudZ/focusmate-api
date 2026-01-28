@@ -7,7 +7,7 @@ module Memberships
 
     def self.call!(membership:, actor:)
       # owner should never remove themselves from their own list
-      if membership.list.user_id == membership.user_id
+      if membership.list.user_id.present? && membership.list.user_id == membership.user_id
         raise Conflict, "Cannot remove the list owner"
       end
 

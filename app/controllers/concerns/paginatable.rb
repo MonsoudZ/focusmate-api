@@ -21,7 +21,9 @@ module Paginatable
 
     offset = (p - 1) * pp
 
-    total = query.count
+    # Strip includes and order from count query for efficiency
+    # .count(:all) ensures we count rows, not a specific column
+    total = query.except(:includes, :order).count(:all)
     records = query.limit(pp).offset(offset)
 
     {

@@ -13,8 +13,17 @@ RSpec.describe "Auth Sessions", type: :request do
              headers: { "Content-Type" => "application/json" }
 
         expect(response).to have_http_status(:ok)
-        expect(response.headers["Authorization"]).to be_present
+        expect(json_response["token"]).to be_present
         expect(json_response["user"]).to include("id" => user.id, "email" => user.email)
+      end
+
+      it "returns a refresh token" do
+        post "/api/v1/auth/sign_in",
+             params: { user: { email: user.email, password: "password123" } }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["refresh_token"]).to be_present
       end
     end
 

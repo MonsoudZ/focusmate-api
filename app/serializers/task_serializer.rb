@@ -23,7 +23,6 @@ class TaskSerializer
       starred: task.starred,
       position: task.position,
       tags: serialize_tags,
-      can_be_snoozed: !task.strict_mode,
       notification_interval_minutes: task.notification_interval_minutes || 10,
       status: task.status,
       overdue: overdue?,
@@ -114,9 +113,9 @@ class TaskSerializer
   def subtasks_collection
     @subtasks_collection ||= if task.subtasks.loaded?
                                task.subtasks.reject(&:deleted?).sort_by { |s| s.position || 0 }
-                             else
+    else
                                task.subtasks.where(deleted_at: nil).order(:position).to_a
-                             end
+    end
   end
 
   def has_subtasks?

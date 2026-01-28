@@ -23,7 +23,7 @@ class ListSerializer
       updated_at: list.updated_at.iso8601
     }.tap do |hash|
       if options[:include_tasks]
-        hash[:tasks] = list.tasks.includes(:tags, :creator, :subtasks).map do |task|
+        hash[:tasks] = list.tasks.includes(:tags, :creator, :subtasks, list: :user).map do |task|
           TaskSerializer.new(task, current_user: current_user).as_json
         end
       end
@@ -38,9 +38,9 @@ class ListSerializer
     # Use loaded association if available to avoid N+1
     membership = if list.memberships.loaded?
                    list.memberships.find { |m| m.user_id == current_user.id }
-                 else
+    else
                    list.memberships.find_by(user_id: current_user.id)
-                 end
+    end
 
     return nil unless membership
     membership.role == "editor" ? "editor" : "viewer"

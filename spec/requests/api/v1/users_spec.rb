@@ -42,12 +42,12 @@ RSpec.describe "Users API", type: :request do
     end
   end
 
-  describe "PUT /api/v1/users/profile/password" do
+  describe "PATCH /api/v1/users/profile/password" do
     let(:user) { create(:user, password: "oldpassword123", password_confirmation: "oldpassword123") }
 
     context "with valid params" do
       it "updates password" do
-        auth_put "/api/v1/users/profile/password", user: user, params: {
+        auth_patch "/api/v1/users/profile/password", user: user, params: {
           current_password: "oldpassword123",
           password: "newpassword456",
           password_confirmation: "newpassword456"
@@ -60,7 +60,7 @@ RSpec.describe "Users API", type: :request do
 
     context "with invalid current password" do
       it "returns error" do
-        auth_put "/api/v1/users/profile/password", user: user, params: {
+        auth_patch "/api/v1/users/profile/password", user: user, params: {
           current_password: "wrongpassword",
           password: "newpassword456",
           password_confirmation: "newpassword456"
@@ -72,7 +72,7 @@ RSpec.describe "Users API", type: :request do
 
     context "with password mismatch" do
       it "returns error" do
-        auth_put "/api/v1/users/profile/password", user: user, params: {
+        auth_patch "/api/v1/users/profile/password", user: user, params: {
           current_password: "oldpassword123",
           password: "newpassword456",
           password_confirmation: "differentpassword"

@@ -21,38 +21,34 @@ class RecurringTaskGenerationJob < ApplicationJob
                   .includes(:list, :creator)
 
     templates.find_each do |template|
-      # Skip if template's list is deleted
-      next if template.list.deleted?
+      # Skip if template's list is deleted or missing (soft-deleted)
+      next if template.list.nil? || template.list.deleted?
 
-      # Check if we need to generate the next instance
+      # Single query: get most recent instance (any status)
+      # This replaces two separate queries (pending + completed)
       latest_instance = template.instances
                                 .where(deleted_at: nil)
-                                .where.not(status: "done")
                                 .order(due_at: :desc)
                                 .first
 
-      # If no pending instance exists, generate one
-      if latest_instance.nil?
-        begin
-          service = RecurringTaskService.new(template.creator)
-          last_completed = template.instances
-                                   .where(status: "done")
-                                   .order(due_at: :desc)
-                                   .first
+      # Skip if there's a pending instance (not yet completed)
+      next if latest_instance && latest_instance.status != "done"
 
-          if last_completed
-            service.generate_next_instance(last_completed)
-            generated_count += 1
-          end
-        rescue StandardError => e
-          error_count += 1
-          Rails.logger.error(
-            event: "recurring_task_generation_failed",
-            template_id: template.id,
-            error: e.message
-          )
-          Sentry.capture_exception(e, extra: { template_id: template.id })
-        end
+      # Generate next instance if last one was completed (or no instances exist yet)
+      next unless latest_instance # Skip templates with no instances yet
+
+      begin
+        service = RecurringTaskService.new(template.creator)
+        service.generate_next_instance(latest_instance)
+        generated_count += 1
+      rescue StandardError => e
+        error_count += 1
+        Rails.logger.error(
+          event: "recurring_task_generation_failed",
+          template_id: template.id,
+          error: e.message
+        )
+        Sentry.capture_exception(e, extra: { template_id: template.id })
       end
     end
 

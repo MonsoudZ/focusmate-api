@@ -6,7 +6,7 @@ class Task < ApplicationRecord
   belongs_to :list, counter_cache: true
   belongs_to :creator, class_name: "User", foreign_key: :creator_id
   belongs_to :assigned_to, class_name: "User", optional: true
-  belongs_to :parent_task, class_name: "Task", optional: true
+  belongs_to :parent_task, class_name: "Task", optional: true, counter_cache: :subtasks_count
   belongs_to :template, class_name: "Task", optional: true
   has_many :instances, class_name: "Task", foreign_key: :template_id, dependent: :destroy
 
@@ -33,12 +33,14 @@ class Task < ApplicationRecord
   validate :due_at_not_in_past_on_create
   validate :prevent_circular_subtask_relationship
   validate :recurrence_constraints
+  validate :assigned_to_has_list_access
   validates :color, inclusion: { in: COLORS }, allow_nil: true
 
   after_initialize :set_defaults
   after_create :record_creation_event
   after_update :handle_status_change_callbacks, if: :saved_change_to_status?
   after_update :adjust_list_counter_on_soft_delete, if: :saved_change_to_deleted_at?
+  after_update :adjust_parent_subtasks_counter_on_soft_delete, if: :saved_change_to_deleted_at?
   accepts_nested_attributes_for :task_tags, allow_destroy: true
 
   # Scopes (SoftDeletable provides: with_deleted, only_deleted, not_deleted)
@@ -74,11 +76,6 @@ class Task < ApplicationRecord
     update!(status: :pending, completed_at: nil)
   end
 
-  def snooze!(duration)
-    raise ArgumentError, "duration required" if duration.blank?
-    update!(due_at: (due_at || Time.current) + duration)
-  end
-
   def overdue?
     pending? && due_at.present? && due_at < Time.current
   end
@@ -95,16 +92,6 @@ class Task < ApplicationRecord
     return false unless user
     return false if list.deleted?
     list.accessible_by?(user)
-  end
-
-  # Recurrence
-  def calculate_next_due_date
-    return nil unless is_recurring?
-    TaskRecurrenceService.new(self).calculate_next_due_date
-  end
-
-  def generate_next_instance
-    TaskRecurrenceService.new(self).generate_next_instance
   end
 
   def subtask?
@@ -145,7 +132,14 @@ class Task < ApplicationRecord
       return
     end
     current = parent_task
+    depth = 0
+    max_depth = 10
     while current
+      depth += 1
+      if depth > max_depth
+        errors.add(:parent_task, "exceeds maximum nesting depth of #{max_depth}")
+        break
+      end
       if current.id == id
         errors.add(:parent_task, "would create a circular relationship")
         break
@@ -162,6 +156,16 @@ class Task < ApplicationRecord
     end
   end
 
+  def assigned_to_has_list_access
+    return unless assigned_to_id.present?
+    return unless list.present?
+
+    assignee = User.find_by(id: assigned_to_id)
+    unless assignee && list.accessible_by?(assignee)
+      errors.add(:assigned_to, "does not have access to this list")
+    end
+  end
+
   def adjust_list_counter_on_soft_delete
     if deleted_at.present?
       # Task was soft deleted - decrement counter
@@ -172,5 +176,13 @@ class Task < ApplicationRecord
     end
   end
 
+  def adjust_parent_subtasks_counter_on_soft_delete
+    return unless parent_task_id.present?
 
+    if deleted_at.present?
+      Task.decrement_counter(:subtasks_count, parent_task_id)
+    else
+      Task.increment_counter(:subtasks_count, parent_task_id)
+    end
+  end
 end

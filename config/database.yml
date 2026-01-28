@@ -1,6 +1,8 @@
 default: &default
   adapter: postgresql
   encoding: unicode
+  # Pool size should match or exceed thread count + background job threads
+  # Set RAILS_MAX_THREADS in production (recommended: 15-25)
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
 
 development:
@@ -14,3 +16,5 @@ test:
 production:
   <<: *default
   url: <%= ENV["DATABASE_URL"] %>
+  # Production pool should be higher - set via RAILS_MAX_THREADS env var
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 15 } %>

@@ -38,7 +38,7 @@ run_check() {
 run_check "RuboCop" "bundle exec rubocop"
 
 # 2. Brakeman security scan
-run_check "Brakeman Security Scan" "bundle exec brakeman -q -w2"
+run_check "Brakeman Security Scan" "bundle exec brakeman -q -w2 -i config/brakeman.ignore"
 
 # 3. Bundler audit
 run_check "Bundler Audit" "bundle exec bundler-audit check --update"

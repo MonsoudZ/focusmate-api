@@ -13,10 +13,21 @@ class JwtCleanupJob < ApplicationJob
   def perform
     expired_count = JwtDenylist.where("exp < ?", Time.current).delete_all
 
+    # Clean up expired refresh tokens
+    expired_refresh_count = RefreshToken.expired.delete_all
+
+    # Clean up revoked refresh tokens older than 7 days (keep recent ones for audit)
+    stale_revoked_count = RefreshToken.revoked.where("revoked_at < ?", 7.days.ago).delete_all
+
+    total_cleaned = expired_count + expired_refresh_count + stale_revoked_count
+
     Rails.logger.info(
       event: "jwt_cleanup_completed",
       expired_tokens_removed: expired_count,
-      remaining_tokens: JwtDenylist.count
+      expired_refresh_tokens_removed: expired_refresh_count,
+      stale_revoked_refresh_tokens_removed: stale_revoked_count,
+      remaining_tokens: JwtDenylist.count,
+      remaining_refresh_tokens: RefreshToken.count
     )
 
     # Track in Sentry for observability
@@ -25,10 +36,13 @@ class JwtCleanupJob < ApplicationJob
       level: :info,
       extra: {
         expired_tokens_removed: expired_count,
-        remaining_tokens: JwtDenylist.count
+        expired_refresh_tokens_removed: expired_refresh_count,
+        stale_revoked_refresh_tokens_removed: stale_revoked_count,
+        remaining_tokens: JwtDenylist.count,
+        remaining_refresh_tokens: RefreshToken.count
       }
-    ) if expired_count > 1000 # Only alert if significant cleanup
+    ) if total_cleaned > 1000 # Only alert if significant cleanup
 
-    expired_count
+    total_cleaned
   end
 end

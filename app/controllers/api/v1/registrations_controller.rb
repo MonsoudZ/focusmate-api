@@ -6,7 +6,7 @@ module Api
       skip_before_action :authenticate_user!
 
       def create
-        user = Auth::Register.call!(
+        user = ::Auth::Register.call!(
           email: sign_up_params[:email],
           password: sign_up_params[:password],
           password_confirmation: sign_up_params[:password_confirmation],
@@ -14,18 +14,14 @@ module Api
           timezone: sign_up_params[:timezone]
         )
 
-        token = Warden::JWTAuth::UserEncoder.new.call(user, :user, nil).first
-        render json: { user: UserSerializer.one(user), token: token }, status: :created
-      rescue Auth::Register::BadRequest => e
-        render json: { error: { message: e.message } }, status: :bad_request
-      rescue ActiveRecord::RecordInvalid => e
+        pair = ::Auth::TokenService.issue_pair(user)
         render json: {
-          error: {
-            code: "validation_error",
-            message: "Registration failed",
-            details: e.record.errors.to_hash
-          }
-        }, status: :unprocessable_entity
+          user: UserSerializer.one(user),
+          token: pair[:access_token],
+          refresh_token: pair[:refresh_token]
+        }, status: :created
+      rescue ActiveRecord::RecordInvalid => e
+        render_validation_error(e.record.errors.to_hash, message: "Registration failed")
       end
 
       private
@@ -36,5 +32,3 @@ module Api
     end
   end
 end
-
-

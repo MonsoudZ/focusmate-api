@@ -36,6 +36,15 @@ RSpec.describe "Auth Registrations", type: :request do
                                            "email" => "newuser@example.com"
                                          )
       end
+
+      it "returns a refresh token" do
+        post "/api/v1/auth/sign_up",
+             params: valid_params.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(response).to have_http_status(:created)
+        expect(json_response["refresh_token"]).to be_present
+      end
     end
 
     context "with invalid parameters" do

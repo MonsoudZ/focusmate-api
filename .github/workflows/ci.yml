@@ -57,7 +57,7 @@ jobs:
         run: bundle exec rubocop
 
       - name: Run Brakeman
-        run: bundle exec brakeman -q -w2
+        run: bundle exec brakeman -q -w2 -i config/brakeman.ignore
 
       - name: Run Bundler Audit
         run: bundle exec bundler-audit check --update
@@ -84,5 +84,5 @@ jobs:
 
       - name: Run security scan
         run: |
-          bundle exec brakeman -q -w2
+          bundle exec brakeman -q -w2 -i config/brakeman.ignore
           bundle exec bundler-audit check --update

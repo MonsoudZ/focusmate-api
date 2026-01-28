@@ -33,5 +33,31 @@ RSpec.describe JwtCleanupJob, type: :job do
     it "is enqueued to maintenance queue" do
       expect(described_class.new.queue_name).to eq("maintenance")
     end
+
+    context "refresh token cleanup" do
+      let(:user) { create(:user) }
+
+      it "removes expired refresh tokens" do
+        create(:refresh_token, user: user, expires_at: 1.day.ago)
+        create(:refresh_token, user: user, expires_at: 1.hour.ago)
+        create(:refresh_token, user: user) # active
+
+        expect { described_class.new.perform }.to change { RefreshToken.count }.from(3).to(1)
+      end
+
+      it "removes revoked refresh tokens older than 7 days" do
+        create(:refresh_token, user: user, revoked_at: 8.days.ago)
+        create(:refresh_token, user: user, revoked_at: 10.days.ago)
+        create(:refresh_token, user: user, revoked_at: 1.day.ago) # recent revoked, kept
+
+        expect { described_class.new.perform }.to change { RefreshToken.count }.from(3).to(1)
+      end
+
+      it "keeps active refresh tokens" do
+        create(:refresh_token, user: user)
+
+        expect { described_class.new.perform }.not_to change { RefreshToken.count }
+      end
+    end
   end
 end

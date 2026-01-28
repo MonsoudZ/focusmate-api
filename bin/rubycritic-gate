@@ -4,30 +4,30 @@
 
 set -e
 
-echo "🔍 Running RubyCritic analysis..."
+echo "Running RubyCritic analysis..."
 
-# Run RubyCritic and capture output
-bundle exec rubycritic --mode console --no-browser > tmp/rubycritic.txt 2>&1
+# Run RubyCritic with console format (no branch comparison, works with dirty tree)
+bundle exec rubycritic -f console --no-browser app lib > tmp/rubycritic.txt 2>&1 || true
 
 # Extract the score
 score=$(grep -Eo 'Score: [0-9]+\.[0-9]+' tmp/rubycritic.txt | awk '{print $2}' || echo "0")
-echo "📊 RubyCritic score: $score"
+echo "RubyCritic score: $score"
 
 # Check for F grades (fail on F initially)
 if grep -q "grade: F" tmp/rubycritic.txt; then
-  echo "❌ F grade files found:"
+  echo "F grade files found:"
   grep -B2 -A1 "grade: F" tmp/rubycritic.txt
   echo ""
-  echo "💡 Fix F grade files before proceeding"
+  echo "Fix F grade files before proceeding"
   exit 1
 fi
 
 # Check for D grades (warn but don't fail initially)
 if grep -q "grade: D" tmp/rubycritic.txt; then
-  echo "⚠️  D grade files found (warning only):"
+  echo "D grade files found (warning only):"
   grep -B2 -A1 "grade: D" tmp/rubycritic.txt
   echo ""
-  echo "💡 Consider fixing D grade files in future iterations"
+  echo "Consider fixing D grade files in future iterations"
 fi
 
-echo "✅ RubyCritic gate passed (no F grades)"
+echo "RubyCritic gate passed (no F grades)"

@@ -61,20 +61,6 @@ class AnalyticsTracker
       )
     end
 
-    def task_snoozed(task, user, duration_minutes:, snooze_count:)
-      record(
-        user: user,
-        task: task,
-        list: task.list,
-        event_type: "task_snoozed",
-        metadata: {
-          duration_minutes: duration_minutes,
-          snooze_count: snooze_count,
-          was_overdue: task.due_at.present? && task.due_at < Time.current
-        }
-      )
-    end
-
     def task_starred(task, user)
       record(
         user: user,

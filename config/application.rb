@@ -31,7 +31,7 @@ module FocusmateApi
 
     # Enable ActionCable for real-time features
     config.action_cable.mount_path = "/cable"
-    config.action_cable.allowed_request_origins = [ /http:\/\/localhost.*/, /https:\/\/.*\.ngrok\.io/, /https:\/\/.*\.ngrok-free\.dev/ ]
+    config.action_cable.allowed_request_origins = [ /http:\/\/localhost.*/ ]
 
     # Configure Active Job to use Sidekiq
     config.active_job.queue_adapter = :sidekiq
@@ -45,5 +45,9 @@ module FocusmateApi
     # Handle malformed JSON bodies at the Rack layer
     require Rails.root.join("lib/middleware/json_parser_error_handler")
     config.middleware.use Middleware::JsonParserErrorHandler
+
+    # Security headers on all API responses
+    require Rails.root.join("lib/middleware/security_headers")
+    config.middleware.use Middleware::SecurityHeaders
   end
 end
