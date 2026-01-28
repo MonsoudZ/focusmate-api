@@ -24,7 +24,8 @@ RSpec.describe "Standalone Rack Attack", type: :model do
     expect(responder.class).to eq(Proc)
 
     # Test that we can call the responder without crashing
-    response = responder.call(env)
+    request = Rack::Attack::Request.new(env)
+    response = responder.call(request)
     expect(response).not_to be_nil
     expect(response.class).to eq(Array)
     expect(response.length).to eq(3)  # [status, headers, body]
