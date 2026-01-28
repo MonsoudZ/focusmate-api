@@ -18,7 +18,7 @@ class ListSerializer
       color: list.color || "blue",
       user: UserSerializer.one(list.user),
       role: role_for_current_user,
-      tasks_count: list.tasks_count,
+      tasks_count: list.parent_tasks_count,
       completed_tasks_count: completed_tasks_count,
       overdue_tasks_count: overdue_tasks_count,
       members: serialize_members,

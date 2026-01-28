@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_28_183808) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_28_222221) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -92,6 +92,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_183808) do
     t.string "visibility", default: "private", null: false
     t.integer "tasks_count", default: 0, null: false
     t.string "color"
+    t.integer "parent_tasks_count", default: 0, null: false
     t.index ["deleted_at"], name: "index_lists_on_deleted_at"
     t.index ["user_id", "created_at"], name: "index_lists_on_user_created_at"
     t.index ["user_id", "deleted_at"], name: "index_lists_on_user_deleted_at"

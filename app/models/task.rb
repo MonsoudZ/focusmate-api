@@ -38,6 +38,7 @@ class Task < ApplicationRecord
 
   after_initialize :set_defaults
   after_create :record_creation_event
+  after_create :increment_parent_tasks_count, unless: :subtask?
   after_update :handle_status_change_callbacks, if: :saved_change_to_status?
   after_update :adjust_list_counter_on_soft_delete, if: :saved_change_to_deleted_at?
   after_update :adjust_parent_subtasks_counter_on_soft_delete, if: :saved_change_to_deleted_at?
@@ -168,12 +169,18 @@ class Task < ApplicationRecord
 
   def adjust_list_counter_on_soft_delete
     if deleted_at.present?
-      # Task was soft deleted - decrement counter
+      # Task was soft deleted - decrement counters
       List.decrement_counter(:tasks_count, list_id)
+      List.decrement_counter(:parent_tasks_count, list_id) unless subtask?
     else
-      # Task was restored - increment counter
+      # Task was restored - increment counters
       List.increment_counter(:tasks_count, list_id)
+      List.increment_counter(:parent_tasks_count, list_id) unless subtask?
     end
+  end
+
+  def increment_parent_tasks_count
+    List.increment_counter(:parent_tasks_count, list_id)
   end
 
   def adjust_parent_subtasks_counter_on_soft_delete
