@@ -86,7 +86,8 @@ module Api
       end
 
       def subtask_params
-        params.require(:subtask).permit(:title, :note, :status, :position)
+        key = params.key?(:subtask) ? :subtask : :task
+        params.require(key).permit(:title, :note, :status, :position)
       end
     end
   end
