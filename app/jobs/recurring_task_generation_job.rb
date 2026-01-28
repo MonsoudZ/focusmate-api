@@ -21,8 +21,8 @@ class RecurringTaskGenerationJob < ApplicationJob
                   .includes(:list, :creator)
 
     templates.find_each do |template|
-      # Skip if template's list is deleted
-      next if template.list.deleted?
+      # Skip if template's list is deleted or missing (soft-deleted)
+      next if template.list.nil? || template.list.deleted?
 
       # Check if we need to generate the next instance
       latest_instance = template.instances
