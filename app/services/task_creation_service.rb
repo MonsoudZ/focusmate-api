@@ -10,11 +10,16 @@ class TaskCreationService
   end
 
   def call
-    task = @list.tasks.new(task_attributes)
-    task.creator = @user
-    task.save!
+    task = nil
 
-    create_subtasks(task) if subtask_titles.present?
+    ActiveRecord::Base.transaction do
+      task = @list.tasks.new(task_attributes)
+      task.creator = @user
+      task.save!
+
+      create_subtasks(task) if subtask_titles.present?
+    end
+
     track_analytics(task)
 
     task

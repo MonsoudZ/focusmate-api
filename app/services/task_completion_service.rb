@@ -17,14 +17,16 @@ class TaskCompletionService
     @was_overdue = task_overdue?
     @minutes_overdue = calculate_minutes_overdue
 
-    if @missed_reason.present?
-      @task.missed_reason = @missed_reason
-      @task.missed_reason_submitted_at = Time.current
+    ActiveRecord::Base.transaction do
+      if @missed_reason.present?
+        @task.missed_reason = @missed_reason
+        @task.missed_reason_submitted_at = Time.current
+      end
+
+      @task.complete!
+      track_completion_analytics
     end
 
-    @task.complete!
-
-    track_completion_analytics
     generate_next_recurring_instance
     update_streak
 
@@ -33,8 +35,12 @@ class TaskCompletionService
 
   def uncomplete!
     validate_access!
-    @task.uncomplete!
-    track_reopen_analytics
+
+    ActiveRecord::Base.transaction do
+      @task.uncomplete!
+      track_reopen_analytics
+    end
+
     @task
   end
 
