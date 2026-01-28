@@ -54,6 +54,24 @@ RSpec.describe "Subtasks API", type: :request do
         expect(json_response["parent_task_id"]).to eq(parent_task.id)
       end
 
+      it "accepts unwrapped params" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{parent_task.id}/subtasks",
+                  user: user,
+                  params: { title: "Unwrapped Subtask" }
+
+        expect(response).to have_http_status(:created)
+        expect(json_response["title"]).to eq("Unwrapped Subtask")
+      end
+
+      it "assigns the next position automatically" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{parent_task.id}/subtasks",
+                  user: user,
+                  params: { subtask: { title: "Third Subtask" } }
+
+        expect(response).to have_http_status(:created)
+        expect(json_response["position"]).to eq(3)
+      end
+
       it "inherits parent task attributes" do
         auth_post "/api/v1/lists/#{list.id}/tasks/#{parent_task.id}/subtasks",
                   user: user,
@@ -123,14 +141,14 @@ RSpec.describe "Subtasks API", type: :request do
         expect(json_response["status"]).to eq("done")
       end
 
-      it "uncompletes a done subtask (toggle)" do
+      it "is idempotent when already done" do
         subtask1.complete!
 
         auth_patch "/api/v1/lists/#{list.id}/tasks/#{parent_task.id}/subtasks/#{subtask1.id}/complete",
                    user: user
 
         expect(response).to have_http_status(:ok)
-        expect(subtask1.reload.status).to eq("pending")
+        expect(subtask1.reload.status).to eq("done")
       end
     end
 

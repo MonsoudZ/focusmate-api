@@ -29,6 +29,8 @@ module Api
       def create
         authorize @parent_task, :update?
 
+        next_position = (@parent_task.subtasks.where(deleted_at: nil).maximum(:position) || 0) + 1
+
         subtask = @parent_task.list.tasks.new(
           title: subtask_params[:title],
           note: subtask_params[:note],
@@ -36,7 +38,8 @@ module Api
           creator: current_user,
           due_at: @parent_task.due_at,
           strict_mode: @parent_task.strict_mode,
-          status: :pending
+          status: :pending,
+          position: next_position
         )
         subtask.save!
 
@@ -60,11 +63,7 @@ module Api
       # PATCH /api/v1/lists/:list_id/tasks/:task_id/subtasks/:id/complete
       def complete
         authorize @subtask, :update?
-        if @subtask.done?
-          @subtask.uncomplete!
-        else
-          @subtask.complete!
-        end
+        @subtask.complete!
         render json: SubtaskSerializer.new(@subtask).as_json
       end
 
@@ -86,8 +85,11 @@ module Api
       end
 
       def subtask_params
-        key = params.key?(:subtask) ? :subtask : :task
-        params.require(key).permit(:title, :note, :status, :position)
+        if params[:subtask].present?
+          params.require(:subtask).permit(:title, :note, :status, :position)
+        else
+          params.permit(:title, :note, :status, :position)
+        end
       end
     end
   end
