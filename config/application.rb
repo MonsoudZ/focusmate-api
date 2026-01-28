@@ -31,7 +31,7 @@ module FocusmateApi
 
     # Enable ActionCable for real-time features
     config.action_cable.mount_path = "/cable"
-    config.action_cable.allowed_request_origins = [ /http:\/\/localhost.*/, /https:\/\/.*\.ngrok\.io/, /https:\/\/.*\.ngrok-free\.dev/ ]
+    config.action_cable.allowed_request_origins = [ /http:\/\/localhost.*/ ]
 
     # Configure Active Job to use Sidekiq
     config.active_job.queue_adapter = :sidekiq

@@ -17,7 +17,9 @@ module Api
                         .includes(:user)
                         .order(created_at: :asc)
 
-        render json: MembershipSerializer.collection(memberships), status: :ok
+        render json: {
+          memberships: memberships.map { |m| MembershipSerializer.new(m).as_json }
+        }, status: :ok
       end
 
       # POST /api/v1/lists/:list_id/memberships
@@ -33,7 +35,7 @@ module Api
 
         AnalyticsTracker.list_shared(@list, current_user, shared_with: membership.user, role: membership.role)
 
-        render json: MembershipSerializer.one(membership), status: :created
+        render json: { membership: MembershipSerializer.new(membership).as_json }, status: :created
       end
 
       # PATCH /api/v1/lists/:list_id/memberships/:id
@@ -46,7 +48,7 @@ module Api
           role: update_params[:role]
         )
 
-        render json: MembershipSerializer.one(membership), status: :ok
+        render json: { membership: MembershipSerializer.new(membership).as_json }, status: :ok
       end
 
       # DELETE /api/v1/lists/:list_id/memberships/:id

@@ -77,4 +77,11 @@ Rails.application.configure do
 
   # Allow ngrok hosts for development
   config.hosts << "untampered-jong-harshly.ngrok-free.dev"
+
+  # Allow ngrok origins for ActionCable in development
+  config.action_cable.allowed_request_origins = [
+    /http:\/\/localhost.*/,
+    /https:\/\/.*\.ngrok\.io/,
+    /https:\/\/.*\.ngrok-free\.dev/
+  ]
 end

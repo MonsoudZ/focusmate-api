@@ -28,7 +28,7 @@ module Api
         if tag.save
           render json: { tag: TagSerializer.new(tag).as_json }, status: :created
         else
-          render json: { error: { message: tag.errors.full_messages.join(", ") } }, status: :unprocessable_entity
+          render_validation_error(tag.errors.to_hash)
         end
       end
 
@@ -39,7 +39,7 @@ module Api
         if @tag.update(tag_params)
           render json: { tag: TagSerializer.new(@tag).as_json }, status: :ok
         else
-          render json: { error: { message: @tag.errors.full_messages.join(", ") } }, status: :unprocessable_entity
+          render_validation_error(@tag.errors.to_hash)
         end
       end
 

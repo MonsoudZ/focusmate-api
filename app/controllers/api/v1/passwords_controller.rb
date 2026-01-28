@@ -23,7 +23,13 @@ module Api
         if resource.errors.empty?
           render json: { message: "Password updated successfully" }, status: :ok
         else
-          render json: { error: { message: resource.errors.full_messages.first } }, status: :unprocessable_entity
+          render json: {
+            error: {
+              code: "validation_error",
+              message: "Password reset failed",
+              details: resource.errors.to_hash
+            }
+          }, status: :unprocessable_entity
         end
       end
 

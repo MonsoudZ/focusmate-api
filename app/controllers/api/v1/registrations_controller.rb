@@ -20,16 +20,8 @@ module Api
           token: pair[:access_token],
           refresh_token: pair[:refresh_token]
         }, status: :created
-      rescue ::Auth::Register::BadRequest => e
-        render json: { error: { message: e.message } }, status: :bad_request
       rescue ActiveRecord::RecordInvalid => e
-        render json: {
-          error: {
-            code: "validation_error",
-            message: "Registration failed",
-            details: e.record.errors.to_hash
-          }
-        }, status: :unprocessable_entity
+        render_validation_error(e.record.errors.to_hash, message: "Registration failed")
       end
 
       private
