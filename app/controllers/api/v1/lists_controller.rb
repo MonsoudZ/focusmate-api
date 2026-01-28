@@ -10,7 +10,7 @@ module Api
       # GET /api/v1/lists
       def index
         lists = policy_scope(List)
-                  .includes(:user, :memberships)
+                  .includes(:user, memberships: :user)
                   .where(deleted_at: nil)
 
         if params[:since].present?
