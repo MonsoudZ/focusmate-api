@@ -34,7 +34,7 @@ module Users
       validate_current_password!
       validate_new_password!
 
-      @user.update!(password: @password)
+      @user.update!(password: @password, password_confirmation: @password_confirmation)
       @user
     end
 
