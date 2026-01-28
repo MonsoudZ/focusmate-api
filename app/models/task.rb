@@ -94,16 +94,6 @@ class Task < ApplicationRecord
     list.accessible_by?(user)
   end
 
-  # Recurrence
-  def calculate_next_due_date
-    return nil unless is_recurring?
-    TaskRecurrenceService.new(self).calculate_next_due_date
-  end
-
-  def generate_next_instance
-    TaskRecurrenceService.new(self).generate_next_instance
-  end
-
   def subtask?
     parent_task_id.present?
   end

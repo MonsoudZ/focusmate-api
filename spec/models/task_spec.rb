@@ -218,20 +218,6 @@ RSpec.describe Task, type: :model do
   end
 
   describe 'recurring tasks' do
-    let(:template) { create(:task, list: list, creator: user, is_recurring: true, is_template: true, recurrence_pattern: "daily", recurrence_time: "09:00") }
-
-    it 'generates next instance' do
-      instance = template.generate_next_instance
-      expect(instance).to be_a(Task)
-      expect(instance.template).to eq(template)
-      expect(instance.is_recurring).to be false
-    end
-
-    it 'calculates next due date' do
-      next_due = template.calculate_next_due_date
-      expect(next_due).to be > Time.current
-    end
-
     it 'checks if task is overdue for recurring' do
       overdue_template = create(:task,
                                list: list,
