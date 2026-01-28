@@ -16,10 +16,6 @@ class TaskEvent < ApplicationRecord
     viewed: 7
   }
 
-  # Soft deletion
-  default_scope { where(deleted_at: nil) }
-  scope :with_deleted, -> { unscope(where: :deleted_at) }
-
   # Validations
   validates :kind, presence: true
   validates :occurred_at, presence: true
@@ -31,11 +27,13 @@ class TaskEvent < ApplicationRecord
   scope :by_kind, ->(k) { where(kind: k) }
   scope :recent, -> { where("occurred_at >= ?", 24.hours.ago) }
 
-  def soft_delete!
-    update!(deleted_at: Time.current)
-  end
-
+  # Override enum-generated deleted? to use SoftDeletable semantics
   def deleted?
     deleted_at.present?
+  end
+
+  # Provide kind_deleted? for checking if kind is "deleted"
+  def kind_deleted?
+    kind == "deleted"
   end
 end

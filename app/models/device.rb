@@ -7,10 +7,6 @@ class Device < ApplicationRecord
   before_validation :normalize_fields
   before_create :seed_last_seen_at
 
-  # Soft deletion
-  default_scope { where(deleted_at: nil) }
-  scope :with_deleted, -> { unscope(where: :deleted_at) }
-
   # Scopes
   scope :ios, -> { where(platform: "ios") }
   scope :android, -> { where(platform: "android") }
@@ -40,14 +36,6 @@ class Device < ApplicationRecord
 
   def push_token
     ios? ? apns_token : fcm_token
-  end
-
-  def soft_delete!
-    update!(deleted_at: Time.current)
-  end
-
-  def deleted?
-    deleted_at.present?
   end
 
   private

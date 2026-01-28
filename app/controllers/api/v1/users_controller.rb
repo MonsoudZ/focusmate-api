@@ -5,7 +5,7 @@ module Api
     class UsersController < BaseController
       # GET /api/v1/users/me
       def show
-        render json: { user: UserSerializer.one(current_user) }
+        render json: { user: UserSerializer.one(current_user) }, status: :ok
       end
 
       # PATCH /api/v1/users/me
@@ -16,10 +16,10 @@ module Api
           timezone: params[:timezone]
         )
 
-        render json: { user: UserSerializer.one(user) }
+        render json: { user: UserSerializer.one(user) }, status: :ok
       end
 
-      # PUT /api/v1/users/me/password
+      # PATCH /api/v1/users/me/password
       def update_password
         Users::PasswordChangeService.call!(
           user: current_user,
@@ -28,7 +28,7 @@ module Api
           password_confirmation: params[:password_confirmation]
         )
 
-        render json: { message: "Password updated successfully" }
+        render json: { message: "Password updated successfully" }, status: :ok
       end
 
       # DELETE /api/v1/users/me
@@ -38,7 +38,7 @@ module Api
           password: params[:password]
         )
 
-        render json: { message: "Account deleted successfully" }
+        render json: { message: "Account deleted successfully" }, status: :ok
       end
     end
   end
