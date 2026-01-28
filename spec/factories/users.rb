@@ -20,22 +20,11 @@ FactoryBot.define do
       current_longitude { -74.0060 }
     end
 
-    trait :with_saved_location do
-      after(:create) do |user|
-        create(:saved_location, user: user)
-      end
-    end
-
     trait :with_devices do
       after(:create) do |user|
         create(:device, user: user)
       end
     end
 
-    trait :with_notification_logs do
-      after(:create) do |user|
-        create(:notification_log, user: user)
-      end
-    end
   end
 end
