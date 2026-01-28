@@ -45,5 +45,9 @@ module FocusmateApi
     # Handle malformed JSON bodies at the Rack layer
     require Rails.root.join("lib/middleware/json_parser_error_handler")
     config.middleware.use Middleware::JsonParserErrorHandler
+
+    # Security headers on all API responses
+    require Rails.root.join("lib/middleware/security_headers")
+    config.middleware.use Middleware::SecurityHeaders
   end
 end
