@@ -135,7 +135,7 @@ RSpec.describe Users::PasswordChangeService do
             password_confirmation: "short"
           )
         }.to raise_error(Users::PasswordChangeService::ValidationError) do |error|
-          expect(error.details).to eq({ password: [ "must be at least 6 characters" ] })
+          expect(error.details).to eq({ password: [ "must be at least 8 characters" ] })
         end
       end
     end

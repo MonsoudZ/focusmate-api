@@ -133,6 +133,11 @@ module Api
           return render json: { tasks: [] }, status: :ok
         end
 
+        if query.length > 255
+          skip_policy_scope
+          return render json: { error: { message: "Search query too long (max 255 characters)" } }, status: :bad_request
+        end
+
         tasks = policy_scope(Task)
                   .where("title ILIKE :q OR note ILIKE :q", q: "%#{query}%")
                   .where(parent_task_id: nil)
