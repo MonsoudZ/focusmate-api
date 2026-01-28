@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_28_040000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_28_044816) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -262,11 +262,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_040000) do
     t.check_constraint "location_longitude >= '-180'::integer::numeric AND location_longitude <= 180::numeric", name: "tasks_longitude_range"
     t.check_constraint "location_radius_meters > 0", name: "tasks_location_radius_positive"
     t.check_constraint "notification_interval_minutes > 0", name: "tasks_notification_interval_positive"
+    t.check_constraint "priority = ANY (ARRAY[0, 1, 2, 3, 4])", name: "tasks_priority_check"
     t.check_constraint "recurrence_interval > 0", name: "tasks_recurrence_interval_positive"
-    t.check_constraint "status = ANY (ARRAY[0, 1, 2, 3])", name: "check_tasks_status"
-    t.check_constraint "status = ANY (ARRAY[0, 1, 2, 3])", name: "tasks_status_check"
-    t.check_constraint "visibility = ANY (ARRAY[0, 1, 2, 3])", name: "check_tasks_visibility"
-    t.check_constraint "visibility = ANY (ARRAY[0, 1, 2, 3])", name: "tasks_visibility_check"
+    t.check_constraint "status = ANY (ARRAY[0, 1, 2])", name: "tasks_status_check"
+    t.check_constraint "visibility = ANY (ARRAY[0, 1])", name: "tasks_visibility_check"
   end
 
   create_table "users", force: :cascade do |t|
@@ -294,7 +293,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_040000) do
     t.index ["email"], name: "index_users_on_email_unique", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role"], name: "index_users_on_role"
-    t.check_constraint "role::text = ANY (ARRAY['client'::character varying::text, 'coach'::character varying::text, 'admin'::character varying::text])", name: "users_role_check"
+    t.check_constraint "role::text = ANY (ARRAY['client'::text, 'coach'::text])", name: "users_role_check"
   end
 
   add_foreign_key "analytics_events", "lists"
