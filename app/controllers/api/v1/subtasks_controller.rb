@@ -22,7 +22,7 @@ module Api
       # GET /api/v1/lists/:list_id/tasks/:task_id/subtasks/:id
       def show
         authorize @subtask
-        render json: SubtaskSerializer.new(@subtask).as_json
+        render json: { subtask: SubtaskSerializer.new(@subtask).as_json }
       end
 
       # POST /api/v1/lists/:list_id/tasks/:task_id/subtasks
@@ -43,14 +43,14 @@ module Api
         )
         subtask.save!
 
-        render json: SubtaskSerializer.new(subtask).as_json, status: :created
+        render json: { subtask: SubtaskSerializer.new(subtask).as_json }, status: :created
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:task_id/subtasks/:id
       def update
         authorize @subtask
         @subtask.update!(subtask_params)
-        render json: SubtaskSerializer.new(@subtask).as_json
+        render json: { subtask: SubtaskSerializer.new(@subtask).as_json }
       end
 
       # DELETE /api/v1/lists/:list_id/tasks/:task_id/subtasks/:id
@@ -64,14 +64,14 @@ module Api
       def complete
         authorize @subtask, :update?
         @subtask.complete!
-        render json: SubtaskSerializer.new(@subtask).as_json
+        render json: { subtask: SubtaskSerializer.new(@subtask).as_json }
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:task_id/subtasks/:id/reopen
       def reopen
         authorize @subtask, :update?
         @subtask.uncomplete!
-        render json: SubtaskSerializer.new(@subtask).as_json
+        render json: { subtask: SubtaskSerializer.new(@subtask).as_json }
       end
 
       private

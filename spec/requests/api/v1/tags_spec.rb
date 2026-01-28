@@ -45,7 +45,7 @@ RSpec.describe "Tags API", type: :request do
         auth_get "/api/v1/tags/#{tag.id}", user: user
 
         expect(response).to have_http_status(:ok)
-        expect(json_response["id"]).to eq(tag.id)
+        expect(json_response["tag"]["id"]).to eq(tag.id)
       end
     end
 
@@ -68,7 +68,7 @@ RSpec.describe "Tags API", type: :request do
         }.to change(Tag, :count).by(1)
 
         expect(response).to have_http_status(:created)
-        expect(json_response["name"]).to eq("New Tag")
+        expect(json_response["tag"]["name"]).to eq("New Tag")
       end
 
       it "sets the current user as owner" do

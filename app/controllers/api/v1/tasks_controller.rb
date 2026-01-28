@@ -35,7 +35,7 @@ module Api
       # GET /api/v1/lists/:list_id/tasks/:id
       def show
         authorize @task
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # POST /api/v1/lists/:list_id/tasks
@@ -48,14 +48,14 @@ module Api
         authorize @list, :create_task?
 
         task = TaskCreationService.new(list: @list, user: current_user, params: task_params).call
-        render json: TaskSerializer.new(task, current_user: current_user).as_json, status: :created
+        render json: { task: TaskSerializer.new(task, current_user: current_user).as_json }, status: :created
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id
       def update
         authorize @task
         TaskUpdateService.new(task: @task, user: current_user).update!(attributes: task_params)
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # DELETE /api/v1/lists/:list_id/tasks/:id
@@ -76,7 +76,7 @@ module Api
             user: current_user,
             missed_reason: params[:missed_reason]
           ).complete!
-          render json: TaskSerializer.new(@task, current_user: current_user).as_json
+          render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
         rescue TaskCompletionService::MissingReasonError => e
           render json: { error: { code: "missing_reason", message: e.message } }, status: :unprocessable_entity
         end
@@ -86,7 +86,7 @@ module Api
       def reopen
         authorize @task, :update?
         TaskCompletionService.new(task: @task, user: current_user).uncomplete!
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/assign
@@ -102,14 +102,14 @@ module Api
         end
 
         @task.update!(assigned_to_id: params[:assigned_to])
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/unassign
       def unassign
         authorize @task, :update?
         @task.update!(assigned_to_id: nil)
-        render json: TaskSerializer.new(@task, current_user: current_user).as_json
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # POST /api/v1/lists/:list_id/tasks/:id/nudge

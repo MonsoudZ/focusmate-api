@@ -50,8 +50,8 @@ RSpec.describe "Subtasks API", type: :request do
         }.to change(Task, :count).by(1)
 
         expect(response).to have_http_status(:created)
-        expect(json_response["title"]).to eq("New Subtask")
-        expect(json_response["parent_task_id"]).to eq(parent_task.id)
+        expect(json_response["subtask"]["title"]).to eq("New Subtask")
+        expect(json_response["subtask"]["parent_task_id"]).to eq(parent_task.id)
       end
 
       it "accepts unwrapped params" do
@@ -60,7 +60,7 @@ RSpec.describe "Subtasks API", type: :request do
                   params: { title: "Unwrapped Subtask" }
 
         expect(response).to have_http_status(:created)
-        expect(json_response["title"]).to eq("Unwrapped Subtask")
+        expect(json_response["subtask"]["title"]).to eq("Unwrapped Subtask")
       end
 
       it "assigns the next position automatically" do
@@ -69,7 +69,7 @@ RSpec.describe "Subtasks API", type: :request do
                   params: { subtask: { title: "Third Subtask" } }
 
         expect(response).to have_http_status(:created)
-        expect(json_response["position"]).to eq(3)
+        expect(json_response["subtask"]["position"]).to eq(3)
       end
 
       it "inherits parent task attributes" do
@@ -77,7 +77,7 @@ RSpec.describe "Subtasks API", type: :request do
                   user: user,
                   params: { subtask: { title: "Inherited Subtask" } }
 
-        created = Task.find(json_response["id"])
+        created = Task.find(json_response["subtask"]["id"])
         expect(created.list_id).to eq(parent_task.list_id)
         expect(created.due_at.to_i).to eq(parent_task.due_at.to_i)
         expect(created.strict_mode).to eq(parent_task.strict_mode)
@@ -93,7 +93,7 @@ RSpec.describe "Subtasks API", type: :request do
                    params: { subtask: { title: "Updated Subtask" } }
 
         expect(response).to have_http_status(:ok)
-        expect(json_response["title"]).to eq("Updated Subtask")
+        expect(json_response["subtask"]["title"]).to eq("Updated Subtask")
         expect(subtask1.reload.title).to eq("Updated Subtask")
       end
     end
@@ -138,7 +138,7 @@ RSpec.describe "Subtasks API", type: :request do
 
         expect(response).to have_http_status(:ok)
         expect(subtask1.reload.status).to eq("done")
-        expect(json_response["status"]).to eq("done")
+        expect(json_response["subtask"]["status"]).to eq("done")
       end
 
       it "is idempotent when already done" do

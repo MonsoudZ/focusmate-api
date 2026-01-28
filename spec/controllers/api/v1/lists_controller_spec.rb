@@ -69,8 +69,8 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      expect(json["id"]).to eq(list.id)
-      expect(json["name"]).to eq(list.name)
+      expect(json["list"]["id"]).to eq(list.id)
+      expect(json["list"]["name"]).to eq(list.name)
     end
 
     it 'requires authentication' do
@@ -96,7 +96,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      expect(json["id"]).to eq(shared_list.id)
+      expect(json["list"]["id"]).to eq(shared_list.id)
     end
   end
 
@@ -108,8 +108,8 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      expect(json["name"]).to eq("New List")
-      expect(json["description"]).to eq("A new list")
+      expect(json["list"]["name"]).to eq("New List")
+      expect(json["list"]["description"]).to eq("A new list")
     end
 
     it 'requires authentication' do
@@ -131,7 +131,8 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      expect(json).to have_key("name")
+      expect(json).to have_key("list")
+      expect(json["list"]).to have_key("name")
     end
   end
 
@@ -141,7 +142,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
-      expect(json["name"]).to eq("Updated")
+      expect(json["list"]["name"]).to eq("Updated")
     end
 
     it 'requires authentication' do

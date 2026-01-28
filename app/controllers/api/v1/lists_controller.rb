@@ -29,7 +29,7 @@ module Api
       # GET /api/v1/lists/:id
       def show
         authorize @list
-        render json: ListSerializer.new(@list, current_user: current_user, include_tasks: true).as_json, status: :ok
+        render json: { list: ListSerializer.new(@list, current_user: current_user, include_tasks: true).as_json }, status: :ok
       end
 
       # POST /api/v1/lists
@@ -37,14 +37,14 @@ module Api
         authorize List
         list = ListCreationService.new(user: current_user, params: list_params).create!
         AnalyticsTracker.list_created(list, current_user)
-        render json: ListSerializer.new(list, current_user: current_user).as_json, status: :created
+        render json: { list: ListSerializer.new(list, current_user: current_user).as_json }, status: :created
       end
 
       # PATCH /api/v1/lists/:id
       def update
         authorize @list
         ListUpdateService.new(list: @list, user: current_user).update!(attributes: list_params)
-        render json: ListSerializer.new(@list, current_user: current_user).as_json, status: :ok
+        render json: { list: ListSerializer.new(@list, current_user: current_user).as_json }, status: :ok
       end
 
       # DELETE /api/v1/lists/:id

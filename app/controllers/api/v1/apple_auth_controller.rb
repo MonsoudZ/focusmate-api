@@ -8,11 +8,11 @@ module Api
       def create
         id_token = params[:id_token]
 
-        return render_error("id_token is required", :bad_request) if id_token.blank?
+        return render_error("id_token is required", status: :bad_request) if id_token.blank?
 
         begin
           claims = decode_apple_token(id_token)
-          return render_error("Invalid token", :unauthorized) unless claims
+          return render_error("Invalid token", status: :unauthorized) unless claims
 
           apple_user_id = claims["sub"]
           email = claims["email"]
@@ -33,12 +33,12 @@ module Api
               refresh_token: pair[:refresh_token]
             }, status: :ok
           else
-            render_error(user.errors.full_messages.join(", "), :unprocessable_entity)
+            render_error(user.errors.full_messages.join(", "), status: :unprocessable_entity)
           end
 
         rescue StandardError => e
           Rails.logger.error "Apple Sign In error: #{e.message}"
-          render_error("Authentication failed", :unauthorized)
+          render_error("Authentication failed", status: :unauthorized)
         end
       end
 
@@ -88,10 +88,6 @@ module Api
           end
           JSON.parse(response.body)["keys"]
         end
-      end
-
-      def render_error(message, status)
-        render json: { error: { code: status.to_s, message: message } }, status: status
       end
     end
   end

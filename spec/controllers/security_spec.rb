@@ -105,7 +105,7 @@ RSpec.describe "Security", type: :request do
       expect([ 201, 400, 422 ]).to include(response.status)
 
       if response.status == 201
-        created_id = json["id"]
+        created_id = json["list"]["id"]
         expect(created_id).to be_present
         created = List.find(created_id)
         expect(created.user_id).to eq(user.id) # must be current_user, not attacker
