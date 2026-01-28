@@ -50,7 +50,12 @@ Rails.application.routes.draw do
             patch :assign
             patch :unassign
             post :nudge
-            get :subtasks
+          end
+          resources :subtasks, only: [:index, :show, :create, :update, :destroy] do
+            member do
+              patch :complete
+              patch :reopen
+            end
           end
         end
       end
