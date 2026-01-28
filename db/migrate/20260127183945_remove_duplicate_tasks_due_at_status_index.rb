@@ -6,6 +6,6 @@ class RemoveDuplicateTasksDueAtStatusIndex < ActiveRecord::Migration[7.0]
   end
 
   def down
-    add_index :tasks, [:due_at, :status], name: :index_tasks_on_due_at_status
+    add_index :tasks, [ :due_at, :status ], name: :index_tasks_on_due_at_status
   end
 end

@@ -78,12 +78,12 @@ class TaskRecurrenceService
     now = Time.current
     target_day = (@task.due_at || now).day
     # Snap to last day of month when target day doesn't exist (e.g. day 31 in a 30-day month)
-    actual_day = [target_day, Time.days_in_month(now.month, now.year)].min
+    actual_day = [ target_day, Time.days_in_month(now.month, now.year) ].min
     candidate = now.change(day: actual_day,
                            hour: base_time.hour, min: base_time.min, sec: base_time.sec)
     if candidate <= now
       next_month = now.next_month
-      actual_day = [target_day, Time.days_in_month(next_month.month, next_month.year)].min
+      actual_day = [ target_day, Time.days_in_month(next_month.month, next_month.year) ].min
       candidate = next_month.change(day: actual_day,
                                     hour: base_time.hour, min: base_time.min, sec: base_time.sec)
     end
@@ -96,12 +96,12 @@ class TaskRecurrenceService
     target_month = target.month
     target_day = target.day
     # Snap to last day of month when target day doesn't exist (e.g. Feb 29 in non-leap year)
-    actual_day = [target_day, Time.days_in_month(target_month, now.year)].min
+    actual_day = [ target_day, Time.days_in_month(target_month, now.year) ].min
     candidate = now.change(month: target_month, day: actual_day,
                            hour: base_time.hour, min: base_time.min, sec: base_time.sec)
     if candidate <= now
       next_year = now.year + 1
-      actual_day = [target_day, Time.days_in_month(target_month, next_year)].min
+      actual_day = [ target_day, Time.days_in_month(target_month, next_year) ].min
       candidate = Time.zone.local(next_year, target_month, actual_day,
                                   base_time.hour, base_time.min, base_time.sec)
     end

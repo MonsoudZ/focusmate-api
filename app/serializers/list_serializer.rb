@@ -38,9 +38,9 @@ class ListSerializer
     # Use loaded association if available to avoid N+1
     membership = if list.memberships.loaded?
                    list.memberships.find { |m| m.user_id == current_user.id }
-                 else
+    else
                    list.memberships.find_by(user_id: current_user.id)
-                 end
+    end
 
     return nil unless membership
     membership.role == "editor" ? "editor" : "viewer"

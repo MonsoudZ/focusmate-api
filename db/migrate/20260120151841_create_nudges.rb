@@ -8,6 +8,6 @@ class CreateNudges < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :nudges, [:task_id, :from_user_id, :created_at]
+    add_index :nudges, [ :task_id, :from_user_id, :created_at ]
   end
 end

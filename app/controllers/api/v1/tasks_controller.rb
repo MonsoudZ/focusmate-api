@@ -5,11 +5,11 @@ module Api
     class TasksController < BaseController
       include Paginatable
 
-      before_action :set_list, only: [:index, :create, :reorder]
-      before_action :set_task, only: [:show, :update, :destroy, :complete, :reopen, :assign, :unassign, :nudge]
+      before_action :set_list, only: [ :index, :create, :reorder ]
+      before_action :set_task, only: [ :show, :update, :destroy, :complete, :reopen, :assign, :unassign, :nudge ]
 
-      after_action :verify_authorized, except: [:index, :search]
-      after_action :verify_policy_scoped, only: [:index, :search]
+      after_action :verify_authorized, except: [ :index, :search ]
+      after_action :verify_policy_scoped, only: [ :index, :search ]
 
       # GET /api/v1/tasks
       def index
@@ -19,7 +19,7 @@ module Api
           tasks = tasks.where(list_id: @list.id)
         end
 
-        tasks = tasks.where(parent_task_id: nil).where(is_template: [false, nil]).not_deleted
+        tasks = tasks.where(parent_task_id: nil).where(is_template: [ false, nil ]).not_deleted
         tasks = apply_filters(tasks)
         tasks = apply_ordering(tasks)
         tasks = tasks.includes(:tags, :creator, :subtasks, list: :user)
@@ -211,7 +211,7 @@ module Api
           notification_interval_minutes list_id visibility color starred position
           is_recurring recurrence_pattern recurrence_interval recurrence_end_date recurrence_count recurrence_time
           parent_task_id
-        ] + [tag_ids: [], recurrence_days: []]
+        ] + [ tag_ids: [], recurrence_days: [] ]
       end
 
       def apply_filters(query)

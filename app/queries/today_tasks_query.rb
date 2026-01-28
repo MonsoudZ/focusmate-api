@@ -106,7 +106,7 @@ class TodayTasksQuery
       .joins(:list)
       .where(lists: { user_id: user.id, deleted_at: nil })
       .where(parent_task_id: nil)
-      .where(is_template: [false, nil])
+      .where(is_template: [ false, nil ])
       .where(deleted_at: nil)
       .includes(:tags, :creator, :subtasks, list: :user)
   end

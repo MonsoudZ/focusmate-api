@@ -4,7 +4,7 @@ module Api
   module V1
     class SubtasksController < BaseController
       before_action :set_parent_task
-      before_action :set_subtask, only: [:show, :update, :destroy, :complete, :reopen]
+      before_action :set_subtask, only: [ :show, :update, :destroy, :complete, :reopen ]
 
       after_action :verify_authorized
 

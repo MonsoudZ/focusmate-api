@@ -113,9 +113,9 @@ class TaskSerializer
   def subtasks_collection
     @subtasks_collection ||= if task.subtasks.loaded?
                                task.subtasks.reject(&:deleted?).sort_by { |s| s.position || 0 }
-                             else
+    else
                                task.subtasks.where(deleted_at: nil).order(:position).to_a
-                             end
+    end
   end
 
   def has_subtasks?

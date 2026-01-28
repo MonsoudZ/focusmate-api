@@ -99,7 +99,7 @@ module Auth
           expires_at: REFRESH_TOKEN_LIFETIME.from_now
         )
 
-        [raw, record]
+        [ raw, record ]
       end
 
       def token_digest(raw_token)

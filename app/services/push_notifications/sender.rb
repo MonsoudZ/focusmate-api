@@ -57,7 +57,7 @@ module PushNotifications
 
                             # Write to a temp file since apnotic requires a file path.
                             # Store as @temp_key_file so the file persists alongside @connection.
-                            @temp_key_file = Tempfile.new(["apns_key", ".p8"])
+                            @temp_key_file = Tempfile.new([ "apns_key", ".p8" ])
                             @temp_key_file.write(key_content)
                             @temp_key_file.close
                             cert_path = @temp_key_file.path

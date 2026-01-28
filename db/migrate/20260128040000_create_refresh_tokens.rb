@@ -17,7 +17,7 @@ class CreateRefreshTokens < ActiveRecord::Migration[8.0]
     add_index :refresh_tokens, :token_digest, unique: true
     add_index :refresh_tokens, :jti, unique: true
     add_index :refresh_tokens, :family
-    add_index :refresh_tokens, [:user_id, :revoked_at]
+    add_index :refresh_tokens, [ :user_id, :revoked_at ]
     add_index :refresh_tokens, :expires_at
   end
 end

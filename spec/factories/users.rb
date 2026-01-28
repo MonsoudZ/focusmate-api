@@ -25,6 +25,5 @@ FactoryBot.define do
         create(:device, user: user)
       end
     end
-
   end
 end

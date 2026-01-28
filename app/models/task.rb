@@ -195,6 +195,4 @@ class Task < ApplicationRecord
       Task.increment_counter(:subtasks_count, parent_task_id)
     end
   end
-
-
 end
