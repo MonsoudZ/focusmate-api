@@ -29,19 +29,11 @@ module Api
       def create
         authorize @parent_task, :update?
 
-        next_position = (@parent_task.subtasks.where(deleted_at: nil).maximum(:position) || 0) + 1
-
-        subtask = @parent_task.list.tasks.new(
-          title: subtask_params[:title],
-          note: subtask_params[:note],
+        subtask = SubtaskCreationService.new(
           parent_task: @parent_task,
-          creator: current_user,
-          due_at: @parent_task.due_at,
-          strict_mode: @parent_task.strict_mode,
-          status: :pending,
-          position: next_position
-        )
-        subtask.save!
+          user: current_user,
+          params: subtask_params
+        ).call!
 
         render json: { subtask: SubtaskSerializer.new(subtask).as_json }, status: :created
       end

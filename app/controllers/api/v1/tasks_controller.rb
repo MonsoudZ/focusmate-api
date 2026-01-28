@@ -92,66 +92,35 @@ module Api
       # PATCH /api/v1/lists/:list_id/tasks/:id/assign
       def assign
         authorize @task, :update?
-        unless params[:assigned_to].present?
-          return render json: { error: { message: "assigned_to is required" } }, status: :bad_request
-        end
-
-        assignee = User.find_by(id: params[:assigned_to])
-        unless assignee && @task.list.accessible_by?(assignee)
-          return render json: { error: { message: "User cannot be assigned to this task" } }, status: :unprocessable_entity
-        end
-
-        @task.update!(assigned_to_id: params[:assigned_to])
+        service = TaskAssignmentService.new(task: @task, user: current_user)
+        service.assign!(assigned_to_id: params[:assigned_to])
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
+      rescue TaskAssignmentService::BadRequest => e
+        render json: { error: { message: e.message } }, status: :bad_request
+      rescue TaskAssignmentService::InvalidAssignee => e
+        render json: { error: { message: e.message } }, status: :unprocessable_entity
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/unassign
       def unassign
         authorize @task, :update?
-        @task.update!(assigned_to_id: nil)
+        TaskAssignmentService.new(task: @task, user: current_user).unassign!
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # POST /api/v1/lists/:list_id/tasks/:id/nudge
       def nudge
         authorize @task, :nudge?
-
-        task_owner = @task.creator || @task.list.user
-
-        if task_owner.id == current_user.id
-          return render json: { error: { message: "You cannot nudge yourself" } }, status: :unprocessable_entity
-        end
-
-        nudge = Nudge.new(
-          task: @task,
-          from_user: current_user,
-          to_user: task_owner
-        )
-
-        unless nudge.valid?
-          return render json: { error: { message: nudge.errors.full_messages.join(", ") } }, status: :unprocessable_entity
-        end
-
-        nudge.save!
-
-        PushNotifications::Sender.send_nudge(
-          from_user: current_user,
-          to_user: task_owner,
-          task: @task
-        )
-
+        TaskNudgeService.new(task: @task, from_user: current_user).call!
         render json: { message: "Nudge sent" }, status: :ok
+      rescue TaskNudgeService::SelfNudge => e
+        render json: { error: { message: e.message } }, status: :unprocessable_entity
       end
 
       # POST /api/v1/lists/:list_id/tasks/reorder
       def reorder
         authorize @list, :update?
-
-        params[:tasks].each do |task_data|
-          task = @list.tasks.find(task_data[:id])
-          task.update!(position: task_data[:position])
-        end
-
+        TaskReorderService.new(list: @list).reorder!(params[:tasks].map { |t| t.permit(:id, :position).to_h.symbolize_keys })
         head :ok
       end
 
