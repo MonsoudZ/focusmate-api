@@ -34,6 +34,7 @@ Rails.application.routes.draw do
       resources :devices, only: %i[create destroy]
       resources :tags
       post "auth/apple", to: "apple_auth#create"
+      post "auth/refresh", to: "auth/refresh#create"
       get "today", to: "today#index"
       post "analytics/app_opened", to: "analytics#app_opened"
       get "tasks/search", to: "tasks#search"

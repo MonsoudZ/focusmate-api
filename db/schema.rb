@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_28_033157) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_28_040000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -126,6 +126,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_033157) do
     t.index ["task_id", "from_user_id", "created_at"], name: "index_nudges_on_task_id_and_from_user_id_and_created_at"
     t.index ["task_id"], name: "index_nudges_on_task_id"
     t.index ["to_user_id"], name: "index_nudges_on_to_user_id"
+  end
+
+  create_table "refresh_tokens", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "token_digest", null: false
+    t.string "jti", null: false
+    t.string "family", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "revoked_at"
+    t.string "replaced_by_jti"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["expires_at"], name: "index_refresh_tokens_on_expires_at"
+    t.index ["family"], name: "index_refresh_tokens_on_family"
+    t.index ["jti"], name: "index_refresh_tokens_on_jti", unique: true
+    t.index ["token_digest"], name: "index_refresh_tokens_on_token_digest", unique: true
+    t.index ["user_id", "revoked_at"], name: "index_refresh_tokens_on_user_id_and_revoked_at"
+    t.index ["user_id"], name: "index_refresh_tokens_on_user_id"
   end
 
   create_table "tags", force: :cascade do |t|
@@ -289,6 +307,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_033157) do
   add_foreign_key "nudges", "tasks"
   add_foreign_key "nudges", "users", column: "from_user_id"
   add_foreign_key "nudges", "users", column: "to_user_id"
+  add_foreign_key "refresh_tokens", "users"
   add_foreign_key "tags", "users"
   add_foreign_key "task_events", "tasks"
   add_foreign_key "task_events", "users"

@@ -33,13 +33,20 @@ module Api
       end
 
       # === Auth ===
-      rescue_from Auth::Login::BadRequest,
-                  Auth::Register::BadRequest do |e|
+      rescue_from ::Auth::Login::BadRequest,
+                  ::Auth::Register::BadRequest do |e|
         render_error(e.message, status: :bad_request)
       end
 
-      rescue_from Auth::Login::Unauthorized do |e|
+      rescue_from ::Auth::Login::Unauthorized do |e|
         response.set_header("WWW-Authenticate", 'Bearer realm="Application"')
+        render_error(e.message, status: :unauthorized)
+      end
+
+      rescue_from ::Auth::TokenService::TokenInvalid,
+                  ::Auth::TokenService::TokenExpired,
+                  ::Auth::TokenService::TokenRevoked,
+                  ::Auth::TokenService::TokenReused do |e|
         render_error(e.message, status: :unauthorized)
       end
 

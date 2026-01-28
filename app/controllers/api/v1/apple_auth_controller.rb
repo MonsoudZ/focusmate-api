@@ -26,8 +26,12 @@ module Api
           )
 
           if user.persisted?
-            token = Warden::JWTAuth::UserEncoder.new.call(user, :user, nil).first
-            render json: { user: UserSerializer.one(user), token: token }, status: :ok
+            pair = ::Auth::TokenService.issue_pair(user)
+            render json: {
+              user: UserSerializer.one(user),
+              token: pair[:access_token],
+              refresh_token: pair[:refresh_token]
+            }, status: :ok
           else
             render_error(user.errors.full_messages.join(", "), :unprocessable_entity)
           end

@@ -1,0 +1,97 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+RSpec.describe "Auth Refresh", type: :request do
+  describe "POST /api/v1/auth/refresh" do
+    let(:user) { create(:user) }
+    let(:pair) { Auth::TokenService.issue_pair(user) }
+    let(:refresh_token) { pair[:refresh_token] }
+
+    context "with a valid refresh token" do
+      it "returns a new token pair" do
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: refresh_token }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["token"]).to be_present
+        expect(json_response["refresh_token"]).to be_present
+        expect(json_response["user"]).to include("id" => user.id, "email" => user.email)
+      end
+
+      it "returns different tokens than the original" do
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: refresh_token }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(json_response["token"]).not_to eq(pair[:access_token])
+        expect(json_response["refresh_token"]).not_to eq(refresh_token)
+      end
+
+      it "revokes the old refresh token" do
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: refresh_token }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        digest = Digest::SHA256.hexdigest(refresh_token)
+        expect(RefreshToken.find_by(token_digest: digest)).to be_revoked
+      end
+    end
+
+    context "with a reused (already-rotated) refresh token" do
+      it "returns 401 and revokes the entire family" do
+        # First rotation (valid)
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: refresh_token }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        new_refresh_token = json_response["refresh_token"]
+
+        # Replay the old token (reuse detection)
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: refresh_token }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(response).to have_http_status(:unauthorized)
+
+        # The new token from the first rotation should also be revoked
+        new_digest = Digest::SHA256.hexdigest(new_refresh_token)
+        expect(RefreshToken.find_by(token_digest: new_digest)).to be_revoked
+      end
+    end
+
+    context "with an expired refresh token" do
+      it "returns 401" do
+        digest = Digest::SHA256.hexdigest(refresh_token)
+        RefreshToken.find_by(token_digest: digest).update!(expires_at: 1.hour.ago)
+
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: refresh_token }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context "with an invalid refresh token" do
+      it "returns 401" do
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: "bogus-token" }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context "with a missing refresh token" do
+      it "returns 401" do
+        post "/api/v1/auth/refresh",
+             params: {}.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+end
