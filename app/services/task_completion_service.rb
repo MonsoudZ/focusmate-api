@@ -107,12 +107,12 @@ class TaskCompletionService
 
     RecurringTaskService.new(@user).generate_next_instance(@task)
   rescue StandardError => e
-    Rails.logger.error("Failed to generate next recurring instance: #{e.message}")
+    Rails.error.report(e, handled: true, context: { task_id: @task.id, user_id: @user.id })
   end
 
   def update_streak
     StreakService.new(@user).update_streak!
   rescue StandardError => e
-    Rails.logger.error("Failed to update streak: #{e.message}")
+    Rails.error.report(e, handled: true, context: { user_id: @user.id })
   end
 end

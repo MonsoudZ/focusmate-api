@@ -106,6 +106,7 @@ class ApplicationMonitor
 
       Sentry.capture_message(message, level: level, extra: context)
     rescue StandardError => e
+      # Log only - can't use Rails.error.report as it would loop back to Sentry
       Rails.logger.error("Failed to send to Sentry: #{e.message}")
     end
 

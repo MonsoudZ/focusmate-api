@@ -36,7 +36,7 @@ module Api
           end
 
         rescue StandardError => e
-          Rails.logger.error "Apple Sign In error: #{e.message}"
+          Rails.error.report(e, handled: true, context: { action: "apple_sign_in" })
           render_error("Authentication failed", status: :unauthorized)
         end
       end
