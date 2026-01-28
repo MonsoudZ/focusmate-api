@@ -40,3 +40,6 @@ config/apns/*.p12
 /config/credentials/production.key
 coverage/
 config/apns/*.p8
+
+# IDE
+.idea/
