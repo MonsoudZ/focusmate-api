@@ -32,7 +32,8 @@ class List < ApplicationRecord
   def soft_delete!
     transaction do
       super
-      tasks.find_each(&:soft_delete!)
+      # Bulk update all tasks in one query instead of N individual updates
+      tasks.update_all(deleted_at: Time.current)
     end
   end
 
