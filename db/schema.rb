@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_28_222221) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_29_005116) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -80,6 +80,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_222221) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["jti"], name: "index_jwt_denylists_on_jti", unique: true
+  end
+
+  create_table "list_invites", force: :cascade do |t|
+    t.string "code", null: false
+    t.bigint "list_id", null: false
+    t.bigint "inviter_id", null: false
+    t.string "role", default: "viewer", null: false
+    t.datetime "expires_at"
+    t.integer "max_uses"
+    t.integer "uses_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_list_invites_on_code", unique: true
+    t.index ["inviter_id"], name: "index_list_invites_on_inviter_id"
+    t.index ["list_id"], name: "index_list_invites_on_list_id"
   end
 
   create_table "lists", force: :cascade do |t|
@@ -302,6 +317,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_222221) do
   add_foreign_key "analytics_events", "tasks", on_delete: :nullify
   add_foreign_key "analytics_events", "users", on_delete: :cascade
   add_foreign_key "devices", "users", on_delete: :cascade
+  add_foreign_key "list_invites", "lists"
+  add_foreign_key "list_invites", "users", column: "inviter_id"
   add_foreign_key "lists", "users", on_delete: :cascade
   add_foreign_key "memberships", "lists", on_delete: :cascade
   add_foreign_key "memberships", "users", on_delete: :cascade

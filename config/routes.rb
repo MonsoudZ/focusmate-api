@@ -39,7 +39,15 @@ Rails.application.routes.draw do
       post "analytics/app_opened", to: "analytics#app_opened"
       get "tasks/search", to: "tasks#search"
       resources :tasks, only: %i[index]
+      # Invite acceptance (by code)
+      resources :invites, only: [:show], param: :code do
+        member do
+          post :accept
+        end
+      end
+
       resources :lists do
+        resources :invites, controller: "list_invites", only: %i[index show create destroy]
         resources :memberships, only: %i[index create update destroy]
         resources :tasks do
           collection do
@@ -62,6 +70,11 @@ Rails.application.routes.draw do
       end
     end
   end
+
+  # ----------------------------
+  # Invite Landing Page (HTML)
+  # ----------------------------
+  get "invite/:code", to: "invites#show", as: :invite_page
 
   # ----------------------------
   # Health

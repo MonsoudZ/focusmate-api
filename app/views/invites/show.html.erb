@@ -1,0 +1,46 @@
+<% if @error %>
+  <div class="card error-card">
+    <div class="error-icon">:(</div>
+    <p class="error-message"><%= @error %></p>
+    <a href="<%= @app_store_url %>" class="btn btn-primary" style="margin-top: 24px;">
+      Get the App
+    </a>
+  </div>
+<% else %>
+  <div class="card">
+    <div class="logo">:)</div>
+    <h1>You're Invited!</h1>
+    <p class="subtitle"><%= @invite.inviter.name %> wants to share a list with you</p>
+
+    <div class="list-preview">
+      <div class="list-name"><%= @invite.list.name %></div>
+      <div class="inviter">Shared by <%= @invite.inviter.name %></div>
+      <span class="role-badge"><%= @invite.role %> access</span>
+    </div>
+
+    <a href="<%= @universal_link %>" class="btn btn-primary">
+      Open in App
+    </a>
+
+    <a href="<%= @app_store_url %>" class="btn btn-secondary">
+      Get the App
+    </a>
+
+    <div class="code-section">
+      <div class="code-label">Or enter this code in the app:</div>
+      <div class="code" onclick="copyCode(this)"><%= @invite.code %></div>
+      <div class="code-hint">Tap to copy</div>
+    </div>
+  </div>
+
+  <script>
+    function copyCode(el) {
+      navigator.clipboard.writeText(el.textContent).then(function() {
+        el.style.background = '#d4edda';
+        setTimeout(function() {
+          el.style.background = '#f5f5f7';
+        }, 1000);
+      });
+    }
+  </script>
+<% end %>

@@ -6,6 +6,7 @@ class List < ApplicationRecord
   has_many :memberships, dependent: :destroy
   has_many :members, through: :memberships, source: :user
   has_many :tasks, dependent: :destroy
+  has_many :invites, class_name: "ListInvite", dependent: :destroy
 
   # Validations
   validates :user, presence: true
