@@ -41,7 +41,7 @@ Rails.application.routes.draw do
       get "tasks/search", to: "tasks#search"
       resources :tasks, only: %i[index]
       # Invite acceptance (by code)
-      resources :invites, only: [:show], param: :code do
+      resources :invites, only: [ :show ], param: :code do
         member do
           post :accept
         end

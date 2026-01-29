@@ -36,7 +36,7 @@ RSpec.describe "Api::V1::Friends", type: :request do
       get "/api/v1/friends", headers: headers
 
       names = json_response["friends"].map { |f| f["name"] }
-      expect(names).to eq(["Alice", "Zack"])
+      expect(names).to eq([ "Alice", "Zack" ])
     end
 
     it "requires authentication" do
