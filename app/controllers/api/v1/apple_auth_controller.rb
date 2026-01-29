@@ -8,6 +8,8 @@ module Api
       def create
         id_token = params[:id_token]
 
+        Rails.logger.info("[AppleAuth] Received request, id_token present: #{id_token.present?}, params keys: #{params.keys}")
+
         return render_error("id_token is required", status: :bad_request) if id_token.blank?
 
         begin

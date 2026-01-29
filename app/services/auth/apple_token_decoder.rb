@@ -12,17 +12,30 @@ module Auth
     end
 
     def decode(id_token)
+      Rails.logger.info("[AppleAuth] Starting decode, token present: #{id_token.present?}, length: #{id_token.to_s.length}")
+
       header_segment = id_token.to_s.split(".").first
-      return nil if header_segment.blank?
+      if header_segment.blank?
+        Rails.logger.warn("[AppleAuth] Header segment is blank")
+        return nil
+      end
 
       header = JSON.parse(Base64.decode64(header_segment))
       kid = header["kid"]
+      Rails.logger.info("[AppleAuth] Token kid: #{kid}")
 
       apple_keys = fetch_apple_public_keys
+      Rails.logger.info("[AppleAuth] Fetched #{apple_keys&.length || 0} Apple keys")
+
       key_data = apple_keys.find { |k| k["kid"] == kid }
-      return nil unless key_data
+      if key_data.nil?
+        Rails.logger.warn("[AppleAuth] No matching key found for kid: #{kid}")
+        return nil
+      end
 
       jwk = JWT::JWK.new(key_data)
+
+      Rails.logger.info("[AppleAuth] Verifying with APPLE_BUNDLE_ID: #{ENV['APPLE_BUNDLE_ID']}")
 
       decoded = JWT.decode(
         id_token,
@@ -37,8 +50,13 @@ module Auth
         }
       )
 
+      Rails.logger.info("[AppleAuth] Token decoded successfully")
       decoded.first
-    rescue JSON::ParserError, ArgumentError
+    rescue JSON::ParserError, ArgumentError => e
+      Rails.logger.error("[AppleAuth] Parse error: #{e.message}")
+      nil
+    rescue JWT::DecodeError => e
+      Rails.logger.error("[AppleAuth] JWT decode error: #{e.message}")
       nil
     end
 
