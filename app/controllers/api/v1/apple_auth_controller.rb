@@ -15,7 +15,7 @@ module Api
 
         begin
           Rails.logger.info("[AppleAuth] Calling decoder...")
-          claims = Auth::AppleTokenDecoder.decode(id_token)
+          claims = ::Auth::AppleTokenDecoder.decode(id_token)
           Rails.logger.info("[AppleAuth] Decoder returned: #{claims.present? ? 'claims present' : 'nil'}")
           return render_error("Invalid token", status: :unauthorized) unless claims
 
