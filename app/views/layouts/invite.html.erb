@@ -51,7 +51,8 @@
       background: #f5f5f7;
       border-radius: 12px;
       padding: 20px;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
+      border-left: 4px solid #667eea;
     }
 
     .list-name {
@@ -104,36 +105,81 @@
       color: #1a1a2e;
     }
 
-    .code-section {
-      margin-top: 24px;
-      padding-top: 24px;
-      border-top: 1px solid #e8e8ed;
+    .steps {
+      margin: 20px 0 12px 0;
     }
 
-    .code-label {
-      font-size: 12px;
+    .step {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .step-number {
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .step-text {
+      font-size: 14px;
       color: #666;
+    }
+
+    .code-box {
+      width: 100%;
+      padding: 20px;
+      background: #f5f5f7;
+      border: 2px dashed #d1d1d6;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
       margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .code-box:hover {
+      border-color: #667eea;
+      background: #f0f0f5;
+    }
+
+    .code-box:active {
+      transform: scale(0.98);
+    }
+
+    .code-box.copied {
+      background: #d4edda;
+      border-color: #28a745;
+      border-style: solid;
     }
 
     .code {
       font-family: 'SF Mono', Monaco, monospace;
-      font-size: 24px;
-      font-weight: 600;
-      letter-spacing: 2px;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: 4px;
       color: #1a1a2e;
-      background: #f5f5f7;
-      padding: 12px 20px;
-      border-radius: 8px;
-      display: inline-block;
-      cursor: pointer;
-      user-select: all;
     }
 
-    .code-hint {
-      font-size: 12px;
-      color: #999;
-      margin-top: 8px;
+    .copy-hint {
+      font-size: 14px;
+      color: #667eea;
+      font-weight: 500;
+    }
+
+    .code-box.copied .copy-hint {
+      color: #28a745;
     }
 
     .error-card {

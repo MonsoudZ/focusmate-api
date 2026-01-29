@@ -18,28 +18,55 @@
       <span class="role-badge"><%= @invite.role %> access</span>
     </div>
 
+    <div class="steps">
+      <div class="step">
+        <span class="step-number">1</span>
+        <span class="step-text">Copy your invite code</span>
+      </div>
+    </div>
+
+    <button class="code-box" onclick="copyCode()" id="codeBox">
+      <span class="code" id="codeText"><%= @invite.code %></span>
+      <span class="copy-hint" id="copyHint">Tap to copy</span>
+    </button>
+
+    <div class="steps">
+      <div class="step">
+        <span class="step-number">2</span>
+        <span class="step-text">Open or download the app</span>
+      </div>
+    </div>
+
     <a href="<%= @universal_link %>" class="btn btn-primary">
       Open in App
     </a>
 
     <a href="<%= @app_store_url %>" class="btn btn-secondary">
-      Get the App
+      Don't have the app? Download it
     </a>
 
-    <div class="code-section">
-      <div class="code-label">Or enter this code in the app:</div>
-      <div class="code" onclick="copyCode(this)"><%= @invite.code %></div>
-      <div class="code-hint">Tap to copy</div>
+    <div class="steps">
+      <div class="step">
+        <span class="step-number">3</span>
+        <span class="step-text">Tap "I have an invite code" and paste</span>
+      </div>
     </div>
   </div>
 
   <script>
-    function copyCode(el) {
-      navigator.clipboard.writeText(el.textContent).then(function() {
-        el.style.background = '#d4edda';
+    function copyCode() {
+      var code = document.getElementById('codeText').textContent;
+      var codeBox = document.getElementById('codeBox');
+      var copyHint = document.getElementById('copyHint');
+
+      navigator.clipboard.writeText(code).then(function() {
+        codeBox.classList.add('copied');
+        copyHint.textContent = 'Copied!';
+
         setTimeout(function() {
-          el.style.background = '#f5f5f7';
-        }, 1000);
+          codeBox.classList.remove('copied');
+          copyHint.textContent = 'Tap to copy again';
+        }, 3000);
       });
     }
   </script>
