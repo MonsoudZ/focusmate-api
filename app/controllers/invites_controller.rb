@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-class InvitesController < ApplicationController
-  skip_before_action :authenticate_user!
+class InvitesController < ActionController::Base
   layout "invite"
 
   # GET /invite/:code
