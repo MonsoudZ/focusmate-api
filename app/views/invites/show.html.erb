@@ -1,0 +1,73 @@
+<% if @error %>
+  <div class="card error-card">
+    <div class="error-icon">:(</div>
+    <p class="error-message"><%= @error %></p>
+    <a href="<%= @app_store_url %>" class="btn btn-primary" style="margin-top: 24px;">
+      Get the App
+    </a>
+  </div>
+<% else %>
+  <div class="card">
+    <div class="logo">:)</div>
+    <h1>You're Invited!</h1>
+    <p class="subtitle"><%= @invite.inviter.name %> wants to share a list with you</p>
+
+    <div class="list-preview">
+      <div class="list-name"><%= @invite.list.name %></div>
+      <div class="inviter">Shared by <%= @invite.inviter.name %></div>
+      <span class="role-badge"><%= @invite.role %> access</span>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <span class="step-number">1</span>
+        <span class="step-text">Copy your invite code</span>
+      </div>
+    </div>
+
+    <button class="code-box" onclick="copyCode()" id="codeBox">
+      <span class="code" id="codeText"><%= @invite.code %></span>
+      <span class="copy-hint" id="copyHint">Tap to copy</span>
+    </button>
+
+    <div class="steps">
+      <div class="step">
+        <span class="step-number">2</span>
+        <span class="step-text">Open or download the app</span>
+      </div>
+    </div>
+
+    <a href="<%= @universal_link %>" class="btn btn-primary">
+      Open in App
+    </a>
+
+    <a href="<%= @app_store_url %>" class="btn btn-secondary">
+      Don't have the app? Download it
+    </a>
+
+    <div class="steps">
+      <div class="step">
+        <span class="step-number">3</span>
+        <span class="step-text">Tap "I have an invite code" and paste</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function copyCode() {
+      var code = document.getElementById('codeText').textContent;
+      var codeBox = document.getElementById('codeBox');
+      var copyHint = document.getElementById('copyHint');
+
+      navigator.clipboard.writeText(code).then(function() {
+        codeBox.classList.add('copied');
+        copyHint.textContent = 'Copied!';
+
+        setTimeout(function() {
+          codeBox.classList.remove('copied');
+          copyHint.textContent = 'Tap to copy again';
+        }, 3000);
+      });
+    }
+  </script>
+<% end %>

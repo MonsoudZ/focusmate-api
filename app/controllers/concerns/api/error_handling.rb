@@ -70,6 +70,10 @@ module Api
         render_error(e.message, status: :conflict)
       end
 
+      rescue_from Memberships::Create::Forbidden do |e|
+        render_error(e.message, status: :forbidden)
+      end
+
       # === Services ===
       rescue_from ListCreationService::ValidationError,
                   ListUpdateService::ValidationError,

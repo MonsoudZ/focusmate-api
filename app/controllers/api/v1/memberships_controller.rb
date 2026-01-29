@@ -30,6 +30,7 @@ module Api
           list: @list,
           inviter: current_user,
           user_identifier: create_params[:user_identifier],
+          friend_id: create_params[:friend_id],
           role: create_params[:role]
         )
 
@@ -71,7 +72,7 @@ module Api
       end
 
       def create_params
-        params.require(:membership).permit(:user_identifier, :role)
+        params.require(:membership).permit(:user_identifier, :friend_id, :role)
       end
 
       def update_params

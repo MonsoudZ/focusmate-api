@@ -6,17 +6,19 @@ module Memberships
     class NotFound < Error; end
     class BadRequest < Error; end
     class Conflict < Error; end
+    class Forbidden < Error; end
 
     ALLOWED_ROLES = %w[viewer editor].freeze
 
-    def self.call!(list:, inviter:, user_identifier:, role:)
-      new(list:, inviter:, user_identifier:, role:).call!
+    def self.call!(list:, inviter:, user_identifier: nil, friend_id: nil, role:)
+      new(list:, inviter:, user_identifier:, friend_id:, role:).call!
     end
 
-    def initialize(list:, inviter:, user_identifier:, role:)
+    def initialize(list:, inviter:, user_identifier: nil, friend_id: nil, role:)
       @list = list
       @inviter = inviter
-      @user_identifier = user_identifier.to_s.strip
+      @user_identifier = user_identifier.to_s.strip.presence
+      @friend_id = friend_id
       @role = role.to_s.downcase.strip.presence || "viewer"
     end
 
@@ -30,11 +32,26 @@ module Memberships
     private
 
     def validate_inputs!
-      raise BadRequest, "user_identifier is required" if @user_identifier.blank?
+      raise BadRequest, "user_identifier or friend_id is required" if @user_identifier.blank? && @friend_id.blank?
       raise BadRequest, "Invalid role" unless ALLOWED_ROLES.include?(@role)
     end
 
     def find_target_user!
+      if @friend_id.present?
+        find_by_friend_id!
+      else
+        find_by_identifier!
+      end
+    end
+
+    def find_by_friend_id!
+      user = User.find_by(id: @friend_id)
+      raise NotFound, "User not found" unless user
+      raise Forbidden, "You can only add friends to lists" unless Friendship.friends?(@inviter, user)
+      user
+    end
+
+    def find_by_identifier!
       user = UserFinder.find_by_identifier(@user_identifier)
       raise NotFound, "User not found" unless user
       user
