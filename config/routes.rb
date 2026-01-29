@@ -32,6 +32,7 @@ Rails.application.routes.draw do
         patch :password, to: "users#update_password", as: :password
       end
       resources :devices, only: %i[create destroy]
+      resources :friends, only: %i[index destroy]
       resources :tags
       post "auth/apple", to: "apple_auth#create"
       post "auth/refresh", to: "auth/refresh#create"

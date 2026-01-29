@@ -87,7 +87,7 @@ RSpec.describe Memberships::Create do
       end
     end
 
-    context "when user_identifier is blank" do
+    context "when user_identifier and friend_id are both blank" do
       it "raises BadRequest with empty string" do
         expect {
           described_class.call!(
@@ -96,7 +96,7 @@ RSpec.describe Memberships::Create do
             user_identifier: "",
             role: "viewer"
           )
-        }.to raise_error(Memberships::Create::BadRequest, "user_identifier is required")
+        }.to raise_error(Memberships::Create::BadRequest, "user_identifier or friend_id is required")
       end
 
       it "raises BadRequest with nil" do
@@ -107,7 +107,7 @@ RSpec.describe Memberships::Create do
             user_identifier: nil,
             role: "viewer"
           )
-        }.to raise_error(Memberships::Create::BadRequest, "user_identifier is required")
+        }.to raise_error(Memberships::Create::BadRequest, "user_identifier or friend_id is required")
       end
     end
 

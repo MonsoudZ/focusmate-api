@@ -37,6 +37,11 @@ module Api
         ActiveRecord::Base.transaction do
           invite.list.memberships.create!(user: current_user, role: invite.role)
           invite.increment_uses!
+
+          # Create mutual friendship if not already friends
+          unless Friendship.friends?(invite.inviter, current_user)
+            Friendship.create_mutual!(invite.inviter, current_user)
+          end
         end
 
         AnalyticsTracker.list_shared(invite.list, invite.inviter, shared_with: current_user, role: invite.role)
