@@ -36,6 +36,12 @@ stale_device_cleanup:
   queue: "maintenance"
   description: "Soft-delete devices not seen recently"
 
+orphaned_assignment_cleanup:
+  cron: "0 6 * * 0"  # Weekly on Sunday at 6 AM UTC
+  class: "OrphanedAssignmentCleanupJob"
+  queue: "maintenance"
+  description: "Unassign tasks where user no longer has list access"
+
 # ====================
 # Health & Monitoring
 # ====================
