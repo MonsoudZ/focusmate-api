@@ -49,8 +49,10 @@ Devise.setup do |config|
       [ "DELETE", %r{^/api/v1/auth/sign_out$} ]
     ]
 
-    # Token lifetime — configurable via env var for gradual rollout of short-lived tokens
-    jwt.expiration_time = ENV.fetch("JWT_ACCESS_TOKEN_LIFETIME_SECONDS", 30.days.to_i).to_i
+    # Access token lifetime — short-lived for security (1 hour default)
+    # Use refresh tokens for long-lived sessions (30 days)
+    # Configurable via env var for gradual rollout
+    jwt.expiration_time = ENV.fetch("JWT_ACCESS_TOKEN_LIFETIME_SECONDS", 1.hour.to_i).to_i
   end
 
   # ==> Warden configuration
