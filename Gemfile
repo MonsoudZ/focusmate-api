@@ -22,6 +22,9 @@ gem "redis", "~> 5.0"
 # Rate limiting
 gem "rack-attack"
 
+# CORS
+gem "rack-cors"
+
 # Feature flags
 gem "flipper"
 gem "flipper-active_record"
