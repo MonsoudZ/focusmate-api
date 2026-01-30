@@ -42,6 +42,13 @@ class MembershipPolicy < ApplicationPolicy
   end
 
   def user_can_access_list?
-    record.list.user_id == user.id || record.list.memberships.exists?(user_id: user.id)
+    return true if record.list.user_id == user.id
+
+    # Check if memberships are already loaded to avoid N+1 queries
+    if record.list.memberships.loaded?
+      record.list.memberships.any? { |m| m.user_id == user.id }
+    else
+      record.list.memberships.exists?(user_id: user.id)
+    end
   end
 end

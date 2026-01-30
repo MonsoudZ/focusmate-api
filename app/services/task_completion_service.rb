@@ -38,8 +38,8 @@ class TaskCompletionService < ApplicationService
       track_completion_analytics
     end
 
-    generate_next_recurring_instance
-    update_streak
+    enqueue_recurring_task_generation
+    enqueue_streak_update
 
     @task
   end
@@ -112,18 +112,14 @@ class TaskCompletionService < ApplicationService
     AnalyticsTracker.task_reopened(@task, @user)
   end
 
-  def generate_next_recurring_instance
+  def enqueue_recurring_task_generation
     return unless @task.template_id.present?
     return unless @task.template&.is_template && @task.template&.template_type == "recurring"
 
-    RecurringTaskService.new(@user).generate_next_instance(@task)
-  rescue StandardError => e
-    Rails.error.report(e, handled: true, context: { task_id: @task.id, user_id: @user.id })
+    RecurringTaskInstanceJob.perform_later(user_id: @user.id, task_id: @task.id)
   end
 
-  def update_streak
-    StreakService.new(@user).update_streak!
-  rescue StandardError => e
-    Rails.error.report(e, handled: true, context: { user_id: @user.id })
+  def enqueue_streak_update
+    StreakUpdateJob.perform_later(user_id: @user.id)
   end
 end

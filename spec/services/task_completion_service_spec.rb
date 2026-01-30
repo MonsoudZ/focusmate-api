@@ -282,55 +282,36 @@ RSpec.describe TaskCompletionService do
     let(:template) { create(:task, list: list, creator: task_creator, is_template: true, template_type: "recurring", is_recurring: true, recurrence_pattern: "daily") }
     let(:recurring_instance) { create(:task, list: list, creator: task_creator, template: template, instance_number: 1) }
 
-    it 'generates next instance for recurring tasks' do
-      expect_any_instance_of(RecurringTaskService).to receive(:generate_next_instance).with(recurring_instance)
-
-      described_class.complete!(task: recurring_instance, user: list_owner)
-    end
-
-    it 'handles errors in recurring task generation gracefully' do
-      allow_any_instance_of(RecurringTaskService).to receive(:generate_next_instance).and_raise(StandardError, "Generation failed")
-      expect(Rails.error).to receive(:report).with(kind_of(StandardError), hash_including(:handled, :context))
-
-      # Should not raise, just report error
+    it 'enqueues job to generate next instance for recurring tasks' do
       expect {
         described_class.complete!(task: recurring_instance, user: list_owner)
-      }.not_to raise_error
-
-      expect(recurring_instance.reload.status).to eq('done')
+      }.to have_enqueued_job(RecurringTaskInstanceJob).with(user_id: list_owner.id, task_id: recurring_instance.id)
     end
 
-    it 'skips generation for tasks without template_id' do
+    it 'does not enqueue job for tasks without template_id' do
       non_recurring_task = create(:task, list: list, creator: task_creator)
 
-      # No template_id means no recurring generation
-      expect_any_instance_of(RecurringTaskService).not_to receive(:generate_next_instance)
-
-      described_class.complete!(task: non_recurring_task, user: list_owner)
+      expect {
+        described_class.complete!(task: non_recurring_task, user: list_owner)
+      }.not_to have_enqueued_job(RecurringTaskInstanceJob)
     end
 
-    it 'skips generation for tasks with non-recurring template' do
+    it 'does not enqueue job for tasks with non-recurring template' do
       non_recurring_template = create(:task, list: list, creator: task_creator, is_template: true, template_type: "checklist")
       task_with_template = create(:task, list: list, creator: task_creator)
       task_with_template.update_column(:template_id, non_recurring_template.id)
 
-      expect_any_instance_of(RecurringTaskService).not_to receive(:generate_next_instance)
-
-      described_class.complete!(task: task_with_template.reload, user: list_owner)
+      expect {
+        described_class.complete!(task: task_with_template.reload, user: list_owner)
+      }.not_to have_enqueued_job(RecurringTaskInstanceJob)
     end
   end
 
   describe 'streak update' do
-    it 'handles errors in streak update gracefully' do
-      allow_any_instance_of(StreakService).to receive(:update_streak!).and_raise(StandardError, "Streak update failed")
-      expect(Rails.error).to receive(:report).with(kind_of(StandardError), hash_including(:handled, :context))
-
-      # Should not raise, just report error
+    it 'enqueues streak update job' do
       expect {
         described_class.complete!(task: task, user: list_owner)
-      }.not_to raise_error
-
-      expect(task.reload.status).to eq('done')
+      }.to have_enqueued_job(StreakUpdateJob).with(user_id: list_owner.id)
     end
   end
 

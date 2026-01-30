@@ -30,22 +30,16 @@ class StreakService
     date_to_check = last_checked + 1.day
 
     while date_to_check < today
-      # Single query per day - fetch tasks and check status in Ruby
-      due_tasks = tasks_due_on(date_to_check).to_a
+      result = check_day_completion(date_to_check)
 
-      if due_tasks.any?
-        all_completed = due_tasks.all? { |task| task.status == "done" }
-
-        if all_completed
-          # Streak continues
-          @user.current_streak += 1
-          update_longest_streak!
-        else
-          # Streak broken
-          @user.current_streak = 0
-        end
+      case result
+      when :all_completed
+        @user.current_streak += 1
+        update_longest_streak!
+      when :incomplete
+        @user.current_streak = 0
       end
-      # Days with no tasks due: streak unchanged
+      # :no_tasks - streak unchanged
 
       date_to_check += 1.day
     end
@@ -56,23 +50,31 @@ class StreakService
 
     return if @user.last_streak_date == today
 
-    # Single query - fetch tasks and check status in Ruby
-    due_tasks = tasks_due_on(today).to_a
+    result = check_day_completion(today)
 
-    if due_tasks.any?
-      all_completed = due_tasks.all? { |task| task.status == "done" }
-
-      if all_completed
-        @user.current_streak += 1
-        update_longest_streak!
-        @user.last_streak_date = today
-      end
-      # Tasks due but not all completed yet - don't update last_streak_date
-      # Streak will be evaluated at end of day or next app open
-    else
+    case result
+    when :all_completed
+      @user.current_streak += 1
+      update_longest_streak!
+      @user.last_streak_date = today
+    when :no_tasks
       # No tasks due today - neutral day, just mark as checked
       @user.last_streak_date = today
     end
+    # :incomplete - Tasks due but not all completed yet
+    # Don't update last_streak_date, streak will be evaluated later
+  end
+
+  # Returns :all_completed, :incomplete, or :no_tasks
+  # Uses efficient database queries instead of loading all tasks into memory
+  def check_day_completion(date)
+    base_scope = tasks_due_on(date)
+
+    total_count = base_scope.count
+    return :no_tasks if total_count.zero?
+
+    completed_count = base_scope.where(status: "done").count
+    total_count == completed_count ? :all_completed : :incomplete
   end
 
   def tasks_due_on(date)

@@ -16,6 +16,7 @@ class TaskNudgeService < ApplicationService
     nudge = Nudge.new(task: @task, from_user: @from_user, to_user: to_user)
     nudge.save!
 
+    # Keep synchronous for immediate feedback (important for ADHD users)
     PushNotifications::Sender.send_nudge(
       from_user: @from_user,
       to_user: to_user,
