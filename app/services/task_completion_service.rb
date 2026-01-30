@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
-class TaskCompletionService
+# Service with multiple entry points - uses custom class methods
+# instead of the standard .call! from ApplicationService
+class TaskCompletionService < ApplicationService
   class UnauthorizedError < StandardError; end
   class MissingReasonError < StandardError; end
 

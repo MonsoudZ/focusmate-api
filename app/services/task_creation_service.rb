@@ -1,11 +1,7 @@
 # frozen_string_literal: true
 
-class TaskCreationService
+class TaskCreationService < ApplicationService
   include TimeParsing
-
-  def self.call!(list:, user:, params:)
-    new(list:, user:, params:).call!
-  end
 
   def initialize(list:, user:, params:)
     @list = list

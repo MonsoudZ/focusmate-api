@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-class TaskAssignmentService
+# Service with multiple entry points - uses custom class methods
+class TaskAssignmentService < ApplicationService
   class Error < StandardError; end
   class BadRequest < Error; end
   class InvalidAssignee < Error; end

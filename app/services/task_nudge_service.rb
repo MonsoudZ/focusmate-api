@@ -1,12 +1,8 @@
 # frozen_string_literal: true
 
-class TaskNudgeService
+class TaskNudgeService < ApplicationService
   class Error < StandardError; end
   class SelfNudge < Error; end
-
-  def self.call!(task:, from_user:)
-    new(task:, from_user:).call!
-  end
 
   def initialize(task:, from_user:)
     @task = task

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class TaskUpdateService
+class TaskUpdateService < ApplicationService
   class UnauthorizedError < StandardError; end
   class ValidationError < StandardError
     attr_reader :details
@@ -10,19 +10,16 @@ class TaskUpdateService
     end
   end
 
-  def self.call!(task:, user:, attributes:)
-    new(task:, user:).call!(attributes:)
-  end
-
-  def initialize(task:, user:)
+  def initialize(task:, user:, attributes:)
     @task = task
     @user = user
+    @attributes = attributes
   end
 
-  def call!(attributes:)
+  def call!
     validate_authorization!
-    track_changes(attributes)
-    perform_update(attributes)
+    track_changes
+    perform_update
     @task
   end
 
@@ -34,25 +31,25 @@ class TaskUpdateService
     end
   end
 
-  def track_changes(attributes)
+  def track_changes
     @old_priority = @task.priority
     @old_starred = @task.starred
-    @changes = attributes.keys.select { |k| @task.send(k) != attributes[k] }
+    @changes = @attributes.keys.select { |k| @task.send(k) != @attributes[k] }
   end
 
-  def perform_update(attributes)
+  def perform_update
     ActiveRecord::Base.transaction do
-      unless @task.update(attributes)
+      unless @task.update(@attributes)
         raise ValidationError.new("Validation failed", @task.errors.as_json)
       end
 
-      track_analytics(attributes)
+      track_analytics
     end
   end
 
-  def track_analytics(attributes)
+  def track_analytics
     # Track priority changes
-    if attributes.key?(:priority) && @old_priority != @task.priority
+    if @attributes.key?(:priority) && @old_priority != @task.priority
       AnalyticsTracker.task_priority_changed(
         @task,
         @user,
@@ -62,7 +59,7 @@ class TaskUpdateService
     end
 
     # Track starred changes
-    if attributes.key?(:starred) && @old_starred != @task.starred
+    if @attributes.key?(:starred) && @old_starred != @task.starred
       if @task.starred
         AnalyticsTracker.task_starred(@task, @user)
       else

@@ -1,17 +1,14 @@
 # frozen_string_literal: true
 
-class TaskReorderService
-  def self.call!(list:, task_positions:)
-    new(list:).call!(task_positions)
-  end
-
-  def initialize(list:)
+class TaskReorderService < ApplicationService
+  def initialize(list:, task_positions:)
     @list = list
+    @task_positions = task_positions
   end
 
-  def call!(task_positions)
+  def call!
     ActiveRecord::Base.transaction do
-      task_positions.each do |entry|
+      @task_positions.each do |entry|
         task = @list.tasks.find(entry[:id])
         task.update!(position: entry[:position])
       end

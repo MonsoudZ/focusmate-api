@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class ListUpdateService
+class ListUpdateService < ApplicationService
   class UnauthorizedError < StandardError; end
   class ValidationError < StandardError
     attr_reader :details
@@ -10,18 +10,15 @@ class ListUpdateService
     end
   end
 
-  def self.call!(list:, user:, attributes:)
-    new(list:, user:).call!(attributes:)
-  end
-
-  def initialize(list:, user:)
+  def initialize(list:, user:, attributes:)
     @list = list
     @user = user
+    @attributes = attributes
   end
 
-  def call!(attributes:)
+  def call!
     validate_authorization!
-    perform_update(attributes)
+    perform_update
     @list
   end
 
@@ -33,8 +30,8 @@ class ListUpdateService
     end
   end
 
-  def perform_update(attributes)
-    unless @list.update(attributes)
+  def perform_update
+    unless @list.update(@attributes)
       raise ValidationError.new("Validation failed", @list.errors.as_json)
     end
   end

@@ -1,157 +1,142 @@
-require 'rails_helper'
+# frozen_string_literal: true
+
+require "rails_helper"
 
 RSpec.describe ListUpdateService do
   let(:owner) { create(:user) }
   let(:editor) { create(:user) }
   let(:unauthorized_user) { create(:user) }
-  let(:list) { create(:list, user: owner, name: 'Original Name') }
+  let(:list) { create(:list, user: owner, name: "Original Name") }
 
-  describe '#update!' do
-    context 'when user is the list owner' do
-      it 'updates the list successfully' do
-        service = described_class.new(list: list, user: owner)
-        result = service.call!(attributes: { name: 'Updated Name' })
+  describe "#call!" do
+    context "when user is the list owner" do
+      it "updates the list successfully" do
+        result = described_class.call!(list: list, user: owner, attributes: { name: "Updated Name" })
 
         expect(result).to eq(list)
-        expect(list.reload.name).to eq('Updated Name')
+        expect(list.reload.name).to eq("Updated Name")
       end
 
-      it 'updates multiple attributes' do
-        service = described_class.new(list: list, user: owner)
-        service.call!(attributes: {
-          name: 'New Name',
-          description: 'New Description',
-          visibility: 'public'
+      it "updates multiple attributes" do
+        described_class.call!(list: list, user: owner, attributes: {
+          name: "New Name",
+          description: "New Description",
+          visibility: "public"
         })
 
         list.reload
-        expect(list.name).to eq('New Name')
-        expect(list.description).to eq('New Description')
-        expect(list.visibility).to eq('public')
+        expect(list.name).to eq("New Name")
+        expect(list.description).to eq("New Description")
+        expect(list.visibility).to eq("public")
       end
 
-      it 'returns the list object' do
-        service = described_class.new(list: list, user: owner)
-        result = service.call!(attributes: { name: 'Test' })
+      it "returns the list object" do
+        result = described_class.call!(list: list, user: owner, attributes: { name: "Test" })
 
         expect(result).to be_a(List)
         expect(result).to eq(list)
       end
     end
 
-    context 'when user has edit permissions via membership' do
+    context "when user has edit permissions via membership" do
       before do
         create(:membership, list: list, user: editor, role: "editor")
       end
 
-      it 'updates the list successfully' do
-        service = described_class.new(list: list, user: editor)
-        result = service.call!(attributes: { name: 'Editor Updated' })
+      it "updates the list successfully" do
+        result = described_class.call!(list: list, user: editor, attributes: { name: "Editor Updated" })
 
         expect(result).to eq(list)
-        expect(list.reload.name).to eq('Editor Updated')
+        expect(list.reload.name).to eq("Editor Updated")
       end
 
-      it 'allows multiple attribute updates' do
-        service = described_class.new(list: list, user: editor)
-        service.call!(attributes: {
-          name: 'Edited Name',
-          description: 'Edited Description'
+      it "allows multiple attribute updates" do
+        described_class.call!(list: list, user: editor, attributes: {
+          name: "Edited Name",
+          description: "Edited Description"
         })
 
         list.reload
-        expect(list.name).to eq('Edited Name')
-        expect(list.description).to eq('Edited Description')
+        expect(list.name).to eq("Edited Name")
+        expect(list.description).to eq("Edited Description")
       end
     end
 
-    context 'when user has viewer-only permissions' do
+    context "when user has viewer-only permissions" do
       before do
         create(:membership, list: list, user: unauthorized_user, role: "viewer")
       end
 
-      it 'raises UnauthorizedError' do
-        service = described_class.new(list: list, user: unauthorized_user)
-
+      it "raises UnauthorizedError" do
         expect {
-          service.call!(attributes: { name: 'Unauthorized Update' })
+          described_class.call!(list: list, user: unauthorized_user, attributes: { name: "Unauthorized Update" })
         }.to raise_error(ListUpdateService::UnauthorizedError, "You do not have permission to edit this list")
       end
 
-      it 'does not update the list' do
-        service = described_class.new(list: list, user: unauthorized_user)
-
+      it "does not update the list" do
         expect {
-          service.call!(attributes: { name: 'Unauthorized Update' })
+          described_class.call!(list: list, user: unauthorized_user, attributes: { name: "Unauthorized Update" })
         }.to raise_error(ListUpdateService::UnauthorizedError)
 
-        expect(list.reload.name).to eq('Original Name')
+        expect(list.reload.name).to eq("Original Name")
       end
     end
 
-    context 'when user is not the owner and has no share' do
-      it 'raises UnauthorizedError' do
-        service = described_class.new(list: list, user: unauthorized_user)
-
+    context "when user is not the owner and has no share" do
+      it "raises UnauthorizedError" do
         expect {
-          service.call!(attributes: { name: 'Unauthorized Update' })
+          described_class.call!(list: list, user: unauthorized_user, attributes: { name: "Unauthorized Update" })
         }.to raise_error(ListUpdateService::UnauthorizedError)
       end
     end
 
-    context 'when validation fails' do
-      it 'raises ValidationError with details' do
-        service = described_class.new(list: list, user: owner)
-
+    context "when validation fails" do
+      it "raises ValidationError with details" do
         expect {
-          service.call!(attributes: { name: '' })
+          described_class.call!(list: list, user: owner, attributes: { name: "" })
         }.to raise_error(ListUpdateService::ValidationError) do |error|
-          expect(error.message).to eq('Validation failed')
+          expect(error.message).to eq("Validation failed")
           expect(error.details).to be_a(Hash)
           expect(error.details).to have_key(:name)
         end
       end
 
-      it 'does not update the list on validation failure' do
-        service = described_class.new(list: list, user: owner)
-
+      it "does not update the list on validation failure" do
         expect {
-          service.call!(attributes: { name: '' })
+          described_class.call!(list: list, user: owner, attributes: { name: "" })
         }.to raise_error(ListUpdateService::ValidationError)
 
-        expect(list.reload.name).to eq('Original Name')
+        expect(list.reload.name).to eq("Original Name")
       end
     end
 
-    context 'when updating visibility' do
-      it 'updates visibility successfully' do
-        service = described_class.new(list: list, user: owner)
+    context "when updating visibility" do
+      it "updates visibility successfully" do
+        described_class.call!(list: list, user: owner, attributes: { visibility: "public" })
 
-        service.call!(attributes: { visibility: 'public' })
-
-        expect(list.reload.visibility).to eq('public')
+        expect(list.reload.visibility).to eq("public")
       end
     end
   end
 
-  describe 'UnauthorizedError' do
-    it 'is a StandardError' do
+  describe "UnauthorizedError" do
+    it "is a StandardError" do
       expect(ListUpdateService::UnauthorizedError.new).to be_a(StandardError)
     end
   end
 
-  describe 'ValidationError' do
-    it 'stores message and details' do
-      error = ListUpdateService::ValidationError.new('Test error', { field: [ 'error' ] })
+  describe "ValidationError" do
+    it "stores message and details" do
+      error = ListUpdateService::ValidationError.new("Test error", { field: [ "error" ] })
 
-      expect(error.message).to eq('Test error')
-      expect(error.details).to eq({ field: [ 'error' ] })
+      expect(error.message).to eq("Test error")
+      expect(error.details).to eq({ field: [ "error" ] })
     end
 
-    it 'handles empty details' do
-      error = ListUpdateService::ValidationError.new('Test error')
+    it "handles empty details" do
+      error = ListUpdateService::ValidationError.new("Test error")
 
-      expect(error.message).to eq('Test error')
+      expect(error.message).to eq("Test error")
       expect(error.details).to eq({})
     end
   end

@@ -1,16 +1,12 @@
 # frozen_string_literal: true
 
-class ListCreationService
+class ListCreationService < ApplicationService
   class ValidationError < StandardError
     attr_reader :details
     def initialize(message, details = {})
       super(message)
       @details = details
     end
-  end
-
-  def self.call!(user:, params:)
-    new(user:, params:).call!
   end
 
   def initialize(user:, params:)
