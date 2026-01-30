@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_30_060001) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_30_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
 
   create_table "analytics_events", force: :cascade do |t|
     t.bigint "user_id", null: false
@@ -285,6 +286,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_060001) do
     t.index ["list_id"], name: "index_tasks_on_list_id"
     t.index ["location_based"], name: "index_tasks_on_location_based"
     t.index ["missed_reason_reviewed_by_id"], name: "index_tasks_on_missed_reason_reviewed_by_id"
+    t.index ["note"], name: "index_tasks_on_note_trgm", opclass: :gin_trgm_ops, using: :gin
     t.index ["parent_task_id"], name: "index_tasks_on_parent_task_id"
     t.index ["priority"], name: "index_tasks_on_priority"
     t.index ["starred"], name: "index_tasks_on_starred"
@@ -292,6 +294,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_060001) do
     t.index ["status", "due_at"], name: "index_tasks_on_status_and_due_at"
     t.index ["template_id"], name: "index_tasks_on_template_id"
     t.index ["template_type"], name: "index_tasks_on_template_type"
+    t.index ["title"], name: "index_tasks_on_title_trgm", opclass: :gin_trgm_ops, using: :gin
     t.index ["visibility"], name: "index_tasks_on_visibility"
     t.check_constraint "location_latitude >= '-90'::integer::numeric AND location_latitude <= 90::numeric", name: "tasks_latitude_range"
     t.check_constraint "location_longitude >= '-180'::integer::numeric AND location_longitude <= 180::numeric", name: "tasks_longitude_range"
