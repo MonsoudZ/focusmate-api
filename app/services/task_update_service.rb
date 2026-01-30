@@ -1,14 +1,10 @@
 # frozen_string_literal: true
 
 class TaskUpdateService < ApplicationService
-  class UnauthorizedError < StandardError; end
-  class ValidationError < StandardError
-    attr_reader :details
-    def initialize(message, details = {})
-      super(message)
-      @details = details
-    end
+  class UnauthorizedError < ApplicationError::Forbidden
+    def default_code = "task_update_forbidden"
   end
+  class ValidationError < ApplicationError::Validation; end
 
   def initialize(task:, user:, attributes:)
     @task = task
@@ -40,7 +36,7 @@ class TaskUpdateService < ApplicationService
   def perform_update
     ActiveRecord::Base.transaction do
       unless @task.update(@attributes)
-        raise ValidationError.new("Validation failed", @task.errors.as_json)
+        raise ValidationError.new("Validation failed", details: @task.errors.as_json)
       end
 
       track_analytics

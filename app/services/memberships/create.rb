@@ -2,11 +2,10 @@
 
 module Memberships
   class Create
-    class Error < StandardError; end
-    class NotFound < Error; end
-    class BadRequest < Error; end
-    class Conflict < Error; end
-    class Forbidden < Error; end
+    class NotFound < ApplicationError::NotFound; end
+    class BadRequest < ApplicationError::BadRequest; end
+    class Conflict < ApplicationError::Conflict; end
+    class Forbidden < ApplicationError::Forbidden; end
 
     ALLOWED_ROLES = %w[viewer editor].freeze
 

@@ -50,7 +50,7 @@ RSpec.describe Api::ErrorHandling, type: :controller do
     end
 
     def validation_error
-      raise TaskUpdateService::ValidationError.new("Validation failed", { title: [ "can't be blank" ] })
+      raise TaskUpdateService::ValidationError.new("Validation failed", details: { title: [ "can't be blank" ] })
     end
   end
 
@@ -80,18 +80,18 @@ RSpec.describe Api::ErrorHandling, type: :controller do
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
       expect(json["error"]).to include("code", "message")
-      expect(json["error"]["code"]).to eq("record_not_found")
+      expect(json["error"]["code"]).to eq("not_found")
       expect(json["error"]["message"]).to eq("Not found")
     end
   end
 
   describe "ActiveRecord::RecordNotFound" do
-    it "returns 404 with record_not_found code" do
+    it "returns 404 with not_found code" do
       get :record_not_found
 
       expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body)
-      expect(json["error"]["code"]).to eq("record_not_found")
+      expect(json["error"]["code"]).to eq("not_found")
     end
   end
 
@@ -176,7 +176,7 @@ RSpec.describe Api::ErrorHandling, type: :controller do
 
       expect(response).to have_http_status(:bad_request)
       json = JSON.parse(response.body)
-      expect(json["error"]["code"]).to eq("task_assignment_bad_request")
+      expect(json["error"]["code"]).to eq("bad_request")
     end
 
     it "handles InvalidAssignee" do
@@ -184,37 +184,37 @@ RSpec.describe Api::ErrorHandling, type: :controller do
 
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
-      expect(json["error"]["code"]).to eq("task_assignment_invalid")
+      expect(json["error"]["code"]).to eq("invalid_assignee")
     end
   end
 
   describe "TaskNudgeService::SelfNudge" do
-    it "returns 422 with nudge_self_not_allowed code" do
+    it "returns 422 with self_nudge code" do
       get :task_nudge_self
 
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
-      expect(json["error"]["code"]).to eq("nudge_self_not_allowed")
+      expect(json["error"]["code"]).to eq("self_nudge")
     end
   end
 
   describe "TaskCompletionService::MissingReasonError" do
-    it "returns 422 with completion_reason_required code" do
+    it "returns 422 with missing_reason code" do
       get :task_completion_missing_reason
 
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
-      expect(json["error"]["code"]).to eq("completion_reason_required")
+      expect(json["error"]["code"]).to eq("missing_reason")
     end
   end
 
   describe "ListUpdateService::UnauthorizedError" do
-    it "returns 403 with update_forbidden code" do
+    it "returns 403 with list_update_forbidden code" do
       get :list_update_unauthorized
 
       expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
-      expect(json["error"]["code"]).to eq("update_forbidden")
+      expect(json["error"]["code"]).to eq("list_update_forbidden")
     end
   end
 

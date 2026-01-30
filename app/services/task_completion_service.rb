@@ -3,8 +3,13 @@
 # Service with multiple entry points - uses custom class methods
 # instead of the standard .call! from ApplicationService
 class TaskCompletionService < ApplicationService
-  class UnauthorizedError < StandardError; end
-  class MissingReasonError < StandardError; end
+  class UnauthorizedError < ApplicationError::Forbidden
+    def default_code = "task_completion_forbidden"
+  end
+  class MissingReasonError < ApplicationError::UnprocessableEntity
+    def default_code = "missing_reason"
+    def default_message = "This overdue task requires an explanation"
+  end
 
   def self.complete!(task:, user:, missed_reason: nil)
     new(task:, user:, missed_reason:).complete!

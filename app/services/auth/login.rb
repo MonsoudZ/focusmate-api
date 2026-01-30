@@ -2,9 +2,10 @@
 
 module Auth
   class Login
-    class Error < StandardError; end
-    class Unauthorized < Error; end
-    class BadRequest < Error; end
+    class Unauthorized < ApplicationError::Unauthorized
+      def default_code = "login_unauthorized"
+    end
+    class BadRequest < ApplicationError::BadRequest; end
 
     def self.call!(email:, password:)
       new(email:, password:).call!

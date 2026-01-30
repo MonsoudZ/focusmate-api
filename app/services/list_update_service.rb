@@ -1,14 +1,10 @@
 # frozen_string_literal: true
 
 class ListUpdateService < ApplicationService
-  class UnauthorizedError < StandardError; end
-  class ValidationError < StandardError
-    attr_reader :details
-    def initialize(message, details = {})
-      super(message)
-      @details = details
-    end
+  class UnauthorizedError < ApplicationError::Forbidden
+    def default_code = "list_update_forbidden"
   end
+  class ValidationError < ApplicationError::Validation; end
 
   def initialize(list:, user:, attributes:)
     @list = list
@@ -32,7 +28,7 @@ class ListUpdateService < ApplicationService
 
   def perform_update
     unless @list.update(@attributes)
-      raise ValidationError.new("Validation failed", @list.errors.as_json)
+      raise ValidationError.new("Validation failed", details: @list.errors.as_json)
     end
   end
 end

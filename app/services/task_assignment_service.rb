@@ -2,9 +2,10 @@
 
 # Service with multiple entry points - uses custom class methods
 class TaskAssignmentService < ApplicationService
-  class Error < StandardError; end
-  class BadRequest < Error; end
-  class InvalidAssignee < Error; end
+  class BadRequest < ApplicationError::BadRequest; end
+  class InvalidAssignee < ApplicationError::UnprocessableEntity
+    def default_code = "invalid_assignee"
+  end
 
   def self.assign!(task:, user:, assigned_to_id:)
     new(task:, user:).assign!(assigned_to_id:)

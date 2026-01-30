@@ -2,8 +2,7 @@
 
 module Auth
   class Register
-    class Error < StandardError; end
-    class BadRequest < Error; end
+    class BadRequest < ApplicationError::BadRequest; end
 
     def self.call!(email:, password:, password_confirmation:, name: nil, timezone: nil)
       new(

@@ -2,10 +2,10 @@
 
 module Auth
   class TokenService
-    class TokenInvalid < StandardError; end
-    class TokenExpired < StandardError; end
-    class TokenRevoked < StandardError; end
-    class TokenReused < StandardError; end
+    class TokenInvalid < ApplicationError::TokenInvalid; end
+    class TokenExpired < ApplicationError::TokenExpired; end
+    class TokenRevoked < ApplicationError::TokenRevoked; end
+    class TokenReused < ApplicationError::TokenReused; end
 
     REFRESH_TOKEN_LIFETIME = 30.days
     REFRESH_TOKEN_BYTE_LENGTH = 32

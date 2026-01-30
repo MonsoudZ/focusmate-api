@@ -2,15 +2,7 @@
 
 module Users
   class ProfileUpdateService
-    class Error < StandardError; end
-    class ValidationError < Error
-      attr_reader :details
-
-      def initialize(message, details = {})
-        super(message)
-        @details = details
-      end
-    end
+    class ValidationError < ApplicationError::Validation; end
 
     def self.call!(user:, **attrs)
       new(user:, attrs:).call!
@@ -35,7 +27,7 @@ module Users
     def validate_timezone!
       Time.find_zone!(@attrs[:timezone])
     rescue ArgumentError
-      raise ValidationError.new("Invalid timezone", { timezone: [ "is not a valid timezone" ] })
+      raise ValidationError.new("Invalid timezone", details: { timezone: [ "is not a valid timezone" ] })
     end
   end
 end

@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 class TaskNudgeService < ApplicationService
-  class Error < StandardError; end
-  class SelfNudge < Error; end
+  class SelfNudge < ApplicationError::UnprocessableEntity
+    def default_code = "self_nudge"
+    def default_message = "You cannot nudge yourself"
+  end
 
   def initialize(task:, from_user:)
     @task = task

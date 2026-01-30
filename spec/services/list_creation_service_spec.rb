@@ -127,7 +127,7 @@ RSpec.describe ListCreationService do
 
   describe 'ValidationError' do
     it 'stores message and details' do
-      error = ListCreationService::ValidationError.new('Test error', { field: [ 'error' ] })
+      error = ListCreationService::ValidationError.new('Test error', details: { field: [ 'error' ] })
 
       expect(error.message).to eq('Test error')
       expect(error.details).to eq({ field: [ 'error' ] })

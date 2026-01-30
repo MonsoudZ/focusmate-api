@@ -2,16 +2,10 @@
 
 module Users
   class PasswordChangeService
-    class Error < StandardError; end
-    class Forbidden < Error; end
-    class ValidationError < Error
-      attr_reader :details
-
-      def initialize(message, details = {})
-        super(message)
-        @details = details
-      end
+    class Forbidden < ApplicationError::Forbidden
+      def default_code = "password_change_forbidden"
     end
+    class ValidationError < ApplicationError::Validation; end
 
     def self.call!(user:, current_password:, password:, password_confirmation:)
       new(
@@ -49,20 +43,20 @@ module Users
     def validate_current_password!
       return if @user.valid_password?(@current_password)
 
-      raise ValidationError.new("Current password is incorrect", { current_password: [ "is incorrect" ] })
+      raise ValidationError.new("Current password is incorrect", details: { current_password: [ "is incorrect" ] })
     end
 
     def validate_new_password!
       if @password.blank?
-        raise ValidationError.new("Password is required", { password: [ "can't be blank" ] })
+        raise ValidationError.new("Password is required", details: { password: [ "can't be blank" ] })
       end
 
       if @password.length < 8
-        raise ValidationError.new("Password too short", { password: [ "must be at least 8 characters" ] })
+        raise ValidationError.new("Password too short", details: { password: [ "must be at least 8 characters" ] })
       end
 
       if @password != @password_confirmation
-        raise ValidationError.new("Password confirmation doesn't match", { password_confirmation: [ "doesn't match" ] })
+        raise ValidationError.new("Password confirmation doesn't match", details: { password_confirmation: [ "doesn't match" ] })
       end
     end
   end

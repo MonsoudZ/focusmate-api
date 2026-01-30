@@ -2,8 +2,7 @@
 
 module Memberships
   class Update
-    class Error < StandardError; end
-    class BadRequest < Error; end
+    class BadRequest < ApplicationError::BadRequest; end
 
     ALLOWED_ROLES = %w[viewer editor].freeze
 

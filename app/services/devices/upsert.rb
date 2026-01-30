@@ -2,8 +2,7 @@
 
 module Devices
   class Upsert
-    class Error < StandardError; end
-    class BadRequest < Error; end
+    class BadRequest < ApplicationError::BadRequest; end
 
     def self.call!(user:, apns_token:, **attrs)
       new(user:, apns_token:, attrs:).call!

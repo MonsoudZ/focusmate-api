@@ -2,8 +2,7 @@
 
 module Memberships
   class Destroy
-    class Error < StandardError; end
-    class Conflict < Error; end
+    class Conflict < ApplicationError::Conflict; end
 
     def self.call!(membership:, actor:)
       # owner should never remove themselves from their own list
