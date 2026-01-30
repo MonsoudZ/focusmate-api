@@ -70,14 +70,13 @@ module Api
       def complete
         authorize @task, :update?
 
-        begin
-          TaskCompletionService.complete!(
-            task: @task,
-            user: current_user,
-            missed_reason: params[:missed_reason]
-          )
-          render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
-        end
+        TaskCompletionService.complete!(
+          task: @task,
+          user: current_user,
+          missed_reason: params[:missed_reason]
+        )
+        @task.reload
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/reopen

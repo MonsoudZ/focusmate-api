@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_30_043000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_30_050000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -104,6 +104,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_043000) do
     t.datetime "updated_at", null: false
     t.index ["code"], name: "index_list_invites_on_code", unique: true
     t.index ["inviter_id"], name: "index_list_invites_on_inviter_id"
+    t.index ["list_id", "expires_at"], name: "index_list_invites_on_list_id_and_expires_at"
     t.index ["list_id"], name: "index_list_invites_on_list_id"
   end
 
@@ -197,6 +198,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_043000) do
     t.index ["task_id", "created_at"], name: "index_task_events_on_task_created_at"
     t.index ["task_id", "kind"], name: "index_task_events_on_task_and_kind"
     t.index ["task_id"], name: "index_task_events_on_task_id"
+    t.index ["user_id", "created_at"], name: "index_task_events_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_task_events_on_user_id"
   end
 
