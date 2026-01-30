@@ -19,7 +19,7 @@ RSpec.describe TaskUpdateService do
     context 'when user is the list owner' do
       it 'updates the task successfully' do
         service = described_class.new(task: task, user: list_owner)
-        result = service.update!(attributes: { title: 'Updated Title' })
+        result = service.call!(attributes: { title: 'Updated Title' })
 
         expect(result).to eq(task)
         expect(task.reload.title).to eq('Updated Title')
@@ -27,7 +27,7 @@ RSpec.describe TaskUpdateService do
 
       it 'updates multiple attributes' do
         service = described_class.new(task: task, user: list_owner)
-        service.update!(attributes: {
+        service.call!(attributes: {
           title: 'New Title',
           note: 'New Note',
           strict_mode: false
@@ -41,7 +41,7 @@ RSpec.describe TaskUpdateService do
 
       it 'returns the task object' do
         service = described_class.new(task: task, user: list_owner)
-        result = service.update!(attributes: { title: 'Test' })
+        result = service.call!(attributes: { title: 'Test' })
 
         expect(result).to be_a(Task)
         expect(result).to eq(task)
@@ -51,7 +51,7 @@ RSpec.describe TaskUpdateService do
     context 'when user is the task creator' do
       it 'updates the task successfully' do
         service = described_class.new(task: task, user: task_creator)
-        result = service.update!(attributes: { title: 'Creator Updated' })
+        result = service.call!(attributes: { title: 'Creator Updated' })
 
         expect(result).to eq(task)
         expect(task.reload.title).to eq('Creator Updated')
@@ -63,7 +63,7 @@ RSpec.describe TaskUpdateService do
         skip 'List memberships not implemented' unless list.respond_to?(:memberships)
 
         service = described_class.new(task: task, user: list_editor)
-        result = service.update!(attributes: { title: 'Editor Updated' })
+        result = service.call!(attributes: { title: 'Editor Updated' })
 
         expect(result).to eq(task)
         expect(task.reload.title).to eq('Editor Updated')
@@ -75,7 +75,7 @@ RSpec.describe TaskUpdateService do
         service = described_class.new(task: task, user: unauthorized_user)
 
         expect {
-          service.update!(attributes: { title: 'Unauthorized Update' })
+          service.call!(attributes: { title: 'Unauthorized Update' })
         }.to raise_error(TaskUpdateService::UnauthorizedError, "You do not have permission to edit this task")
       end
 
@@ -83,7 +83,7 @@ RSpec.describe TaskUpdateService do
         service = described_class.new(task: task, user: unauthorized_user)
 
         expect {
-          service.update!(attributes: { title: 'Unauthorized Update' })
+          service.call!(attributes: { title: 'Unauthorized Update' })
         }.to raise_error(TaskUpdateService::UnauthorizedError)
 
         expect(task.reload.title).to eq('Original Title')
@@ -95,7 +95,7 @@ RSpec.describe TaskUpdateService do
         service = described_class.new(task: task, user: list_owner)
 
         expect {
-          service.update!(attributes: { title: '' })
+          service.call!(attributes: { title: '' })
         }.to raise_error(TaskUpdateService::ValidationError) do |error|
           expect(error.message).to eq("Validation failed")
           expect(error.details).to be_a(Hash)
@@ -107,7 +107,7 @@ RSpec.describe TaskUpdateService do
         service = described_class.new(task: task, user: list_owner)
 
         expect {
-          service.update!(attributes: { title: '' })
+          service.call!(attributes: { title: '' })
         }.to raise_error(TaskUpdateService::ValidationError)
 
         expect(task.reload.title).to eq('Original Title')
@@ -119,7 +119,7 @@ RSpec.describe TaskUpdateService do
         service = described_class.new(task: task, user: list_owner)
         new_due_at = 2.hours.from_now
 
-        service.update!(attributes: { due_at: new_due_at })
+        service.call!(attributes: { due_at: new_due_at })
 
         expect(task.reload.due_at).to be_within(1.second).of(new_due_at)
       end
@@ -129,7 +129,7 @@ RSpec.describe TaskUpdateService do
       it 'updates the visibility successfully' do
         service = described_class.new(task: task, user: list_owner)
 
-        service.update!(attributes: { visibility: 'private_task' })
+        service.call!(attributes: { visibility: 'private_task' })
 
         expect(task.reload.visibility).to eq('private_task')
       end
@@ -139,7 +139,7 @@ RSpec.describe TaskUpdateService do
       it 'updates strict_mode successfully' do
         service = described_class.new(task: task, user: list_owner)
 
-        service.update!(attributes: { strict_mode: false })
+        service.call!(attributes: { strict_mode: false })
 
         expect(task.reload.strict_mode).to be false
       end

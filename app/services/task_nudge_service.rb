@@ -4,6 +4,10 @@ class TaskNudgeService
   class Error < StandardError; end
   class SelfNudge < Error; end
 
+  def self.call!(task:, from_user:)
+    new(task:, from_user:).call!
+  end
+
   def initialize(task:, from_user:)
     @task = task
     @from_user = from_user

@@ -29,11 +29,11 @@ module Api
       def create
         authorize @parent_task, :update?
 
-        subtask = SubtaskCreationService.new(
+        subtask = SubtaskCreationService.call!(
           parent_task: @parent_task,
           user: current_user,
           params: subtask_params
-        ).call!
+        )
 
         render json: { subtask: SubtaskSerializer.new(subtask).as_json }, status: :created
       end

@@ -10,12 +10,16 @@ class ListUpdateService
     end
   end
 
+  def self.call!(list:, user:, attributes:)
+    new(list:, user:).call!(attributes:)
+  end
+
   def initialize(list:, user:)
     @list = list
     @user = user
   end
 
-  def update!(attributes:)
+  def call!(attributes:)
     validate_authorization!
     perform_update(attributes)
     @list

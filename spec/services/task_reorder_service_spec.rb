@@ -13,7 +13,7 @@ RSpec.describe TaskReorderService do
       task3 = create(:task, list: list, creator: user, position: 2)
 
       service = described_class.new(list: list)
-      service.reorder!([
+      service.call!([
         { id: task3.id, position: 0 },
         { id: task1.id, position: 1 },
         { id: task2.id, position: 2 }
@@ -31,7 +31,7 @@ RSpec.describe TaskReorderService do
 
       # Non-existent task ID should roll back all changes
       expect {
-        service.reorder!([
+        service.call!([
           { id: task1.id, position: 5 },
           { id: 99999, position: 0 }
         ])
@@ -47,7 +47,7 @@ RSpec.describe TaskReorderService do
       service = described_class.new(list: list)
 
       expect {
-        service.reorder!([ { id: other_task.id, position: 0 } ])
+        service.call!([ { id: other_task.id, position: 0 } ])
       }.to raise_error(ActiveRecord::RecordNotFound)
     end
   end

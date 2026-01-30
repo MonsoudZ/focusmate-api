@@ -10,7 +10,7 @@ RSpec.describe ListUpdateService do
     context 'when user is the list owner' do
       it 'updates the list successfully' do
         service = described_class.new(list: list, user: owner)
-        result = service.update!(attributes: { name: 'Updated Name' })
+        result = service.call!(attributes: { name: 'Updated Name' })
 
         expect(result).to eq(list)
         expect(list.reload.name).to eq('Updated Name')
@@ -18,7 +18,7 @@ RSpec.describe ListUpdateService do
 
       it 'updates multiple attributes' do
         service = described_class.new(list: list, user: owner)
-        service.update!(attributes: {
+        service.call!(attributes: {
           name: 'New Name',
           description: 'New Description',
           visibility: 'public'
@@ -32,7 +32,7 @@ RSpec.describe ListUpdateService do
 
       it 'returns the list object' do
         service = described_class.new(list: list, user: owner)
-        result = service.update!(attributes: { name: 'Test' })
+        result = service.call!(attributes: { name: 'Test' })
 
         expect(result).to be_a(List)
         expect(result).to eq(list)
@@ -46,7 +46,7 @@ RSpec.describe ListUpdateService do
 
       it 'updates the list successfully' do
         service = described_class.new(list: list, user: editor)
-        result = service.update!(attributes: { name: 'Editor Updated' })
+        result = service.call!(attributes: { name: 'Editor Updated' })
 
         expect(result).to eq(list)
         expect(list.reload.name).to eq('Editor Updated')
@@ -54,7 +54,7 @@ RSpec.describe ListUpdateService do
 
       it 'allows multiple attribute updates' do
         service = described_class.new(list: list, user: editor)
-        service.update!(attributes: {
+        service.call!(attributes: {
           name: 'Edited Name',
           description: 'Edited Description'
         })
@@ -74,7 +74,7 @@ RSpec.describe ListUpdateService do
         service = described_class.new(list: list, user: unauthorized_user)
 
         expect {
-          service.update!(attributes: { name: 'Unauthorized Update' })
+          service.call!(attributes: { name: 'Unauthorized Update' })
         }.to raise_error(ListUpdateService::UnauthorizedError, "You do not have permission to edit this list")
       end
 
@@ -82,7 +82,7 @@ RSpec.describe ListUpdateService do
         service = described_class.new(list: list, user: unauthorized_user)
 
         expect {
-          service.update!(attributes: { name: 'Unauthorized Update' })
+          service.call!(attributes: { name: 'Unauthorized Update' })
         }.to raise_error(ListUpdateService::UnauthorizedError)
 
         expect(list.reload.name).to eq('Original Name')
@@ -94,7 +94,7 @@ RSpec.describe ListUpdateService do
         service = described_class.new(list: list, user: unauthorized_user)
 
         expect {
-          service.update!(attributes: { name: 'Unauthorized Update' })
+          service.call!(attributes: { name: 'Unauthorized Update' })
         }.to raise_error(ListUpdateService::UnauthorizedError)
       end
     end
@@ -104,7 +104,7 @@ RSpec.describe ListUpdateService do
         service = described_class.new(list: list, user: owner)
 
         expect {
-          service.update!(attributes: { name: '' })
+          service.call!(attributes: { name: '' })
         }.to raise_error(ListUpdateService::ValidationError) do |error|
           expect(error.message).to eq('Validation failed')
           expect(error.details).to be_a(Hash)
@@ -116,7 +116,7 @@ RSpec.describe ListUpdateService do
         service = described_class.new(list: list, user: owner)
 
         expect {
-          service.update!(attributes: { name: '' })
+          service.call!(attributes: { name: '' })
         }.to raise_error(ListUpdateService::ValidationError)
 
         expect(list.reload.name).to eq('Original Name')
@@ -127,7 +127,7 @@ RSpec.describe ListUpdateService do
       it 'updates visibility successfully' do
         service = described_class.new(list: list, user: owner)
 
-        service.update!(attributes: { visibility: 'public' })
+        service.call!(attributes: { visibility: 'public' })
 
         expect(list.reload.visibility).to eq('public')
       end

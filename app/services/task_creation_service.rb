@@ -3,13 +3,17 @@
 class TaskCreationService
   include TimeParsing
 
+  def self.call!(list:, user:, params:)
+    new(list:, user:, params:).call!
+  end
+
   def initialize(list:, user:, params:)
     @list = list
     @user = user
     @params = normalize_params(params)
   end
 
-  def call
+  def call!
     task = nil
 
     ActiveRecord::Base.transaction do

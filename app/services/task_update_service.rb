@@ -10,12 +10,16 @@ class TaskUpdateService
     end
   end
 
+  def self.call!(task:, user:, attributes:)
+    new(task:, user:).call!(attributes:)
+  end
+
   def initialize(task:, user:)
     @task = task
     @user = user
   end
 
-  def update!(attributes:)
+  def call!(attributes:)
     validate_authorization!
     track_changes(attributes)
     perform_update(attributes)

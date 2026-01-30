@@ -9,12 +9,16 @@ class ListCreationService
     end
   end
 
+  def self.call!(user:, params:)
+    new(user:, params:).call!
+  end
+
   def initialize(user:, params:)
     @user = user
     @params = params
   end
 
-  def create!
+  def call!
     validate_params!
     build_list
     save_list!

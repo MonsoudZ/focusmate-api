@@ -4,6 +4,18 @@ class TaskCompletionService
   class UnauthorizedError < StandardError; end
   class MissingReasonError < StandardError; end
 
+  def self.complete!(task:, user:, missed_reason: nil)
+    new(task:, user:, missed_reason:).complete!
+  end
+
+  def self.uncomplete!(task:, user:)
+    new(task:, user:).uncomplete!
+  end
+
+  def self.toggle!(task:, user:, completed:, missed_reason: nil)
+    new(task:, user:, missed_reason:).toggle_completion!(completed:)
+  end
+
   def initialize(task:, user:, missed_reason: nil)
     @task = task
     @user = user

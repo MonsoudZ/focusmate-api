@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class SubtaskCreationService
+  def self.call!(parent_task:, user:, params:)
+    new(parent_task:, user:, params:).call!
+  end
+
   def initialize(parent_task:, user:, params:)
     @parent_task = parent_task
     @user = user

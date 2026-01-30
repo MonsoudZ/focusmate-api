@@ -9,7 +9,7 @@ RSpec.describe ListCreationService do
         params = { name: 'My List', description: 'Test description' }
         service = described_class.new(user: user, params: params)
 
-        list = service.create!
+        list = service.call!
 
         expect(list).to be_persisted
         expect(list.name).to eq('My List')
@@ -21,7 +21,7 @@ RSpec.describe ListCreationService do
         params = { name: 'My List' }
         service = described_class.new(user: user, params: params)
 
-        list = service.create!
+        list = service.call!
 
         expect(list.visibility).to eq('private')
       end
@@ -30,7 +30,7 @@ RSpec.describe ListCreationService do
         params = { name: 'Public List', visibility: 'public' }
         service = described_class.new(user: user, params: params)
 
-        list = service.create!
+        list = service.call!
 
         expect(list.visibility).to eq('public')
       end
@@ -39,7 +39,7 @@ RSpec.describe ListCreationService do
         params = { name: 'Minimal List' }
         service = described_class.new(user: user, params: params)
 
-        list = service.create!
+        list = service.call!
 
         expect(list).to be_persisted
         expect(list.name).to eq('Minimal List')
@@ -53,7 +53,7 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
+          service.call!
         }.to raise_error(ListCreationService::ValidationError) do |error|
           expect(error.message).to eq('Validation failed')
           expect(error.details).to be_present
@@ -65,7 +65,7 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
+          service.call!
         }.to raise_error(ListCreationService::ValidationError)
       end
 
@@ -74,7 +74,7 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
+          service.call!
         }.to raise_error(ListCreationService::ValidationError)
       end
     end
@@ -85,7 +85,7 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
+          service.call!
         }.to raise_error(ListCreationService::ValidationError)
       end
 
@@ -94,7 +94,7 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
+          service.call!
         }.to raise_error(ListCreationService::ValidationError)
       end
     end
@@ -105,7 +105,7 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
+          service.call!
         }.to raise_error(ListCreationService::ValidationError) do |error|
           expect(error.details).to be_a(Hash)
           expect(error.details).to have_key(:name)
@@ -117,7 +117,7 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         begin
-          service.create!
+          service.call!
         rescue ListCreationService::ValidationError => e
           expect(e.details).to be_a(Hash)
         end

@@ -5,6 +5,14 @@ class TaskAssignmentService
   class BadRequest < Error; end
   class InvalidAssignee < Error; end
 
+  def self.assign!(task:, user:, assigned_to_id:)
+    new(task:, user:).assign!(assigned_to_id:)
+  end
+
+  def self.unassign!(task:, user:)
+    new(task:, user:).unassign!
+  end
+
   def initialize(task:, user:)
     @task = task
     @user = user
