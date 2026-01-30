@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_30_043000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -136,6 +136,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
     t.boolean "can_add_items", default: true
     t.boolean "receive_overdue_alerts", default: true
     t.index ["list_id", "role"], name: "index_memberships_on_list_and_role"
+    t.index ["list_id", "user_id", "role"], name: "index_memberships_on_list_user_role"
     t.index ["list_id"], name: "index_memberships_on_list_id"
     t.index ["user_id", "list_id"], name: "index_memberships_on_user_id_and_list_id", unique: true
     t.index ["user_id"], name: "index_memberships_on_user_id"
@@ -257,6 +258,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
     t.integer "recurrence_count"
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
+    t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_not_deleted", where: "(deleted_at IS NULL)"
     t.index ["completed_at"], name: "index_tasks_on_completed_at"
     t.index ["creator_id", "completed_at"], name: "index_tasks_on_creator_completed_at"
     t.index ["creator_id", "status"], name: "index_tasks_on_creator_status"
@@ -264,10 +266,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
     t.index ["deleted_at"], name: "index_tasks_on_deleted_at"
     t.index ["due_at", "completed_at"], name: "index_tasks_on_due_at_and_completed_at"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_and_status"
+    t.index ["due_at", "status"], name: "index_tasks_on_due_at_pending", where: "((status = 0) AND (deleted_at IS NULL))"
     t.index ["instance_date"], name: "index_tasks_on_instance_date"
     t.index ["is_recurring"], name: "index_tasks_on_is_recurring"
     t.index ["is_template"], name: "index_tasks_on_is_template"
     t.index ["list_id", "deleted_at", "parent_task_id"], name: "index_tasks_on_list_deleted_parent"
+    t.index ["list_id", "deleted_at", "parent_task_id"], name: "index_tasks_on_list_deleted_parent_v2"
     t.index ["list_id", "deleted_at"], name: "index_tasks_on_list_and_deleted"
     t.index ["list_id", "parent_task_id"], name: "index_tasks_on_list_and_parent"
     t.index ["list_id", "position"], name: "index_tasks_on_list_id_and_position"

@@ -25,16 +25,9 @@ class TaskUpdateService
   private
 
   def validate_authorization!
-    unless can_edit_task?
+    unless Permissions::TaskPermissions.can_edit?(@task, @user)
       raise UnauthorizedError, "You do not have permission to edit this task"
     end
-  end
-
-  def can_edit_task?
-    return true if @task.list.user_id == @user.id
-    return true if @task.creator_id == @user.id
-    return true if @task.list.memberships.exists?(user_id: @user.id, role: "editor")
-    false
   end
 
   def track_changes(attributes)

@@ -38,24 +38,22 @@ class List < ApplicationRecord
     end
   end
 
-  # Roles & permissions
+  # Roles & permissions - delegates to Permissions::ListPermissions
+  # for centralized permission logic
   def role_for(user)
-    return "owner" if self.user == user
-    memberships.find_by(user: user)&.role
+    Permissions::ListPermissions.role_for(self, user)
   end
 
   def can_edit?(user)
-    role_for(user).in?(%w[owner editor])
+    Permissions::ListPermissions.can_edit?(self, user)
   end
 
   def can_view?(user)
-    role_for(user).present?
+    Permissions::ListPermissions.can_view?(self, user)
   end
 
   def accessible_by?(user)
-    return false if user.nil?
-    return false if deleted?
-    user_id == user.id || memberships.exists?(user: user)
+    Permissions::ListPermissions.accessible?(self, user)
   end
 
   # Membership helpers

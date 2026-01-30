@@ -13,7 +13,7 @@ class ListPolicy < ApplicationPolicy
   end
 
   def show?
-    owner? || member?
+    permissions.can_view?
   end
 
   def create?
@@ -21,32 +21,24 @@ class ListPolicy < ApplicationPolicy
   end
 
   def update?
-    owner? || editor?
+    permissions.can_edit?
   end
 
   def destroy?
-    owner?
+    permissions.can_delete?
   end
 
   def manage_memberships?
-    owner?
+    permissions.can_manage_memberships?
   end
 
   def create_task?
-    record.can_edit?(user)
+    permissions.can_edit?
   end
 
   private
 
-  def owner?
-    record.user_id == user.id
-  end
-
-  def member?
-    record.memberships.exists?(user_id: user.id)
-  end
-
-  def editor?
-    record.memberships.exists?(user_id: user.id, role: "editor")
+  def permissions
+    @permissions ||= Permissions::ListPermissions.new(record, user)
   end
 end

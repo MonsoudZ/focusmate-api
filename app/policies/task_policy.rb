@@ -2,34 +2,26 @@
 
 class TaskPolicy < ApplicationPolicy
   def show?
-    return false unless user && record
-    return false if record.deleted?
-    return false unless record.list
-    record.list.accessible_by?(user)
+    permissions.can_view?
   end
 
   def create?
     return false unless user && record
     return false unless record.list
-    record.list.can_edit?(user)
+
+    Permissions::ListPermissions.can_edit?(record.list, user)
   end
 
   def update?
-    return false unless user && record
-    return false if record.deleted?
-    return false unless record.list
-    record.list.can_edit?(user)
+    permissions.can_edit?
   end
 
   def destroy?
-    update?
+    permissions.can_delete?
   end
 
   def nudge?
-    return false unless user && record
-    return false if record.deleted?
-    return false unless record.list
-    record.list.accessible_by?(user)
+    permissions.can_nudge?
   end
 
   class Scope < ApplicationPolicy::Scope
@@ -43,5 +35,11 @@ class TaskPolicy < ApplicationPolicy
       scope.where(deleted_at: nil)
            .where(list_id: list_ids)
     end
+  end
+
+  private
+
+  def permissions
+    @permissions ||= Permissions::TaskPermissions.new(record, user)
   end
 end
