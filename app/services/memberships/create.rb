@@ -2,11 +2,6 @@
 
 module Memberships
   class Create
-    class NotFound < ApplicationError::NotFound; end
-    class BadRequest < ApplicationError::BadRequest; end
-    class Conflict < ApplicationError::Conflict; end
-    class Forbidden < ApplicationError::Forbidden; end
-
     ALLOWED_ROLES = %w[viewer editor].freeze
 
     def self.call!(list:, inviter:, user_identifier: nil, friend_id: nil, role:)
@@ -31,8 +26,8 @@ module Memberships
     private
 
     def validate_inputs!
-      raise BadRequest, "user_identifier or friend_id is required" if @user_identifier.blank? && @friend_id.blank?
-      raise BadRequest, "Invalid role" unless ALLOWED_ROLES.include?(@role)
+      raise ApplicationError::BadRequest, "user_identifier or friend_id is required" if @user_identifier.blank? && @friend_id.blank?
+      raise ApplicationError::BadRequest, "Invalid role" unless ALLOWED_ROLES.include?(@role)
     end
 
     def find_target_user!
@@ -45,20 +40,20 @@ module Memberships
 
     def find_by_friend_id!
       user = User.find_by(id: @friend_id)
-      raise NotFound, "User not found" unless user
-      raise Forbidden, "You can only add friends to lists" unless Friendship.friends?(@inviter, user)
+      raise ApplicationError::NotFound, "User not found" unless user
+      raise ApplicationError::Forbidden, "You can only add friends to lists" unless Friendship.friends?(@inviter, user)
       user
     end
 
     def find_by_identifier!
       user = UserFinder.find_by_identifier(@user_identifier)
-      raise NotFound, "User not found" unless user
+      raise ApplicationError::NotFound, "User not found" unless user
       user
     end
 
     def validate_membership!(target_user)
-      raise Conflict, "Cannot invite yourself" if target_user.id == @inviter.id
-      raise Conflict, "User is already a member of this list" if @list.memberships.exists?(user_id: target_user.id)
+      raise ApplicationError::Conflict, "Cannot invite yourself" if target_user.id == @inviter.id
+      raise ApplicationError::Conflict, "User is already a member of this list" if @list.memberships.exists?(user_id: target_user.id)
     end
 
     def create_membership!(target_user)

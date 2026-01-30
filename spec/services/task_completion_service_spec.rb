@@ -54,7 +54,7 @@ RSpec.describe TaskCompletionService do
 
         expect {
           service.complete!
-        }.to raise_error(TaskCompletionService::UnauthorizedError, "You do not have permission to modify this task")
+        }.to raise_error(ApplicationError::Forbidden, "You do not have permission to modify this task")
       end
 
       it 'does not mark the task as complete' do
@@ -62,7 +62,7 @@ RSpec.describe TaskCompletionService do
 
         expect {
           service.complete!
-        }.to raise_error(TaskCompletionService::UnauthorizedError)
+        }.to raise_error(ApplicationError::Forbidden)
 
         expect(task.reload.status).to eq('pending')
       end
@@ -98,7 +98,7 @@ RSpec.describe TaskCompletionService do
 
         expect {
           service.uncomplete!
-        }.to raise_error(TaskCompletionService::UnauthorizedError, "You do not have permission to modify this task")
+        }.to raise_error(ApplicationError::Forbidden, "You do not have permission to modify this task")
       end
 
       it 'does not mark the task as incomplete' do
@@ -106,7 +106,7 @@ RSpec.describe TaskCompletionService do
 
         expect {
           service.uncomplete!
-        }.to raise_error(TaskCompletionService::UnauthorizedError)
+        }.to raise_error(ApplicationError::Forbidden)
 
         expect(completed_task.reload.status).to eq('done')
       end
@@ -166,7 +166,7 @@ RSpec.describe TaskCompletionService do
 
         expect {
           service.toggle_completion!(completed: true)
-        }.to raise_error(TaskCompletionService::UnauthorizedError)
+        }.to raise_error(ApplicationError::Forbidden)
       end
     end
   end

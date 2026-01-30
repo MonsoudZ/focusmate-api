@@ -29,28 +29,24 @@ RSpec.describe Api::ErrorHandling, type: :controller do
       raise StandardError, "Something went wrong"
     end
 
-    def task_assignment_bad_request
-      raise TaskAssignmentService::BadRequest, "assigned_to is required"
+    def bad_request_error
+      raise ApplicationError::BadRequest, "Something is missing"
     end
 
-    def task_assignment_invalid
-      raise TaskAssignmentService::InvalidAssignee, "User cannot be assigned"
+    def forbidden_error
+      raise ApplicationError::Forbidden.new("Access denied", code: "custom_forbidden")
     end
 
-    def task_nudge_self
-      raise TaskNudgeService::SelfNudge, "You cannot nudge yourself"
-    end
-
-    def task_completion_missing_reason
-      raise TaskCompletionService::MissingReasonError, "Reason is required"
-    end
-
-    def list_update_unauthorized
-      raise ListUpdateService::UnauthorizedError, "You do not have permission"
+    def unprocessable_error
+      raise ApplicationError::UnprocessableEntity.new("Cannot process", code: "custom_unprocessable")
     end
 
     def validation_error
-      raise TaskUpdateService::ValidationError.new("Validation failed", details: { title: [ "can't be blank" ] })
+      raise ApplicationError::Validation.new("Validation failed", details: { title: [ "can't be blank" ] })
+    end
+
+    def token_expired
+      raise ApplicationError::TokenExpired, "Your token has expired"
     end
   end
 
@@ -61,12 +57,11 @@ RSpec.describe Api::ErrorHandling, type: :controller do
       get "parameter_missing" => "anonymous#parameter_missing"
       get "pundit_unauthorized" => "anonymous#pundit_unauthorized"
       get "unexpected_error" => "anonymous#unexpected_error"
-      get "task_assignment_bad_request" => "anonymous#task_assignment_bad_request"
-      get "task_assignment_invalid" => "anonymous#task_assignment_invalid"
-      get "task_nudge_self" => "anonymous#task_nudge_self"
-      get "task_completion_missing_reason" => "anonymous#task_completion_missing_reason"
-      get "list_update_unauthorized" => "anonymous#list_update_unauthorized"
+      get "bad_request_error" => "anonymous#bad_request_error"
+      get "forbidden_error" => "anonymous#forbidden_error"
+      get "unprocessable_error" => "anonymous#unprocessable_error"
       get "validation_error" => "anonymous#validation_error"
+      get "token_expired" => "anonymous#token_expired"
     end
 
     # Skip authentication for these tests
@@ -170,51 +165,39 @@ RSpec.describe Api::ErrorHandling, type: :controller do
     end
   end
 
-  describe "TaskAssignmentService errors" do
+  describe "ApplicationError types" do
     it "handles BadRequest" do
-      get :task_assignment_bad_request
+      get :bad_request_error
 
       expect(response).to have_http_status(:bad_request)
       json = JSON.parse(response.body)
       expect(json["error"]["code"]).to eq("bad_request")
+      expect(json["error"]["message"]).to eq("Something is missing")
     end
 
-    it "handles InvalidAssignee" do
-      get :task_assignment_invalid
-
-      expect(response).to have_http_status(:unprocessable_entity)
-      json = JSON.parse(response.body)
-      expect(json["error"]["code"]).to eq("invalid_assignee")
-    end
-  end
-
-  describe "TaskNudgeService::SelfNudge" do
-    it "returns 422 with self_nudge code" do
-      get :task_nudge_self
-
-      expect(response).to have_http_status(:unprocessable_entity)
-      json = JSON.parse(response.body)
-      expect(json["error"]["code"]).to eq("self_nudge")
-    end
-  end
-
-  describe "TaskCompletionService::MissingReasonError" do
-    it "returns 422 with missing_reason code" do
-      get :task_completion_missing_reason
-
-      expect(response).to have_http_status(:unprocessable_entity)
-      json = JSON.parse(response.body)
-      expect(json["error"]["code"]).to eq("missing_reason")
-    end
-  end
-
-  describe "ListUpdateService::UnauthorizedError" do
-    it "returns 403 with list_update_forbidden code" do
-      get :list_update_unauthorized
+    it "handles Forbidden with custom code" do
+      get :forbidden_error
 
       expect(response).to have_http_status(:forbidden)
       json = JSON.parse(response.body)
-      expect(json["error"]["code"]).to eq("list_update_forbidden")
+      expect(json["error"]["code"]).to eq("custom_forbidden")
+      expect(json["error"]["message"]).to eq("Access denied")
+    end
+
+    it "handles UnprocessableEntity with custom code" do
+      get :unprocessable_error
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      json = JSON.parse(response.body)
+      expect(json["error"]["code"]).to eq("custom_unprocessable")
+    end
+
+    it "handles TokenExpired" do
+      get :token_expired
+
+      expect(response).to have_http_status(:unauthorized)
+      json = JSON.parse(response.body)
+      expect(json["error"]["code"]).to eq("token_expired")
     end
   end
 

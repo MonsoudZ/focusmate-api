@@ -1,11 +1,6 @@
 # frozen_string_literal: true
 
 class ListUpdateService < ApplicationService
-  class UnauthorizedError < ApplicationError::Forbidden
-    def default_code = "list_update_forbidden"
-  end
-  class ValidationError < ApplicationError::Validation; end
-
   def initialize(list:, user:, attributes:)
     @list = list
     @user = user
@@ -22,13 +17,13 @@ class ListUpdateService < ApplicationService
 
   def validate_authorization!
     unless @list.can_edit?(@user)
-      raise UnauthorizedError, "You do not have permission to edit this list"
+      raise ApplicationError::Forbidden.new("You do not have permission to edit this list", code: "list_update_forbidden")
     end
   end
 
   def perform_update
     unless @list.update(@attributes)
-      raise ValidationError.new("Validation failed", details: @list.errors.as_json)
+      raise ApplicationError::Validation.new("Validation failed", details: @list.errors.as_json)
     end
   end
 end

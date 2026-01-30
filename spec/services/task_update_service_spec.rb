@@ -71,13 +71,13 @@ RSpec.describe TaskUpdateService do
       it "raises UnauthorizedError" do
         expect {
           described_class.call!(task: task, user: unauthorized_user, attributes: { title: "Unauthorized Update" })
-        }.to raise_error(TaskUpdateService::UnauthorizedError, "You do not have permission to edit this task")
+        }.to raise_error(ApplicationError::Forbidden, "You do not have permission to edit this task")
       end
 
       it "does not update the task" do
         expect {
           described_class.call!(task: task, user: unauthorized_user, attributes: { title: "Unauthorized Update" })
-        }.to raise_error(TaskUpdateService::UnauthorizedError)
+        }.to raise_error(ApplicationError::Forbidden)
 
         expect(task.reload.title).to eq("Original Title")
       end
@@ -87,7 +87,7 @@ RSpec.describe TaskUpdateService do
       it "raises ValidationError with details" do
         expect {
           described_class.call!(task: task, user: list_owner, attributes: { title: "" })
-        }.to raise_error(TaskUpdateService::ValidationError) do |error|
+        }.to raise_error(ApplicationError::Validation) do |error|
           expect(error.message).to eq("Validation failed")
           expect(error.details).to be_a(Hash)
           expect(error.details).to have_key(:title)
@@ -97,7 +97,7 @@ RSpec.describe TaskUpdateService do
       it "does not update the task on validation failure" do
         expect {
           described_class.call!(task: task, user: list_owner, attributes: { title: "" })
-        }.to raise_error(TaskUpdateService::ValidationError)
+        }.to raise_error(ApplicationError::Validation)
 
         expect(task.reload.title).to eq("Original Title")
       end
@@ -132,14 +132,14 @@ RSpec.describe TaskUpdateService do
 
   describe "ValidationError" do
     it "stores details hash" do
-      error = TaskUpdateService::ValidationError.new("Test message", details: { field: [ "error" ] })
+      error = ApplicationError::Validation.new("Test message", details: { field: [ "error" ] })
 
       expect(error.message).to eq("Test message")
       expect(error.details).to eq({ field: [ "error" ] })
     end
 
     it "handles empty details" do
-      error = TaskUpdateService::ValidationError.new("Test message")
+      error = ApplicationError::Validation.new("Test message")
 
       expect(error.message).to eq("Test message")
       expect(error.details).to eq({})

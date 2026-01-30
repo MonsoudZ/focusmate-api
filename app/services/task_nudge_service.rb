@@ -1,11 +1,6 @@
 # frozen_string_literal: true
 
 class TaskNudgeService < ApplicationService
-  class SelfNudge < ApplicationError::UnprocessableEntity
-    def default_code = "self_nudge"
-    def default_message = "You cannot nudge yourself"
-  end
-
   def initialize(task:, from_user:)
     @task = task
     @from_user = from_user
@@ -14,7 +9,9 @@ class TaskNudgeService < ApplicationService
   def call!
     to_user = @task.creator || @task.list.user
 
-    raise SelfNudge, "You cannot nudge yourself" if to_user.id == @from_user.id
+    if to_user.id == @from_user.id
+      raise ApplicationError::UnprocessableEntity.new("You cannot nudge yourself", code: "self_nudge")
+    end
 
     nudge = Nudge.new(task: @task, from_user: @from_user, to_user: to_user)
     nudge.save!

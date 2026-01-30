@@ -56,19 +56,19 @@ RSpec.describe Auth::Register do
       it "raises BadRequest with empty string" do
         expect {
           described_class.call!(**valid_params.merge(email: ""))
-        }.to raise_error(Auth::Register::BadRequest, "Email is required")
+        }.to raise_error(ApplicationError::BadRequest, "Email is required")
       end
 
       it "raises BadRequest with nil" do
         expect {
           described_class.call!(**valid_params.merge(email: nil))
-        }.to raise_error(Auth::Register::BadRequest, "Email is required")
+        }.to raise_error(ApplicationError::BadRequest, "Email is required")
       end
 
       it "raises BadRequest with whitespace-only string" do
         expect {
           described_class.call!(**valid_params.merge(email: "   "))
-        }.to raise_error(Auth::Register::BadRequest, "Email is required")
+        }.to raise_error(ApplicationError::BadRequest, "Email is required")
       end
     end
 
@@ -76,13 +76,13 @@ RSpec.describe Auth::Register do
       it "raises BadRequest with empty string" do
         expect {
           described_class.call!(**valid_params.merge(password: ""))
-        }.to raise_error(Auth::Register::BadRequest, "Password is required")
+        }.to raise_error(ApplicationError::BadRequest, "Password is required")
       end
 
       it "raises BadRequest with nil" do
         expect {
           described_class.call!(**valid_params.merge(password: nil))
-        }.to raise_error(Auth::Register::BadRequest, "Password is required")
+        }.to raise_error(ApplicationError::BadRequest, "Password is required")
       end
     end
 

@@ -43,7 +43,7 @@ RSpec.describe TaskNudgeService do
 
       expect {
         service.call!
-      }.to raise_error(TaskNudgeService::SelfNudge, "You cannot nudge yourself")
+      }.to raise_error(ApplicationError::UnprocessableEntity, "You cannot nudge yourself")
     end
 
     it "sends nudge to task creator" do

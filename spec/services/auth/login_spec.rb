@@ -38,19 +38,19 @@ RSpec.describe Auth::Login do
       it "raises BadRequest with empty string" do
         expect {
           described_class.call!(email: "", password: "password123")
-        }.to raise_error(Auth::Login::BadRequest, "Email and password are required")
+        }.to raise_error(ApplicationError::BadRequest, "Email and password are required")
       end
 
       it "raises BadRequest with nil" do
         expect {
           described_class.call!(email: nil, password: "password123")
-        }.to raise_error(Auth::Login::BadRequest, "Email and password are required")
+        }.to raise_error(ApplicationError::BadRequest, "Email and password are required")
       end
 
       it "raises BadRequest with whitespace-only string" do
         expect {
           described_class.call!(email: "   ", password: "password123")
-        }.to raise_error(Auth::Login::BadRequest, "Email and password are required")
+        }.to raise_error(ApplicationError::BadRequest, "Email and password are required")
       end
     end
 
@@ -58,13 +58,13 @@ RSpec.describe Auth::Login do
       it "raises BadRequest with empty string" do
         expect {
           described_class.call!(email: "test@example.com", password: "")
-        }.to raise_error(Auth::Login::BadRequest, "Email and password are required")
+        }.to raise_error(ApplicationError::BadRequest, "Email and password are required")
       end
 
       it "raises BadRequest with nil" do
         expect {
           described_class.call!(email: "test@example.com", password: nil)
-        }.to raise_error(Auth::Login::BadRequest, "Email and password are required")
+        }.to raise_error(ApplicationError::BadRequest, "Email and password are required")
       end
     end
 
@@ -72,7 +72,7 @@ RSpec.describe Auth::Login do
       it "raises Unauthorized" do
         expect {
           described_class.call!(email: user.email, password: "wrongpassword")
-        }.to raise_error(Auth::Login::Unauthorized, "Invalid email or password")
+        }.to raise_error(ApplicationError::Unauthorized, "Invalid email or password")
       end
     end
 
@@ -80,7 +80,7 @@ RSpec.describe Auth::Login do
       it "raises Unauthorized with the same message as wrong password" do
         expect {
           described_class.call!(email: "nonexistent@example.com", password: "password123")
-        }.to raise_error(Auth::Login::Unauthorized, "Invalid email or password")
+        }.to raise_error(ApplicationError::Unauthorized, "Invalid email or password")
       end
     end
   end

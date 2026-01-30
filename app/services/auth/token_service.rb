@@ -2,11 +2,6 @@
 
 module Auth
   class TokenService
-    class TokenInvalid < ApplicationError::TokenInvalid; end
-    class TokenExpired < ApplicationError::TokenExpired; end
-    class TokenRevoked < ApplicationError::TokenRevoked; end
-    class TokenReused < ApplicationError::TokenReused; end
-
     REFRESH_TOKEN_LIFETIME = 30.days
     REFRESH_TOKEN_BYTE_LENGTH = 32
 
@@ -26,23 +21,23 @@ module Auth
       #
       # @param raw_refresh_token [String] the opaque refresh token
       # @return [Hash] { access_token:, refresh_token:, user: }
-      # @raise [TokenInvalid, TokenExpired, TokenRevoked, TokenReused]
+      # @raise [ApplicationError::TokenInvalid, ApplicationError::TokenExpired, ApplicationError::TokenReused]
       def refresh(raw_refresh_token)
-        raise TokenInvalid, "Refresh token is required" if raw_refresh_token.blank?
+        raise ApplicationError::TokenInvalid, "Refresh token is required" if raw_refresh_token.blank?
 
         digest = token_digest(raw_refresh_token)
         record = RefreshToken.find_by(token_digest: digest)
 
-        raise TokenInvalid, "Invalid refresh token" unless record
+        raise ApplicationError::TokenInvalid, "Invalid refresh token" unless record
 
         # Reuse detection: if the token was already revoked, someone is replaying it.
         # Revoke the entire family to protect the user.
         if record.revoked?
           revoke_family(record.family)
-          raise TokenReused, "Refresh token reuse detected"
+          raise ApplicationError::TokenReused, "Refresh token reuse detected"
         end
 
-        raise TokenExpired, "Refresh token has expired" if record.expired?
+        raise ApplicationError::TokenExpired, "Refresh token has expired" if record.expired?
 
         # Rotate: revoke old token + issue new pair in a transaction
         user = record.user

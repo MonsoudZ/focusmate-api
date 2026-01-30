@@ -77,8 +77,6 @@ module Api
             missed_reason: params[:missed_reason]
           )
           render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
-        rescue TaskCompletionService::MissingReasonError => e
-          render json: { error: { code: "missing_reason", message: e.message } }, status: :unprocessable_entity
         end
       end
 
@@ -94,10 +92,6 @@ module Api
         authorize @task, :update?
         TaskAssignmentService.assign!(task: @task, user: current_user, assigned_to_id: params[:assigned_to])
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
-      rescue TaskAssignmentService::BadRequest => e
-        render json: { error: { message: e.message } }, status: :bad_request
-      rescue TaskAssignmentService::InvalidAssignee => e
-        render json: { error: { message: e.message } }, status: :unprocessable_entity
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/unassign
@@ -112,8 +106,6 @@ module Api
         authorize @task, :nudge?
         TaskNudgeService.call!(task: @task, from_user: current_user)
         render json: { message: "Nudge sent" }, status: :ok
-      rescue TaskNudgeService::SelfNudge => e
-        render json: { error: { message: e.message } }, status: :unprocessable_entity
       end
 
       # POST /api/v1/lists/:list_id/tasks/reorder

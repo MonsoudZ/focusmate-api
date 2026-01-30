@@ -67,34 +67,34 @@ RSpec.describe ListUpdateService do
         create(:membership, list: list, user: unauthorized_user, role: "viewer")
       end
 
-      it "raises UnauthorizedError" do
+      it "raises Forbidden error" do
         expect {
           described_class.call!(list: list, user: unauthorized_user, attributes: { name: "Unauthorized Update" })
-        }.to raise_error(ListUpdateService::UnauthorizedError, "You do not have permission to edit this list")
+        }.to raise_error(ApplicationError::Forbidden, "You do not have permission to edit this list")
       end
 
       it "does not update the list" do
         expect {
           described_class.call!(list: list, user: unauthorized_user, attributes: { name: "Unauthorized Update" })
-        }.to raise_error(ListUpdateService::UnauthorizedError)
+        }.to raise_error(ApplicationError::Forbidden)
 
         expect(list.reload.name).to eq("Original Name")
       end
     end
 
     context "when user is not the owner and has no share" do
-      it "raises UnauthorizedError" do
+      it "raises Forbidden error" do
         expect {
           described_class.call!(list: list, user: unauthorized_user, attributes: { name: "Unauthorized Update" })
-        }.to raise_error(ListUpdateService::UnauthorizedError)
+        }.to raise_error(ApplicationError::Forbidden)
       end
     end
 
     context "when validation fails" do
-      it "raises ValidationError with details" do
+      it "raises Validation error with details" do
         expect {
           described_class.call!(list: list, user: owner, attributes: { name: "" })
-        }.to raise_error(ListUpdateService::ValidationError) do |error|
+        }.to raise_error(ApplicationError::Validation) do |error|
           expect(error.message).to eq("Validation failed")
           expect(error.details).to be_a(Hash)
           expect(error.details).to have_key(:name)
@@ -104,7 +104,7 @@ RSpec.describe ListUpdateService do
       it "does not update the list on validation failure" do
         expect {
           described_class.call!(list: list, user: owner, attributes: { name: "" })
-        }.to raise_error(ListUpdateService::ValidationError)
+        }.to raise_error(ApplicationError::Validation)
 
         expect(list.reload.name).to eq("Original Name")
       end
@@ -116,28 +116,6 @@ RSpec.describe ListUpdateService do
 
         expect(list.reload.visibility).to eq("public")
       end
-    end
-  end
-
-  describe "UnauthorizedError" do
-    it "is a StandardError" do
-      expect(ListUpdateService::UnauthorizedError.new).to be_a(StandardError)
-    end
-  end
-
-  describe "ValidationError" do
-    it "stores message and details" do
-      error = ListUpdateService::ValidationError.new("Test error", details: { field: [ "error" ] })
-
-      expect(error.message).to eq("Test error")
-      expect(error.details).to eq({ field: [ "error" ] })
-    end
-
-    it "handles empty details" do
-      error = ListUpdateService::ValidationError.new("Test error")
-
-      expect(error.message).to eq("Test error")
-      expect(error.details).to eq({})
     end
   end
 end

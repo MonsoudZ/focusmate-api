@@ -1,11 +1,6 @@
 # frozen_string_literal: true
 
 class TaskUpdateService < ApplicationService
-  class UnauthorizedError < ApplicationError::Forbidden
-    def default_code = "task_update_forbidden"
-  end
-  class ValidationError < ApplicationError::Validation; end
-
   def initialize(task:, user:, attributes:)
     @task = task
     @user = user
@@ -23,7 +18,7 @@ class TaskUpdateService < ApplicationService
 
   def validate_authorization!
     unless Permissions::TaskPermissions.can_edit?(@task, @user)
-      raise UnauthorizedError, "You do not have permission to edit this task"
+      raise ApplicationError::Forbidden.new("You do not have permission to edit this task", code: "task_update_forbidden")
     end
   end
 
@@ -36,7 +31,7 @@ class TaskUpdateService < ApplicationService
   def perform_update
     ActiveRecord::Base.transaction do
       unless @task.update(@attributes)
-        raise ValidationError.new("Validation failed", details: @task.errors.as_json)
+        raise ApplicationError::Validation.new("Validation failed", details: @task.errors.as_json)
       end
 
       track_analytics

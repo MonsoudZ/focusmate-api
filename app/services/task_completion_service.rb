@@ -3,14 +3,6 @@
 # Service with multiple entry points - uses custom class methods
 # instead of the standard .call! from ApplicationService
 class TaskCompletionService < ApplicationService
-  class UnauthorizedError < ApplicationError::Forbidden
-    def default_code = "task_completion_forbidden"
-  end
-  class MissingReasonError < ApplicationError::UnprocessableEntity
-    def default_code = "missing_reason"
-    def default_message = "This overdue task requires an explanation"
-  end
-
   def self.complete!(task:, user:, missed_reason: nil)
     new(task:, user:, missed_reason:).complete!
   end
@@ -75,13 +67,13 @@ class TaskCompletionService < ApplicationService
 
   def validate_access!
     return if can_access_task?
-    raise UnauthorizedError, "You do not have permission to modify this task"
+    raise ApplicationError::Forbidden.new("You do not have permission to modify this task", code: "task_completion_forbidden")
   end
 
   def validate_overdue_reason!
     return unless task_requires_reason?
     return if @missed_reason.present?
-    raise MissingReasonError, "This overdue task requires an explanation"
+    raise ApplicationError::UnprocessableEntity.new("This overdue task requires an explanation", code: "missing_reason")
   end
 
   def task_requires_reason?

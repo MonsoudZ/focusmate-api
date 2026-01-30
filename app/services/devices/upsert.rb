@@ -2,8 +2,6 @@
 
 module Devices
   class Upsert
-    class BadRequest < ApplicationError::BadRequest; end
-
     def self.call!(user:, apns_token:, **attrs)
       new(user:, apns_token:, attrs:).call!
     end
@@ -15,7 +13,7 @@ module Devices
     end
 
     def call!
-      raise BadRequest, "apns_token is required" if @token.blank?
+      raise ApplicationError::BadRequest, "apns_token is required" if @token.blank?
 
       device = @user.devices.find_or_initialize_by(apns_token: @token)
       device.assign_attributes(@attrs)

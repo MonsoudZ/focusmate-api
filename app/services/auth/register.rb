@@ -2,8 +2,6 @@
 
 module Auth
   class Register
-    class BadRequest < ApplicationError::BadRequest; end
-
     def self.call!(email:, password:, password_confirmation:, name: nil, timezone: nil)
       new(
         email:,
@@ -25,8 +23,8 @@ module Auth
     end
 
     def call!
-      raise BadRequest, "Email is required" if @attrs[:email].blank?
-      raise BadRequest, "Password is required" if @attrs[:password].blank?
+      raise ApplicationError::BadRequest, "Email is required" if @attrs[:email].blank?
+      raise ApplicationError::BadRequest, "Password is required" if @attrs[:password].blank?
 
       user = User.new(@attrs)
       user.save!

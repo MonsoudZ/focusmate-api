@@ -27,13 +27,13 @@ RSpec.describe TaskAssignmentService do
     it "raises BadRequest when assigned_to_id is blank" do
       expect {
         service.assign!(assigned_to_id: nil)
-      }.to raise_error(TaskAssignmentService::BadRequest, "assigned_to is required")
+      }.to raise_error(ApplicationError::BadRequest, "assigned_to is required")
     end
 
     it "raises InvalidAssignee when user does not exist" do
       expect {
         service.assign!(assigned_to_id: 99999)
-      }.to raise_error(TaskAssignmentService::InvalidAssignee, "User cannot be assigned to this task")
+      }.to raise_error(ApplicationError::UnprocessableEntity, "User cannot be assigned to this task")
     end
 
     it "raises InvalidAssignee when user has no access to the list" do
@@ -41,7 +41,7 @@ RSpec.describe TaskAssignmentService do
 
       expect {
         service.assign!(assigned_to_id: stranger.id)
-      }.to raise_error(TaskAssignmentService::InvalidAssignee, "User cannot be assigned to this task")
+      }.to raise_error(ApplicationError::UnprocessableEntity, "User cannot be assigned to this task")
     end
 
     it "returns the task" do

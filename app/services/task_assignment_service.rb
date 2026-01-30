@@ -2,11 +2,6 @@
 
 # Service with multiple entry points - uses custom class methods
 class TaskAssignmentService < ApplicationService
-  class BadRequest < ApplicationError::BadRequest; end
-  class InvalidAssignee < ApplicationError::UnprocessableEntity
-    def default_code = "invalid_assignee"
-  end
-
   def self.assign!(task:, user:, assigned_to_id:)
     new(task:, user:).assign!(assigned_to_id:)
   end
@@ -21,11 +16,11 @@ class TaskAssignmentService < ApplicationService
   end
 
   def assign!(assigned_to_id:)
-    raise BadRequest, "assigned_to is required" if assigned_to_id.blank?
+    raise ApplicationError::BadRequest, "assigned_to is required" if assigned_to_id.blank?
 
     assignee = User.find_by(id: assigned_to_id)
     unless assignee && @task.list.accessible_by?(assignee)
-      raise InvalidAssignee, "User cannot be assigned to this task"
+      raise ApplicationError::UnprocessableEntity.new("User cannot be assigned to this task", code: "invalid_assignee")
     end
 
     @task.update!(assigned_to_id: assigned_to_id)

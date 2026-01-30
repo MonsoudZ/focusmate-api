@@ -32,14 +32,14 @@ RSpec.describe Memberships::Destroy do
       it "raises Conflict" do
         expect {
           described_class.call!(membership: owner_membership, actor: actor)
-        }.to raise_error(Memberships::Destroy::Conflict, "Cannot remove the list owner")
+        }.to raise_error(ApplicationError::Conflict, "Cannot remove the list owner")
       end
 
       it "does not destroy the membership" do
         expect {
           begin
             described_class.call!(membership: owner_membership, actor: actor)
-          rescue Memberships::Destroy::Conflict
+          rescue ApplicationError::Conflict
             # expected
           end
         }.not_to change(Membership, :count)

@@ -50,19 +50,19 @@ RSpec.describe Memberships::Update do
       it "raises BadRequest with empty string" do
         expect {
           described_class.call!(membership: membership, actor: actor, role: "")
-        }.to raise_error(Memberships::Update::BadRequest, "role is required")
+        }.to raise_error(ApplicationError::BadRequest, "role is required")
       end
 
       it "raises BadRequest with nil" do
         expect {
           described_class.call!(membership: membership, actor: actor, role: nil)
-        }.to raise_error(Memberships::Update::BadRequest, "role is required")
+        }.to raise_error(ApplicationError::BadRequest, "role is required")
       end
 
       it "raises BadRequest with whitespace-only string" do
         expect {
           described_class.call!(membership: membership, actor: actor, role: "   ")
-        }.to raise_error(Memberships::Update::BadRequest, "role is required")
+        }.to raise_error(ApplicationError::BadRequest, "role is required")
       end
     end
 
@@ -70,13 +70,13 @@ RSpec.describe Memberships::Update do
       it "raises BadRequest for unrecognized role" do
         expect {
           described_class.call!(membership: membership, actor: actor, role: "admin")
-        }.to raise_error(Memberships::Update::BadRequest, "Invalid role")
+        }.to raise_error(ApplicationError::BadRequest, "Invalid role")
       end
 
       it "raises BadRequest for owner role" do
         expect {
           described_class.call!(membership: membership, actor: actor, role: "owner")
-        }.to raise_error(Memberships::Update::BadRequest, "Invalid role")
+        }.to raise_error(ApplicationError::BadRequest, "Invalid role")
       end
     end
   end

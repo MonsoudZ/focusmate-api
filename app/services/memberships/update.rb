@@ -2,8 +2,6 @@
 
 module Memberships
   class Update
-    class BadRequest < ApplicationError::BadRequest; end
-
     ALLOWED_ROLES = %w[viewer editor].freeze
 
     def self.call!(membership:, actor:, role:)
@@ -16,8 +14,8 @@ module Memberships
     end
 
     def call!
-      raise BadRequest, "role is required" if @role.blank?
-      raise BadRequest, "Invalid role" unless ALLOWED_ROLES.include?(@role)
+      raise ApplicationError::BadRequest, "role is required" if @role.blank?
+      raise ApplicationError::BadRequest, "Invalid role" unless ALLOWED_ROLES.include?(@role)
 
       @membership.update!(role: @role)
       @membership

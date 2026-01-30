@@ -32,7 +32,7 @@ RSpec.describe Devices::Upsert do
     it "raises BadRequest when token is blank" do
       expect {
         described_class.call!(user: user, apns_token: "   ")
-      }.to raise_error(Devices::Upsert::BadRequest, "apns_token is required")
+      }.to raise_error(ApplicationError::BadRequest, "apns_token is required")
     end
 
     it "sets last_seen_at when the model supports it" do
