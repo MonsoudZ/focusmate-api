@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_30_050000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_30_060001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -30,6 +30,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_050000) do
     t.index ["task_id"], name: "index_analytics_events_on_task_id"
     t.index ["user_id", "event_type", "occurred_at"], name: "idx_analytics_user_event_time"
     t.index ["user_id"], name: "index_analytics_events_on_user_id"
+    t.check_constraint "event_type::text = ANY (ARRAY['task_created'::text, 'task_completed'::text, 'task_reopened'::text, 'task_deleted'::text, 'task_starred'::text, 'task_unstarred'::text, 'task_priority_changed'::text, 'task_edited'::text, 'list_created'::text, 'list_deleted'::text, 'list_shared'::text, 'app_opened'::text, 'session_started'::text])", name: "analytics_events_event_type_check"
   end
 
   create_table "devices", force: :cascade do |t|
@@ -106,6 +107,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_050000) do
     t.index ["inviter_id"], name: "index_list_invites_on_inviter_id"
     t.index ["list_id", "expires_at"], name: "index_list_invites_on_list_id_and_expires_at"
     t.index ["list_id"], name: "index_list_invites_on_list_id"
+    t.check_constraint "role::text = ANY (ARRAY['editor'::text, 'viewer'::text])", name: "list_invites_role_check"
   end
 
   create_table "lists", force: :cascade do |t|

@@ -99,7 +99,7 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
 
     context 'with valid parameters' do
       it 'creates task and returns schema-compliant response' do
-        post "/api/v1/lists/#{list.id}/tasks", params: task_params, headers: auth_headers
+        post "/api/v1/lists/#{list.id}/tasks", params: { task: task_params }, headers: auth_headers
 
         expect(response).to have_http_status(:created)
         expect(response.content_type).to include('application/json')
@@ -118,7 +118,7 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
 
     context 'with invalid parameters' do
       it 'returns validation error' do
-        post "/api/v1/lists/#{list.id}/tasks", params: { title: '' }, headers: auth_headers
+        post "/api/v1/lists/#{list.id}/tasks", params: { task: { title: '' } }, headers: auth_headers
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(response.content_type).to include('application/json')

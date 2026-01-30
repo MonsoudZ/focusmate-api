@@ -102,7 +102,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
   describe 'POST /api/v1/lists' do
     it 'creates a list' do
-      list_params = { name: "New List", description: "A new list", visibility: "private" }
+      list_params = { list: { name: "New List", description: "A new list", visibility: "private" } }
 
       post "/api/v1/lists", params: list_params, headers: auth_headers
 
@@ -113,12 +113,12 @@ RSpec.describe Api::V1::ListsController, type: :request do
     end
 
     it 'requires authentication' do
-      post "/api/v1/lists", params: { name: "New List" }
+      post "/api/v1/lists", params: { list: { name: "New List" } }
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'validates required fields' do
-      post "/api/v1/lists", params: { description: "No name" }, headers: auth_headers
+      post "/api/v1/lists", params: { list: { description: "No name" } }, headers: auth_headers
 
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
@@ -127,7 +127,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
     end
 
     it 'sets default visibility to private' do
-      post "/api/v1/lists", params: { name: "New List" }, headers: auth_headers
+      post "/api/v1/lists", params: { list: { name: "New List" } }, headers: auth_headers
 
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
@@ -138,7 +138,7 @@ RSpec.describe Api::V1::ListsController, type: :request do
 
   describe 'PATCH /api/v1/lists/:id' do
     it 'updates list' do
-      patch "/api/v1/lists/#{list.id}", params: { name: "Updated" }, headers: auth_headers
+      patch "/api/v1/lists/#{list.id}", params: { list: { name: "Updated" } }, headers: auth_headers
 
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
@@ -146,14 +146,14 @@ RSpec.describe Api::V1::ListsController, type: :request do
     end
 
     it 'requires authentication' do
-      patch "/api/v1/lists/#{list.id}", params: { name: "Updated" }
+      patch "/api/v1/lists/#{list.id}", params: { list: { name: "Updated" } }
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'forbids updating other users list' do
       other_list = create(:list, user: create(:user))
 
-      patch "/api/v1/lists/#{other_list.id}", params: { name: "Updated" }, headers: auth_headers
+      patch "/api/v1/lists/#{other_list.id}", params: { list: { name: "Updated" } }, headers: auth_headers
 
       expect(response).to have_http_status(:forbidden)
     end
@@ -229,19 +229,19 @@ RSpec.describe Api::V1::ListsController, type: :request do
     end
 
     it 'handles very long list names' do
-      post "/api/v1/lists", params: { name: "a" * 1000 }, headers: auth_headers
+      post "/api/v1/lists", params: { list: { name: "a" * 1000 } }, headers: auth_headers
 
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
     it 'handles special characters in list name' do
-      post "/api/v1/lists", params: { name: "List !@#$%^&*()" }, headers: auth_headers
+      post "/api/v1/lists", params: { list: { name: "List !@#$%^&*()" } }, headers: auth_headers
 
       expect(response).to have_http_status(:created)
     end
 
     it 'handles unicode characters in list name' do
-      post "/api/v1/lists", params: { name: "List 你好 🌍" }, headers: auth_headers
+      post "/api/v1/lists", params: { list: { name: "List 你好 🌍" } }, headers: auth_headers
 
       expect(response).to have_http_status(:created)
     end

@@ -62,9 +62,11 @@ RSpec.describe Api::V1::TasksController, type: :request do
   describe 'POST /api/v1/lists/:list_id/tasks' do
     it 'creates a task' do
       task_params = {
-        title: "New Task",
-        due_at: 1.day.from_now.iso8601,
-        strict_mode: false
+        task: {
+          title: "New Task",
+          due_at: 1.day.from_now.iso8601,
+          strict_mode: false
+        }
       }
 
       post "/api/v1/lists/#{list.id}/tasks", params: task_params, headers: auth_headers
@@ -75,12 +77,12 @@ RSpec.describe Api::V1::TasksController, type: :request do
     end
 
     it 'requires authentication' do
-      post "/api/v1/lists/#{list.id}/tasks", params: { title: "Test" }
+      post "/api/v1/lists/#{list.id}/tasks", params: { task: { title: "Test" } }
       expect(response).to have_http_status(:unauthorized)
     end
 
     it 'validates required fields' do
-      post "/api/v1/lists/#{list.id}/tasks", params: { note: "No title" }, headers: auth_headers
+      post "/api/v1/lists/#{list.id}/tasks", params: { task: { note: "No title" } }, headers: auth_headers
 
       expect(response).to have_http_status(:unprocessable_entity)
     end
@@ -89,7 +91,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
   describe 'PATCH /api/v1/lists/:list_id/tasks/:id' do
     it 'updates the task' do
       patch "/api/v1/lists/#{list.id}/tasks/#{task.id}",
-            params: { title: "Updated Task" },
+            params: { task: { title: "Updated Task" } },
             headers: auth_headers
 
       expect(response).to have_http_status(:success)
@@ -98,7 +100,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
     end
 
     it 'requires authentication' do
-      patch "/api/v1/lists/#{list.id}/tasks/#{task.id}", params: { title: "Updated" }
+      patch "/api/v1/lists/#{list.id}/tasks/#{task.id}", params: { task: { title: "Updated" } }
       expect(response).to have_http_status(:unauthorized)
     end
   end

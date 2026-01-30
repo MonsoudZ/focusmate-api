@@ -162,11 +162,7 @@ module Api
       end
 
       def task_params
-        if params[:task].present?
-          params.require(:task).permit(permitted_task_attributes)
-        else
-          params.permit(permitted_task_attributes)
-        end
+        params.require(:task).permit(permitted_task_attributes)
       end
 
       def permitted_task_attributes

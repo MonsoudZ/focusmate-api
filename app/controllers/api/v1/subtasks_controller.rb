@@ -77,11 +77,7 @@ module Api
       end
 
       def subtask_params
-        if params[:subtask].present?
-          params.require(:subtask).permit(:title, :note, :status, :position)
-        else
-          params.permit(:title, :note, :status, :position)
-        end
+        params.require(:subtask).permit(:title, :note, :status, :position)
       end
     end
   end
