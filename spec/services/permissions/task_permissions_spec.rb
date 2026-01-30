@@ -164,5 +164,78 @@ RSpec.describe Permissions::TaskPermissions do
       expect(described_class.can_nudge?(task, owner)).to be true
       expect(described_class.can_nudge?(task, other_user)).to be false
     end
+
+    it ".creator? works correctly" do
+      expect(described_class.creator?(task, owner)).to be true
+      expect(described_class.creator?(task, editor_user)).to be false
+    end
+  end
+
+  describe "nil handling" do
+    describe "#can_view?" do
+      it "returns false when user is nil" do
+        expect(described_class.new(task, nil).can_view?).to be false
+      end
+
+      it "returns false when task is nil" do
+        expect(described_class.new(nil, owner).can_view?).to be false
+      end
+    end
+
+    describe "#can_edit?" do
+      it "returns false when user is nil" do
+        expect(described_class.new(task, nil).can_edit?).to be false
+      end
+
+      it "returns false when task is nil" do
+        expect(described_class.new(nil, owner).can_edit?).to be false
+      end
+    end
+
+    describe "#can_nudge?" do
+      it "returns false when user is nil" do
+        expect(described_class.new(task, nil).can_nudge?).to be false
+      end
+
+      it "returns false when task is nil" do
+        expect(described_class.new(nil, owner).can_nudge?).to be false
+      end
+    end
+
+    describe "#creator?" do
+      it "returns false when user is nil" do
+        expect(described_class.new(task, nil).creator?).to be false
+      end
+
+      it "returns false when task is nil" do
+        expect(described_class.new(nil, owner).creator?).to be false
+      end
+    end
+
+    describe "#assigned?" do
+      it "returns false when user is nil" do
+        expect(described_class.new(task, nil).assigned?).to be false
+      end
+
+      it "returns false when task is nil" do
+        expect(described_class.new(nil, owner).assigned?).to be false
+      end
+    end
+  end
+
+  describe "task with nil list" do
+    it "#can_view? returns false" do
+      task_without_list = build(:task, list: nil, creator: owner)
+      allow(task_without_list).to receive(:list).and_return(nil)
+
+      expect(described_class.new(task_without_list, owner).can_view?).to be false
+    end
+
+    it "#can_edit? returns false" do
+      task_without_list = build(:task, list: nil, creator: owner)
+      allow(task_without_list).to receive(:list).and_return(nil)
+
+      expect(described_class.new(task_without_list, owner).can_edit?).to be false
+    end
   end
 end

@@ -170,4 +170,179 @@ RSpec.describe TaskCompletionService do
       end
     end
   end
+
+  describe 'overdue task with required explanation' do
+    let(:overdue_task) do
+      create(:task,
+             list: list,
+             creator: task_creator,
+             due_at: 1.hour.ago,
+             requires_explanation_if_missed: true)
+    end
+
+    context 'when reason is not provided' do
+      it 'raises MissingReasonError' do
+        service = described_class.new(task: overdue_task, user: list_owner)
+
+        expect {
+          service.complete!
+        }.to raise_error(ApplicationError::UnprocessableEntity, "This overdue task requires an explanation")
+      end
+    end
+
+    context 'when reason is provided' do
+      it 'completes the task with reason' do
+        service = described_class.new(task: overdue_task, user: list_owner, missed_reason: "Was in a meeting")
+        result = service.complete!
+
+        expect(result.status).to eq('done')
+        expect(result.missed_reason).to eq("Was in a meeting")
+        expect(result.missed_reason_submitted_at).to be_present
+      end
+    end
+
+    context 'when task is not overdue' do
+      let(:future_task) do
+        create(:task,
+               list: list,
+               creator: task_creator,
+               due_at: 1.hour.from_now,
+               requires_explanation_if_missed: true)
+      end
+
+      it 'completes without requiring reason' do
+        service = described_class.new(task: future_task, user: list_owner)
+        result = service.complete!
+
+        expect(result.status).to eq('done')
+      end
+    end
+
+    context 'when task has no due_at' do
+      let(:no_due_task) do
+        parent = create(:task, list: list, creator: task_creator)
+        create(:task,
+               list: list,
+               creator: task_creator,
+               parent_task: parent,
+               due_at: nil,
+               requires_explanation_if_missed: true)
+      end
+
+      it 'completes without requiring reason' do
+        service = described_class.new(task: no_due_task, user: list_owner)
+        result = service.complete!
+
+        expect(result.status).to eq('done')
+      end
+    end
+  end
+
+  describe 'class methods' do
+    it '.complete! completes the task' do
+      result = described_class.complete!(task: task, user: list_owner)
+
+      expect(result.status).to eq('done')
+    end
+
+    it '.uncomplete! uncompletes the task' do
+      task.complete!
+      result = described_class.uncomplete!(task: task, user: list_owner)
+
+      expect(result.status).to eq('pending')
+    end
+
+    it '.toggle! toggles the task status' do
+      result = described_class.toggle!(task: task, user: list_owner, completed: true)
+
+      expect(result.status).to eq('done')
+    end
+  end
+
+  describe 'analytics tracking' do
+    it 'tracks task completion' do
+      expect(AnalyticsTracker).to receive(:task_completed).with(
+        task,
+        list_owner,
+        hash_including(:was_overdue, :minutes_overdue)
+      )
+
+      described_class.complete!(task: task, user: list_owner)
+    end
+
+    it 'tracks task reopening' do
+      task.complete!
+      expect(AnalyticsTracker).to receive(:task_reopened).with(task, list_owner)
+
+      described_class.uncomplete!(task: task, user: list_owner)
+    end
+  end
+
+  describe 'recurring task generation' do
+    let(:template) { create(:task, list: list, creator: task_creator, is_template: true, template_type: "recurring", is_recurring: true, recurrence_pattern: "daily") }
+    let(:recurring_instance) { create(:task, list: list, creator: task_creator, template: template, instance_number: 1) }
+
+    it 'generates next instance for recurring tasks' do
+      expect_any_instance_of(RecurringTaskService).to receive(:generate_next_instance).with(recurring_instance)
+
+      described_class.complete!(task: recurring_instance, user: list_owner)
+    end
+
+    it 'handles errors in recurring task generation gracefully' do
+      allow_any_instance_of(RecurringTaskService).to receive(:generate_next_instance).and_raise(StandardError, "Generation failed")
+      expect(Rails.error).to receive(:report).with(kind_of(StandardError), hash_including(:handled, :context))
+
+      # Should not raise, just report error
+      expect {
+        described_class.complete!(task: recurring_instance, user: list_owner)
+      }.not_to raise_error
+
+      expect(recurring_instance.reload.status).to eq('done')
+    end
+
+    it 'skips generation for tasks without template_id' do
+      non_recurring_task = create(:task, list: list, creator: task_creator)
+
+      # No template_id means no recurring generation
+      expect_any_instance_of(RecurringTaskService).not_to receive(:generate_next_instance)
+
+      described_class.complete!(task: non_recurring_task, user: list_owner)
+    end
+
+    it 'skips generation for tasks with non-recurring template' do
+      non_recurring_template = create(:task, list: list, creator: task_creator, is_template: true, template_type: "checklist")
+      task_with_template = create(:task, list: list, creator: task_creator)
+      task_with_template.update_column(:template_id, non_recurring_template.id)
+
+      expect_any_instance_of(RecurringTaskService).not_to receive(:generate_next_instance)
+
+      described_class.complete!(task: task_with_template.reload, user: list_owner)
+    end
+  end
+
+  describe 'streak update' do
+    it 'handles errors in streak update gracefully' do
+      allow_any_instance_of(StreakService).to receive(:update_streak!).and_raise(StandardError, "Streak update failed")
+      expect(Rails.error).to receive(:report).with(kind_of(StandardError), hash_including(:handled, :context))
+
+      # Should not raise, just report error
+      expect {
+        described_class.complete!(task: task, user: list_owner)
+      }.not_to raise_error
+
+      expect(task.reload.status).to eq('done')
+    end
+  end
+
+  describe 'access control via membership' do
+    it 'allows completion by list member' do
+      # Create membership for a user who is not list owner or task creator
+      create(:membership, list: list, user: list_member, role: 'editor')
+
+      service = described_class.new(task: task, user: list_member)
+      result = service.complete!
+
+      expect(result.status).to eq('done')
+    end
+  end
 end

@@ -185,5 +185,52 @@ RSpec.describe Permissions::ListPermissions do
       expect(described_class.accessible?(list, owner)).to be true
       expect(described_class.accessible?(list, other_user)).to be false
     end
+
+    it ".can_delete? works correctly" do
+      expect(described_class.can_delete?(list, owner)).to be true
+      expect(described_class.can_delete?(list, editor_user)).to be false
+    end
+  end
+
+  describe "nil user handling" do
+    it "#can_view? returns false when user is nil" do
+      expect(described_class.new(list, nil).can_view?).to be false
+    end
+
+    it "#can_edit? returns false when user is nil" do
+      expect(described_class.new(list, nil).can_edit?).to be false
+    end
+
+    it "#can_delete? returns false when user is nil" do
+      expect(described_class.new(list, nil).can_delete?).to be false
+    end
+  end
+
+  describe "nil list handling" do
+    it "#can_view? returns false when list is nil" do
+      expect(described_class.new(nil, owner).can_view?).to be false
+    end
+
+    it "#can_edit? returns false when list is nil" do
+      expect(described_class.new(nil, owner).can_edit?).to be false
+    end
+
+    it "#role returns nil when list is nil" do
+      expect(described_class.new(nil, owner).role).to be_nil
+    end
+  end
+
+  describe "#viewer?" do
+    it "returns true for viewer member" do
+      expect(described_class.new(list, viewer_user).viewer?).to be true
+    end
+
+    it "returns false for owner" do
+      expect(described_class.new(list, owner).viewer?).to be false
+    end
+
+    it "returns false for editor" do
+      expect(described_class.new(list, editor_user).viewer?).to be false
+    end
   end
 end
