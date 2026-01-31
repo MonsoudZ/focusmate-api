@@ -146,6 +146,58 @@ RSpec.describe "Tasks API", type: :request do
     end
   end
 
+  describe "GET /api/v1/tasks/:id (global task fetch)" do
+    let(:task) { create(:task, list: list, creator: user, title: "My Task") }
+
+    context "as list owner" do
+      it "returns the task without needing list_id" do
+        auth_get "/api/v1/tasks/#{task.id}", user: user
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["task"]["id"]).to eq(task.id)
+        expect(json_response["task"]["title"]).to eq("My Task")
+        expect(json_response["task"]["list_id"]).to eq(list.id)
+        expect(json_response["task"]["list_name"]).to eq(list.name)
+      end
+    end
+
+    context "as list member" do
+      let(:member) { create(:user) }
+      let!(:membership) { create(:membership, list: list, user: member, role: "editor") }
+
+      it "returns the task" do
+        auth_get "/api/v1/tasks/#{task.id}", user: member
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["task"]["id"]).to eq(task.id)
+      end
+    end
+
+    context "as stranger" do
+      it "returns not found" do
+        auth_get "/api/v1/tasks/#{task.id}", user: other_user
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context "unauthenticated" do
+      it "returns unauthorized" do
+        get "/api/v1/tasks/#{task.id}"
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context "with non-existent task" do
+      it "returns not found" do
+        auth_get "/api/v1/tasks/999999", user: user
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+  end
+
   describe "POST /api/v1/lists/:list_id/tasks" do
     let(:valid_params) do
       {

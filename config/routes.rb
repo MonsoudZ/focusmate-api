@@ -39,7 +39,7 @@ Rails.application.routes.draw do
       get "today", to: "today#index"
       post "analytics/app_opened", to: "analytics#app_opened"
       get "tasks/search", to: "tasks#search"
-      resources :tasks, only: %i[index]
+      resources :tasks, only: %i[index show]
       # Invite acceptance (by code)
       resources :invites, only: [ :show ], param: :code do
         member do
