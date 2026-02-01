@@ -10,7 +10,7 @@ required = %w[
   APNS_KEY_ID
   APNS_TEAM_ID
   APNS_BUNDLE_ID
-  APNS_KEY
+  APNS_KEY_CONTENT
 ]
 missing = required.select { |k| ENV[k].blank? }
 
