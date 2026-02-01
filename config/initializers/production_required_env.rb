@@ -4,7 +4,14 @@
 # This provides a clearer error message than ENV.fetch failures
 return unless Rails.env.production?
 
-required = %w[DATABASE_URL SECRET_KEY_BASE]
+required = %w[
+  DATABASE_URL
+  SECRET_KEY_BASE
+  APNS_KEY_ID
+  APNS_TEAM_ID
+  APNS_BUNDLE_ID
+  APNS_KEY
+]
 missing = required.select { |k| ENV[k].blank? }
 
 if missing.any?
