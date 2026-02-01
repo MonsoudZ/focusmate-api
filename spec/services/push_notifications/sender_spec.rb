@@ -6,7 +6,7 @@ RSpec.describe PushNotifications::Sender do
   let(:user) { create(:user) }
 
   before do
-    # Reset memoized connection between tests
+    # Reset memoized connection between tests (set directly to avoid calling close on stale mocks)
     described_class.instance_variable_set(:@connection, nil)
     described_class.instance_variable_set(:@temp_key_file, nil)
   end
@@ -70,13 +70,26 @@ RSpec.describe PushNotifications::Sender do
     end
 
     it "logs errors and does not raise" do
-      allow(mock_connection).to receive(:push_async).and_raise(StandardError.new("connection lost"))
+      allow(mock_connection).to receive(:push_async).and_raise(StandardError.new("something went wrong"))
+      allow(mock_connection).to receive(:close)
 
       expect(Rails.logger).to receive(:error).with(/Push failed for device #{device.id}/)
 
       expect {
         described_class.send_to_device(device: device, title: "Hello", body: "World")
       }.not_to raise_error
+    end
+
+    it "resets connection on connection-related errors" do
+      allow(mock_connection).to receive(:push_async).and_raise(StandardError.new("connection closed"))
+      allow(mock_connection).to receive(:close)
+      allow(Rails.logger).to receive(:error)
+      allow(Rails.logger).to receive(:warn)
+
+      described_class.send_to_device(device: device, title: "Hello", body: "World")
+
+      expect(Rails.logger).to have_received(:warn).with(/APNS connection error detected/)
+      expect(mock_connection).to have_received(:close)
     end
 
     it "includes custom data payload" do
