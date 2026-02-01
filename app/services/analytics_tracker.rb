@@ -174,16 +174,16 @@ class AnalyticsTracker
     private
 
     def record(user:, event_type:, metadata: {}, task: nil, list: nil)
-      AnalyticsEvent.create!(
-        user: user,
-        task: task,
-        list: list,
+      AnalyticsEventJob.perform_later(
+        user_id: user.id,
+        task_id: task&.id,
+        list_id: list&.id,
         event_type: event_type,
         metadata: metadata,
-        occurred_at: Time.current
+        occurred_at: Time.current.iso8601
       )
     rescue StandardError => e
-      Rails.logger.error("AnalyticsTracker failed: #{e.message}")
+      Rails.logger.error("AnalyticsTracker failed to enqueue: #{e.message}")
       # Don't raise - analytics should never break the app
     end
   end
