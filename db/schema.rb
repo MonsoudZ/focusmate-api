@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_30_090000) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_01_191528) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -274,6 +274,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_090000) do
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_pending", where: "((status = 0) AND (deleted_at IS NULL))"
     t.index ["instance_date"], name: "index_tasks_on_instance_date"
     t.index ["is_recurring"], name: "index_tasks_on_is_recurring"
+    t.index ["is_template", "template_type"], name: "index_tasks_recurring_templates", where: "(deleted_at IS NULL)"
     t.index ["is_template"], name: "index_tasks_on_is_template"
     t.index ["list_id", "deleted_at", "parent_task_id"], name: "index_tasks_on_list_deleted_parent"
     t.index ["list_id", "deleted_at", "parent_task_id"], name: "index_tasks_on_list_deleted_parent_v2"
@@ -292,6 +293,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_090000) do
     t.index ["starred"], name: "index_tasks_on_starred"
     t.index ["status", "completed_at"], name: "index_tasks_on_status_and_completed"
     t.index ["status", "due_at"], name: "index_tasks_on_status_and_due_at"
+    t.index ["template_id", "due_at"], name: "index_tasks_template_instances", where: "(deleted_at IS NULL)"
     t.index ["template_id"], name: "index_tasks_on_template_id"
     t.index ["template_type"], name: "index_tasks_on_template_type"
     t.index ["title"], name: "index_tasks_on_title_trgm", opclass: :gin_trgm_ops, using: :gin
