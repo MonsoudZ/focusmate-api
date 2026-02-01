@@ -109,20 +109,21 @@ class RecurringTaskService
   end
 
   def find_next_weekday(from_date, allowed_days, interval = 1)
-    current = from_date
-    start_week = from_date.beginning_of_week
+    return from_date + 7.days if allowed_days.empty?
 
-    100.times do
-      current_week = current.beginning_of_week
-      weeks_diff = ((current_week - start_week) / 7).to_i
+    # Max days needed: interval weeks * 7 days (typically 7-14)
+    max_days = interval * 7
 
-      if allowed_days.include?(current.wday) && (weeks_diff % interval).zero?
-        return current
+    (0...max_days).each do |offset|
+      candidate = from_date + offset.days
+      week_num = (offset / 7).to_i
+
+      if allowed_days.include?(candidate.wday) && (week_num % interval).zero?
+        return candidate
       end
-
-      current += 1.day
     end
 
+    # Fallback (shouldn't reach here with valid input)
     from_date + 7.days
   end
 
