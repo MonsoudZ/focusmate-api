@@ -2,16 +2,6 @@
 
 module Users
   class AccountDeleteService
-    class Error < StandardError; end
-    class ValidationError < Error
-      attr_reader :details
-
-      def initialize(message, details = {})
-        super(message)
-        @details = details
-      end
-    end
-
     def self.call!(user:, password: nil)
       new(user:, password:).call!
     end
@@ -36,7 +26,7 @@ module Users
       # Email users must confirm with password
       return if @password.present? && @user.valid_password?(@password)
 
-      raise ValidationError.new("Password is incorrect", { password: [ "is incorrect" ] })
+      raise ApplicationError::Validation.new("Password is incorrect", details: { password: [ "is incorrect" ] })
     end
   end
 end

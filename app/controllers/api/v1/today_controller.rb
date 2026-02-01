@@ -10,14 +10,13 @@ module Api
       # GET /api/v1/today
       def index
         query = TodayTasksQuery.new(current_user, timezone: current_user.timezone)
-        data = query.all_for_today
-        stats = query.stats
+        data = query.fetch_all  # Single call, no duplicate queries
 
         render json: {
           overdue: serialize_tasks(data[:overdue]),
           due_today: serialize_tasks(data[:due_today]),
           completed_today: serialize_tasks(data[:completed_today]),
-          stats: stats
+          stats: data[:stats]
         }, status: :ok
       end
 

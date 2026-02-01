@@ -102,11 +102,11 @@ class TaskSerializer
   end
 
   def can_edit?
-    task.creator_id == current_user.id || task.list.user_id == current_user.id
+    @can_edit ||= Permissions::TaskPermissions.can_edit?(task, current_user)
   end
 
   def can_delete?
-    can_edit?
+    @can_delete ||= Permissions::TaskPermissions.can_delete?(task, current_user)
   end
 
   # Use memoized subtasks collection to avoid N+1 queries

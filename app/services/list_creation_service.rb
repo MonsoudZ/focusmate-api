@@ -1,20 +1,12 @@
 # frozen_string_literal: true
 
-class ListCreationService
-  class ValidationError < StandardError
-    attr_reader :details
-    def initialize(message, details = {})
-      super(message)
-      @details = details
-    end
-  end
-
+class ListCreationService < ApplicationService
   def initialize(user:, params:)
     @user = user
     @params = params
   end
 
-  def create!
+  def call!
     validate_params!
     build_list
     save_list!
@@ -27,7 +19,7 @@ class ListCreationService
     # Check if params are blank and no name is provided
     cleaned = @params.except(:controller, :action, :list).to_h
     if cleaned.blank? && !@params.key?(:name)
-      raise ValidationError.new("Validation failed", [ "Name can't be blank" ])
+      raise ApplicationError::Validation.new("Validation failed", details: { name: [ "can't be blank" ] })
     end
   end
 
@@ -38,7 +30,7 @@ class ListCreationService
 
   def save_list!
     unless @list.save
-      raise ValidationError.new("Validation failed", @list.errors.as_json)
+      raise ApplicationError::Validation.new("Validation failed", details: @list.errors.as_json)
     end
   end
 end

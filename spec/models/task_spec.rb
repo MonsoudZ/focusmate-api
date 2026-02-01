@@ -301,5 +301,155 @@ RSpec.describe Task, type: :model do
       expect(Task.all).not_to include(task)
       expect(Task.with_deleted).to include(task)
     end
+
+    it 'adjusts subtask counter on soft delete' do
+      parent = create(:task, list: list, creator: user)
+      subtask = create(:task, list: list, creator: user, parent_task: parent, due_at: nil)
+
+      expect { subtask.soft_delete! }.to change { parent.reload.subtasks_count }.by(-1)
+    end
+
+    it 'adjusts subtask counter on restore' do
+      parent = create(:task, list: list, creator: user)
+      subtask = create(:task, list: list, creator: user, parent_task: parent, due_at: nil)
+      subtask.soft_delete!
+
+      expect { subtask.restore! }.to change { parent.reload.subtasks_count }.by(1)
+    end
+
+    it 'adjusts list counter for subtasks on soft delete' do
+      parent = create(:task, list: list, creator: user)
+      subtask = create(:task, list: list, creator: user, parent_task: parent, due_at: nil)
+
+      expect { subtask.soft_delete! }.to change { list.reload.tasks_count }.by(-1)
+      # parent_tasks_count should not change for subtasks
+    end
+  end
+
+  describe '#overdue?' do
+    it 'returns false when due_at is nil' do
+      subtask = create(:task, list: list, creator: user, parent_task: task, due_at: nil)
+      expect(subtask.overdue?).to be false
+    end
+
+    it 'returns false when task is done' do
+      done_task = create(:task, list: list, creator: user, due_at: 1.hour.ago, status: :done)
+      expect(done_task.overdue?).to be false
+    end
+  end
+
+  describe '#done?' do
+    it 'returns true when status is done' do
+      task.complete!
+      expect(task.done?).to be true
+    end
+
+    it 'returns false when status is pending' do
+      expect(task.done?).to be false
+    end
+  end
+
+  describe '#editable_by?' do
+    it 'returns false when user is nil' do
+      expect(task.editable_by?(nil)).to be false
+    end
+
+    it 'returns true when user can edit the list' do
+      expect(task.editable_by?(user)).to be true
+    end
+  end
+
+  describe '#visible_to?' do
+    it 'returns false when user is nil' do
+      expect(task.visible_to?(nil)).to be false
+    end
+
+    it 'returns false when list is deleted' do
+      list.soft_delete!
+      expect(task.visible_to?(user)).to be false
+    end
+
+    it 'returns true when user has list access' do
+      expect(task.visible_to?(user)).to be true
+    end
+  end
+
+  describe '#subtask?' do
+    it 'returns true when has parent_task_id' do
+      subtask = create(:task, list: list, creator: user, parent_task: task, due_at: nil)
+      expect(subtask.subtask?).to be true
+    end
+
+    it 'returns false when no parent_task_id' do
+      expect(task.subtask?).to be false
+    end
+  end
+
+  describe 'circular subtask prevention' do
+    it 'prevents task from being its own parent' do
+      task.parent_task_id = task.id
+      expect(task).not_to be_valid
+      expect(task.errors[:parent_task]).to include("cannot be self")
+    end
+
+    it 'prevents circular relationship' do
+      parent = create(:task, list: list, creator: user)
+      child = create(:task, list: list, creator: user, parent_task: parent, due_at: nil)
+
+      parent.parent_task_id = child.id
+      expect(parent).not_to be_valid
+      expect(parent.errors[:parent_task]).to include("would create a circular relationship")
+    end
+  end
+
+  describe 'recurrence validations' do
+    it 'requires recurrence_days for weekly pattern' do
+      task = build(:task,
+                   list: list,
+                   creator: user,
+                   recurrence_pattern: "weekly",
+                   recurrence_days: nil)
+      expect(task).not_to be_valid
+      expect(task.errors[:recurrence_days]).to include("is required for weekly recurring tasks")
+    end
+
+    it 'allows weekly pattern with recurrence_days' do
+      task = build(:task,
+                   list: list,
+                   creator: user,
+                   recurrence_pattern: "weekly",
+                   recurrence_days: [ 1, 3, 5 ])
+      expect(task).to be_valid
+    end
+  end
+
+  describe 'assigned_to validation' do
+    let(:other_user) { create(:user) }
+
+    it 'prevents assignment to user without list access' do
+      task = build(:task,
+                   list: list,
+                   creator: user,
+                   assigned_to: other_user)
+      expect(task).not_to be_valid
+      expect(task.errors[:assigned_to]).to include("does not have access to this list")
+    end
+
+    it 'allows assignment to user with list access' do
+      create(:membership, list: list, user: other_user, role: "editor")
+      task = build(:task,
+                   list: list,
+                   creator: user,
+                   assigned_to: other_user)
+      expect(task).to be_valid
+    end
+
+    it 'allows assignment to list owner' do
+      task = build(:task,
+                   list: list,
+                   creator: user,
+                   assigned_to: user)
+      expect(task).to be_valid
+    end
   end
 end

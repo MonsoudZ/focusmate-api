@@ -363,6 +363,9 @@ GEM
     rack (3.2.4)
     rack-attack (6.8.0)
       rack (>= 1.0, < 4)
+    rack-cors (3.0.0)
+      logger
+      rack (>= 3.0.14)
     rack-oauth2 (2.3.0)
       activesupport
       attr_required
@@ -605,6 +608,7 @@ DEPENDENCIES
   puma (>= 5.0)
   pundit
   rack-attack
+  rack-cors
   rack-timeout (~> 0.7)
   rails (~> 8.0.3)
   redis (~> 5.0)

@@ -47,14 +47,14 @@ module Api
         @list ||= current_user.owned_lists.first
         authorize @list, :create_task?
 
-        task = TaskCreationService.new(list: @list, user: current_user, params: task_params).call
+        task = TaskCreationService.call!(list: @list, user: current_user, params: task_params)
         render json: { task: TaskSerializer.new(task, current_user: current_user).as_json }, status: :created
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id
       def update
         authorize @task
-        TaskUpdateService.new(task: @task, user: current_user).update!(attributes: task_params)
+        TaskUpdateService.call!(task: @task, user: current_user, attributes: task_params)
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
@@ -70,57 +70,47 @@ module Api
       def complete
         authorize @task, :update?
 
-        begin
-          TaskCompletionService.new(
-            task: @task,
-            user: current_user,
-            missed_reason: params[:missed_reason]
-          ).complete!
-          render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
-        rescue TaskCompletionService::MissingReasonError => e
-          render json: { error: { code: "missing_reason", message: e.message } }, status: :unprocessable_entity
-        end
+        TaskCompletionService.complete!(
+          task: @task,
+          user: current_user,
+          missed_reason: params[:missed_reason]
+        )
+        @task.reload
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/reopen
       def reopen
         authorize @task, :update?
-        TaskCompletionService.new(task: @task, user: current_user).uncomplete!
+        TaskCompletionService.uncomplete!(task: @task, user: current_user)
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/assign
       def assign
         authorize @task, :update?
-        service = TaskAssignmentService.new(task: @task, user: current_user)
-        service.assign!(assigned_to_id: params[:assigned_to])
+        TaskAssignmentService.assign!(task: @task, user: current_user, assigned_to_id: params[:assigned_to])
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
-      rescue TaskAssignmentService::BadRequest => e
-        render json: { error: { message: e.message } }, status: :bad_request
-      rescue TaskAssignmentService::InvalidAssignee => e
-        render json: { error: { message: e.message } }, status: :unprocessable_entity
       end
 
       # PATCH /api/v1/lists/:list_id/tasks/:id/unassign
       def unassign
         authorize @task, :update?
-        TaskAssignmentService.new(task: @task, user: current_user).unassign!
+        TaskAssignmentService.unassign!(task: @task, user: current_user)
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
       # POST /api/v1/lists/:list_id/tasks/:id/nudge
       def nudge
         authorize @task, :nudge?
-        TaskNudgeService.new(task: @task, from_user: current_user).call!
+        TaskNudgeService.call!(task: @task, from_user: current_user)
         render json: { message: "Nudge sent" }, status: :ok
-      rescue TaskNudgeService::SelfNudge => e
-        render json: { error: { message: e.message } }, status: :unprocessable_entity
       end
 
       # POST /api/v1/lists/:list_id/tasks/reorder
       def reorder
         authorize @list, :update?
-        TaskReorderService.new(list: @list).reorder!(params[:tasks].map { |t| t.permit(:id, :position).to_h.symbolize_keys })
+        TaskReorderService.call!(list: @list, task_positions: params[:tasks].map { |t| t.permit(:id, :position).to_h.symbolize_keys })
         head :ok
       end
 
@@ -172,11 +162,7 @@ module Api
       end
 
       def task_params
-        if params[:task].present?
-          params.require(:task).permit(permitted_task_attributes)
-        else
-          params.permit(permitted_task_attributes)
-        end
+        params.require(:task).permit(permitted_task_attributes)
       end
 
       def permitted_task_attributes

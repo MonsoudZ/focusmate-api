@@ -105,8 +105,7 @@ class AnalyticsTracker
         list: task.list,
         event_type: "task_edited",
         metadata: {
-          fields_changed: changes.is_a?(Array) ? changes : changes.keys,
-          edit_count: AnalyticsEvent.where(task: task, event_type: "task_edited").count + 1
+          fields_changed: changes.is_a?(Array) ? changes : changes.keys
         }
       )
     end
@@ -129,7 +128,7 @@ class AnalyticsTracker
         list: list,
         event_type: "list_deleted",
         metadata: {
-          task_count: list.tasks.count,
+          task_count: list.tasks_count,
           age_days: ((Time.current - list.created_at) / 1.day).round
         }
       )
@@ -175,16 +174,16 @@ class AnalyticsTracker
     private
 
     def record(user:, event_type:, metadata: {}, task: nil, list: nil)
-      AnalyticsEvent.create!(
-        user: user,
-        task: task,
-        list: list,
+      AnalyticsEventJob.perform_later(
+        user_id: user.id,
+        task_id: task&.id,
+        list_id: list&.id,
         event_type: event_type,
         metadata: metadata,
-        occurred_at: Time.current
+        occurred_at: Time.current.iso8601
       )
     rescue StandardError => e
-      Rails.logger.error("AnalyticsTracker failed: #{e.message}")
+      Rails.logger.error("AnalyticsTracker failed to enqueue: #{e.message}")
       # Don't raise - analytics should never break the app
     end
   end

@@ -20,7 +20,11 @@ module Auth
 
       apple_keys = fetch_apple_public_keys
       key_data = apple_keys.find { |k| k["kid"] == kid }
-      return nil unless key_data
+
+      if key_data.nil?
+        Rails.logger.warn("[AppleAuth] No matching key found for kid")
+        return nil
+      end
 
       jwk = JWT::JWK.new(key_data)
 
@@ -38,7 +42,11 @@ module Auth
       )
 
       decoded.first
-    rescue JSON::ParserError, ArgumentError
+    rescue JSON::ParserError, ArgumentError => e
+      Rails.logger.error("[AppleAuth] Parse error: #{e.message}")
+      nil
+    rescue JWT::DecodeError => e
+      Rails.logger.error("[AppleAuth] JWT decode error: #{e.message}")
       nil
     end
 

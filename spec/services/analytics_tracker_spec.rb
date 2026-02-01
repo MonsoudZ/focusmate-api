@@ -3,14 +3,22 @@
 require "rails_helper"
 
 RSpec.describe AnalyticsTracker do
+  include ActiveJob::TestHelper
+
   let(:user) { create(:user) }
   let(:list) { create(:list, user: user) }
   let(:task) { create(:task, list: list, creator: user) }
 
   describe ".task_created" do
-    it "creates an AnalyticsEvent with event_type task_created" do
+    it "enqueues an AnalyticsEventJob" do
       expect {
         described_class.task_created(task, user)
+      }.to have_enqueued_job(AnalyticsEventJob)
+    end
+
+    it "creates an AnalyticsEvent with event_type task_created" do
+      expect {
+        perform_enqueued_jobs { described_class.task_created(task, user) }
       }.to change(AnalyticsEvent, :count).by(1)
 
       event = AnalyticsEvent.last
@@ -22,7 +30,7 @@ RSpec.describe AnalyticsTracker do
     end
 
     it "includes priority, starred, has_due_date, and due_in_hours in metadata" do
-      described_class.task_created(task, user)
+      perform_enqueued_jobs { described_class.task_created(task, user) }
 
       event = AnalyticsEvent.last
       expect(event.metadata).to include(
@@ -36,7 +44,7 @@ RSpec.describe AnalyticsTracker do
     it "sets due_in_hours to nil when task has no due_at" do
       task_without_due = create(:task, list: list, creator: user, due_at: nil, parent_task: task)
 
-      described_class.task_created(task_without_due, user)
+      perform_enqueued_jobs { described_class.task_created(task_without_due, user) }
 
       event = AnalyticsEvent.last
       expect(event.metadata["has_due_date"]).to be false
@@ -47,7 +55,7 @@ RSpec.describe AnalyticsTracker do
   describe ".task_completed" do
     it "creates an AnalyticsEvent with event_type task_completed" do
       expect {
-        described_class.task_completed(task, user, was_overdue: false)
+        perform_enqueued_jobs { described_class.task_completed(task, user, was_overdue: false) }
       }.to change(AnalyticsEvent, :count).by(1)
 
       event = AnalyticsEvent.last
@@ -57,7 +65,9 @@ RSpec.describe AnalyticsTracker do
     end
 
     it "includes overdue info in metadata" do
-      described_class.task_completed(task, user, was_overdue: true, minutes_overdue: 45, missed_reason: "forgot")
+      perform_enqueued_jobs do
+        described_class.task_completed(task, user, was_overdue: true, minutes_overdue: 45, missed_reason: "forgot")
+      end
 
       event = AnalyticsEvent.last
       expect(event.metadata).to include(
@@ -69,7 +79,7 @@ RSpec.describe AnalyticsTracker do
 
     it "includes time_to_complete_hours, completed_day_of_week, and completed_hour" do
       freeze_time do
-        described_class.task_completed(task, user, was_overdue: false)
+        perform_enqueued_jobs { described_class.task_completed(task, user, was_overdue: false) }
 
         event = AnalyticsEvent.last
         expect(event.metadata).to have_key("time_to_complete_hours")
@@ -82,7 +92,7 @@ RSpec.describe AnalyticsTracker do
   describe ".task_deleted" do
     it "creates an AnalyticsEvent with event_type task_deleted" do
       expect {
-        described_class.task_deleted(task, user)
+        perform_enqueued_jobs { described_class.task_deleted(task, user) }
       }.to change(AnalyticsEvent, :count).by(1)
 
       event = AnalyticsEvent.last
@@ -92,7 +102,7 @@ RSpec.describe AnalyticsTracker do
     end
 
     it "includes was_completed, was_overdue, and age_hours in metadata" do
-      described_class.task_deleted(task, user)
+      perform_enqueued_jobs { described_class.task_deleted(task, user) }
 
       event = AnalyticsEvent.last
       expect(event.metadata).to include(
@@ -106,7 +116,7 @@ RSpec.describe AnalyticsTracker do
   describe ".list_created" do
     it "creates an AnalyticsEvent with event_type list_created" do
       expect {
-        described_class.list_created(list, user)
+        perform_enqueued_jobs { described_class.list_created(list, user) }
       }.to change(AnalyticsEvent, :count).by(1)
 
       event = AnalyticsEvent.last
@@ -117,7 +127,7 @@ RSpec.describe AnalyticsTracker do
     end
 
     it "includes visibility in metadata" do
-      described_class.list_created(list, user)
+      perform_enqueued_jobs { described_class.list_created(list, user) }
 
       event = AnalyticsEvent.last
       expect(event.metadata).to include("visibility" => list.visibility)
@@ -129,7 +139,7 @@ RSpec.describe AnalyticsTracker do
 
     it "creates an AnalyticsEvent with event_type list_shared" do
       expect {
-        described_class.list_shared(list, user, shared_with: shared_with_user, role: "editor")
+        perform_enqueued_jobs { described_class.list_shared(list, user, shared_with: shared_with_user, role: "editor") }
       }.to change(AnalyticsEvent, :count).by(1)
 
       event = AnalyticsEvent.last
@@ -139,7 +149,7 @@ RSpec.describe AnalyticsTracker do
     end
 
     it "includes shared_with_user_id and role in metadata" do
-      described_class.list_shared(list, user, shared_with: shared_with_user, role: "viewer")
+      perform_enqueued_jobs { described_class.list_shared(list, user, shared_with: shared_with_user, role: "viewer") }
 
       event = AnalyticsEvent.last
       expect(event.metadata).to include(
@@ -152,7 +162,7 @@ RSpec.describe AnalyticsTracker do
   describe ".app_opened" do
     it "creates an AnalyticsEvent with event_type app_opened" do
       expect {
-        described_class.app_opened(user, platform: "ios")
+        perform_enqueued_jobs { described_class.app_opened(user, platform: "ios") }
       }.to change(AnalyticsEvent, :count).by(1)
 
       event = AnalyticsEvent.last
@@ -163,7 +173,7 @@ RSpec.describe AnalyticsTracker do
     end
 
     it "includes platform and version in metadata" do
-      described_class.app_opened(user, platform: "ios", version: "2.1.0")
+      perform_enqueued_jobs { described_class.app_opened(user, platform: "ios", version: "2.1.0") }
 
       event = AnalyticsEvent.last
       expect(event.metadata).to include(
@@ -174,7 +184,7 @@ RSpec.describe AnalyticsTracker do
 
     it "includes day_of_week and hour in metadata" do
       freeze_time do
-        described_class.app_opened(user, platform: "android")
+        perform_enqueued_jobs { described_class.app_opened(user, platform: "android") }
 
         event = AnalyticsEvent.last
         expect(event.metadata["day_of_week"]).to eq(Time.current.strftime("%A"))
@@ -184,18 +194,18 @@ RSpec.describe AnalyticsTracker do
   end
 
   describe "error handling" do
-    it "does not raise when AnalyticsEvent.create! fails" do
-      allow(AnalyticsEvent).to receive(:create!).and_raise(ActiveRecord::RecordInvalid.new)
+    it "does not raise when job enqueueing fails" do
+      allow(AnalyticsEventJob).to receive(:perform_later).and_raise(StandardError.new("Redis down"))
 
       expect {
         described_class.app_opened(user, platform: "ios")
       }.not_to raise_error
     end
 
-    it "logs the error when creation fails" do
-      allow(AnalyticsEvent).to receive(:create!).and_raise(StandardError.new("db connection lost"))
+    it "logs the error when enqueueing fails" do
+      allow(AnalyticsEventJob).to receive(:perform_later).and_raise(StandardError.new("Redis down"))
 
-      expect(Rails.logger).to receive(:error).with(/AnalyticsTracker failed: db connection lost/)
+      expect(Rails.logger).to receive(:error).with(/AnalyticsTracker failed to enqueue: Redis down/)
 
       described_class.task_created(task, user)
     end

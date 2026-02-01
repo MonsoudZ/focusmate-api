@@ -2,10 +2,6 @@
 
 module Auth
   class Login
-    class Error < StandardError; end
-    class Unauthorized < Error; end
-    class BadRequest < Error; end
-
     def self.call!(email:, password:)
       new(email:, password:).call!
     end
@@ -16,13 +12,13 @@ module Auth
     end
 
     def call!
-      raise BadRequest, "Email and password are required" if @email.blank? || @password.blank?
+      raise ApplicationError::BadRequest, "Email and password are required" if @email.blank? || @password.blank?
 
       user = User.find_by(email: @email)
 
       # Always return a generic error (avoid user enumeration)
       unless user&.valid_password?(@password)
-        raise Unauthorized, "Invalid email or password"
+        raise ApplicationError::Unauthorized.new("Invalid email or password", code: "login_unauthorized")
       end
 
       user

@@ -96,7 +96,7 @@ RSpec.describe Memberships::Create do
             user_identifier: "",
             role: "viewer"
           )
-        }.to raise_error(Memberships::Create::BadRequest, "user_identifier or friend_id is required")
+        }.to raise_error(ApplicationError::BadRequest, "user_identifier or friend_id is required")
       end
 
       it "raises BadRequest with nil" do
@@ -107,7 +107,7 @@ RSpec.describe Memberships::Create do
             user_identifier: nil,
             role: "viewer"
           )
-        }.to raise_error(Memberships::Create::BadRequest, "user_identifier or friend_id is required")
+        }.to raise_error(ApplicationError::BadRequest, "user_identifier or friend_id is required")
       end
     end
 
@@ -120,7 +120,7 @@ RSpec.describe Memberships::Create do
             user_identifier: target_user.email,
             role: "admin"
           )
-        }.to raise_error(Memberships::Create::BadRequest, "Invalid role")
+        }.to raise_error(ApplicationError::BadRequest, "Invalid role")
       end
     end
 
@@ -133,7 +133,7 @@ RSpec.describe Memberships::Create do
             user_identifier: "nonexistent@example.com",
             role: "viewer"
           )
-        }.to raise_error(Memberships::Create::NotFound, "User not found")
+        }.to raise_error(ApplicationError::NotFound, "User not found")
       end
 
       it "raises NotFound for non-existent ID" do
@@ -144,7 +144,7 @@ RSpec.describe Memberships::Create do
             user_identifier: "999999999",
             role: "viewer"
           )
-        }.to raise_error(Memberships::Create::NotFound, "User not found")
+        }.to raise_error(ApplicationError::NotFound, "User not found")
       end
     end
 
@@ -157,7 +157,7 @@ RSpec.describe Memberships::Create do
             user_identifier: inviter.email,
             role: "viewer"
           )
-        }.to raise_error(Memberships::Create::Conflict, "Cannot invite yourself")
+        }.to raise_error(ApplicationError::Conflict, "Cannot invite yourself")
       end
     end
 
@@ -174,7 +174,52 @@ RSpec.describe Memberships::Create do
             user_identifier: target_user.email,
             role: "editor"
           )
-        }.to raise_error(Memberships::Create::Conflict, "User is already a member of this list")
+        }.to raise_error(ApplicationError::Conflict, "User is already a member of this list")
+      end
+    end
+
+    context "using friend_id" do
+      let(:friend) { create(:user) }
+
+      before do
+        # Create mutual friendship (both directions)
+        Friendship.create_mutual!(inviter, friend)
+      end
+
+      it "adds a friend to the list" do
+        result = described_class.call!(
+          list: list,
+          inviter: inviter,
+          friend_id: friend.id,
+          role: "editor"
+        )
+
+        expect(result.user).to eq(friend)
+        expect(result.role).to eq("editor")
+      end
+
+      it "raises NotFound when friend_id does not exist" do
+        expect {
+          described_class.call!(
+            list: list,
+            inviter: inviter,
+            friend_id: 999999999,
+            role: "viewer"
+          )
+        }.to raise_error(ApplicationError::NotFound, "User not found")
+      end
+
+      it "raises Forbidden when not friends" do
+        non_friend = create(:user)
+
+        expect {
+          described_class.call!(
+            list: list,
+            inviter: inviter,
+            friend_id: non_friend.id,
+            role: "viewer"
+          )
+        }.to raise_error(ApplicationError::Forbidden, "You can only add friends to lists")
       end
     end
   end

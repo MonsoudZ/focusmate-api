@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class SubtaskCreationService
+class SubtaskCreationService < ApplicationService
   def initialize(parent_task:, user:, params:)
     @parent_task = parent_task
     @user = user

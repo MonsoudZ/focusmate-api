@@ -9,7 +9,7 @@ RSpec.describe ListCreationService do
         params = { name: 'My List', description: 'Test description' }
         service = described_class.new(user: user, params: params)
 
-        list = service.create!
+        list = service.call!
 
         expect(list).to be_persisted
         expect(list.name).to eq('My List')
@@ -21,7 +21,7 @@ RSpec.describe ListCreationService do
         params = { name: 'My List' }
         service = described_class.new(user: user, params: params)
 
-        list = service.create!
+        list = service.call!
 
         expect(list.visibility).to eq('private')
       end
@@ -30,7 +30,7 @@ RSpec.describe ListCreationService do
         params = { name: 'Public List', visibility: 'public' }
         service = described_class.new(user: user, params: params)
 
-        list = service.create!
+        list = service.call!
 
         expect(list.visibility).to eq('public')
       end
@@ -39,7 +39,7 @@ RSpec.describe ListCreationService do
         params = { name: 'Minimal List' }
         service = described_class.new(user: user, params: params)
 
-        list = service.create!
+        list = service.call!
 
         expect(list).to be_persisted
         expect(list.name).to eq('Minimal List')
@@ -53,8 +53,8 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
-        }.to raise_error(ListCreationService::ValidationError) do |error|
+          service.call!
+        }.to raise_error(ApplicationError::Validation) do |error|
           expect(error.message).to eq('Validation failed')
           expect(error.details).to be_present
         end
@@ -65,8 +65,8 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
-        }.to raise_error(ListCreationService::ValidationError)
+          service.call!
+        }.to raise_error(ApplicationError::Validation)
       end
 
       it 'raises ValidationError when name is nil' do
@@ -74,8 +74,8 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
-        }.to raise_error(ListCreationService::ValidationError)
+          service.call!
+        }.to raise_error(ApplicationError::Validation)
       end
     end
 
@@ -85,8 +85,8 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
-        }.to raise_error(ListCreationService::ValidationError)
+          service.call!
+        }.to raise_error(ApplicationError::Validation)
       end
 
       it 'raises ValidationError when params only contain controller/action keys' do
@@ -94,8 +94,8 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
-        }.to raise_error(ListCreationService::ValidationError)
+          service.call!
+        }.to raise_error(ApplicationError::Validation)
       end
     end
 
@@ -105,8 +105,8 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         expect {
-          service.create!
-        }.to raise_error(ListCreationService::ValidationError) do |error|
+          service.call!
+        }.to raise_error(ApplicationError::Validation) do |error|
           expect(error.details).to be_a(Hash)
           expect(error.details).to have_key(:name)
         end
@@ -117,27 +117,21 @@ RSpec.describe ListCreationService do
         service = described_class.new(user: user, params: params)
 
         begin
-          service.create!
-        rescue ListCreationService::ValidationError => e
+          service.call!
+        rescue ApplicationError::Validation => e
           expect(e.details).to be_a(Hash)
         end
       end
     end
   end
 
-  describe 'ValidationError' do
-    it 'stores message and details' do
-      error = ListCreationService::ValidationError.new('Test error', { field: [ 'error' ] })
-
-      expect(error.message).to eq('Test error')
-      expect(error.details).to eq({ field: [ 'error' ] })
-    end
-
-    it 'handles empty details' do
-      error = ListCreationService::ValidationError.new('Test error')
-
-      expect(error.message).to eq('Test error')
-      expect(error.details).to eq({})
+  describe 'error handling' do
+    it 'raises ApplicationError::Validation with details when name is blank' do
+      expect {
+        described_class.call!(user: user, params: { name: '' })
+      }.to raise_error(ApplicationError::Validation) do |error|
+        expect(error.details).to have_key(:name)
+      end
     end
   end
 end

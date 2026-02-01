@@ -43,13 +43,13 @@ RSpec.describe Users::AccountDeleteService do
       it "raises ValidationError" do
         expect {
           described_class.call!(user: user, password: "wrongpassword")
-        }.to raise_error(Users::AccountDeleteService::ValidationError, "Password is incorrect")
+        }.to raise_error(ApplicationError::Validation, "Password is incorrect")
       end
 
       it "includes field-specific error details" do
         expect {
           described_class.call!(user: user, password: "wrongpassword")
-        }.to raise_error(Users::AccountDeleteService::ValidationError) do |error|
+        }.to raise_error(ApplicationError::Validation) do |error|
           expect(error.details).to eq({ password: [ "is incorrect" ] })
         end
       end
@@ -57,7 +57,7 @@ RSpec.describe Users::AccountDeleteService do
       it "does not delete the user" do
         expect {
           described_class.call!(user: user, password: "wrongpassword")
-        }.to raise_error(Users::AccountDeleteService::ValidationError)
+        }.to raise_error(ApplicationError::Validation)
 
         expect(User.find_by(id: user.id)).to eq(user)
       end
@@ -69,13 +69,13 @@ RSpec.describe Users::AccountDeleteService do
       it "raises ValidationError" do
         expect {
           described_class.call!(user: user, password: nil)
-        }.to raise_error(Users::AccountDeleteService::ValidationError, "Password is incorrect")
+        }.to raise_error(ApplicationError::Validation, "Password is incorrect")
       end
 
       it "includes field-specific error details" do
         expect {
           described_class.call!(user: user, password: nil)
-        }.to raise_error(Users::AccountDeleteService::ValidationError) do |error|
+        }.to raise_error(ApplicationError::Validation) do |error|
           expect(error.details).to eq({ password: [ "is incorrect" ] })
         end
       end
@@ -83,7 +83,7 @@ RSpec.describe Users::AccountDeleteService do
       it "does not delete the user" do
         expect {
           described_class.call!(user: user, password: nil)
-        }.to raise_error(Users::AccountDeleteService::ValidationError)
+        }.to raise_error(ApplicationError::Validation)
 
         expect(User.find_by(id: user.id)).to eq(user)
       end

@@ -1,61 +1,46 @@
 # frozen_string_literal: true
 
-class TaskUpdateService
-  class UnauthorizedError < StandardError; end
-  class ValidationError < StandardError
-    attr_reader :details
-    def initialize(message, details = {})
-      super(message)
-      @details = details
-    end
-  end
-
-  def initialize(task:, user:)
+class TaskUpdateService < ApplicationService
+  def initialize(task:, user:, attributes:)
     @task = task
     @user = user
+    @attributes = attributes
   end
 
-  def update!(attributes:)
+  def call!
     validate_authorization!
-    track_changes(attributes)
-    perform_update(attributes)
+    track_changes
+    perform_update
     @task
   end
 
   private
 
   def validate_authorization!
-    unless can_edit_task?
-      raise UnauthorizedError, "You do not have permission to edit this task"
+    unless Permissions::TaskPermissions.can_edit?(@task, @user)
+      raise ApplicationError::Forbidden.new("You do not have permission to edit this task", code: "task_update_forbidden")
     end
   end
 
-  def can_edit_task?
-    return true if @task.list.user_id == @user.id
-    return true if @task.creator_id == @user.id
-    return true if @task.list.memberships.exists?(user_id: @user.id, role: "editor")
-    false
-  end
-
-  def track_changes(attributes)
+  def track_changes
     @old_priority = @task.priority
     @old_starred = @task.starred
-    @changes = attributes.keys.select { |k| @task.send(k) != attributes[k] }
+    @changes = @attributes.keys.select { |k| @task.send(k) != @attributes[k] }
   end
 
-  def perform_update(attributes)
+  def perform_update
     ActiveRecord::Base.transaction do
-      unless @task.update(attributes)
-        raise ValidationError.new("Validation failed", @task.errors.as_json)
+      unless @task.update(@attributes)
+        raise ApplicationError::Validation.new("Validation failed", details: @task.errors.as_json)
       end
 
-      track_analytics(attributes)
+      track_analytics
     end
   end
 
-  def track_analytics(attributes)
+  def track_analytics
     # Track priority changes
-    if attributes.key?(:priority) && @old_priority != @task.priority
+    if @attributes.key?(:priority) && @old_priority != @task.priority
       AnalyticsTracker.task_priority_changed(
         @task,
         @user,
@@ -65,7 +50,7 @@ class TaskUpdateService
     end
 
     # Track starred changes
-    if attributes.key?(:starred) && @old_starred != @task.starred
+    if @attributes.key?(:starred) && @old_starred != @task.starred
       if @task.starred
         AnalyticsTracker.task_starred(@task, @user)
       else

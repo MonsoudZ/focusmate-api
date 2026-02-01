@@ -10,10 +10,9 @@
 #
 # Usage:
 #   query = TodayTasksQuery.new(user)
-#   query.overdue        # Tasks past due
-#   query.due_today      # Tasks due today
-#   query.completed_today # Tasks completed today
-#   query.all_for_today  # Combined hash for API response
+#   result = query.fetch_all  # Single method, no duplicate queries
+#   result[:overdue]          # Cached tasks
+#   result[:stats]            # Computed from cached data
 #
 class TodayTasksQuery
   attr_reader :user, :timezone
@@ -21,6 +20,32 @@ class TodayTasksQuery
   def initialize(user, timezone: nil)
     @user = user
     @timezone = timezone || user.timezone || "UTC"
+    @cached_data = nil
+  end
+
+  # Single entry point that fetches all data efficiently
+  # Returns hash with :overdue, :due_today, :completed_today, :stats
+  def fetch_all
+    return @cached_data if @cached_data
+
+    # Execute queries once and cache results
+    overdue_tasks = overdue.to_a
+    due_today_tasks = due_today.to_a
+    completed_today_tasks = completed_today.to_a
+
+    # Compute stats from already-loaded data (no additional queries)
+    stats = compute_stats(
+      overdue_tasks: overdue_tasks,
+      due_today_tasks: due_today_tasks,
+      completed_today_tasks: completed_today_tasks
+    )
+
+    @cached_data = {
+      overdue: overdue_tasks,
+      due_today: due_today_tasks,
+      completed_today: completed_today_tasks,
+      stats: stats
+    }
   end
 
   # Tasks that are past due and not completed
@@ -72,34 +97,39 @@ class TodayTasksQuery
       .order("tasks.created_at DESC")
   end
 
-  # Combined data for Today API endpoint
+  # Legacy method - use fetch_all instead for better performance
   def all_for_today
+    data = fetch_all
     {
-      overdue: overdue.to_a,
-      due_today: due_today.to_a,
-      completed_today: completed_today.to_a
+      overdue: data[:overdue],
+      due_today: data[:due_today],
+      completed_today: data[:completed_today]
     }
   end
 
-  # Statistics for Today view
+  # Legacy method - use fetch_all instead for better performance
   def stats
-    all_today = all_due_today.to_a
-    overdue_tasks = overdue.to_a
-
-    total = all_today.size
-    completed = all_today.count { |t| t.status == "done" }
-    remaining = total - completed
-
-    {
-      total_due_today: total,
-      completed_today: completed,
-      remaining_today: remaining,
-      overdue_count: overdue_tasks.size,
-      completion_percentage: total > 0 ? ((completed.to_f / total) * 100).round : 0
-    }
+    fetch_all[:stats]
   end
 
   private
+
+  def compute_stats(overdue_tasks:, due_today_tasks:, completed_today_tasks:)
+    # Total due today = incomplete + completed today (that were due today)
+    # Note: completed_today includes tasks completed today regardless of original due date
+    # For accurate "due today" stats, we need to count tasks that were due today
+    total_due = due_today_tasks.size + completed_today_tasks.count { |t| t.due_at && today_range.cover?(t.due_at) }
+    completed = completed_today_tasks.count { |t| t.due_at && today_range.cover?(t.due_at) }
+    remaining = due_today_tasks.size
+
+    {
+      total_due_today: total_due,
+      completed_today: completed_today_tasks.size,
+      remaining_today: remaining,
+      overdue_count: overdue_tasks.size,
+      completion_percentage: total_due > 0 ? ((completed.to_f / total_due) * 100).round : 0
+    }
+  end
 
   def base_scope
     Task

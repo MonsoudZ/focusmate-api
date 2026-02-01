@@ -46,9 +46,7 @@ class User < ApplicationRecord
   def valid_timezone
     return if timezone.blank?
 
-    begin
-      Time.zone = timezone
-    rescue ArgumentError
+    unless ActiveSupport::TimeZone[timezone]
       errors.add(:timezone, "is not a valid timezone")
     end
   end

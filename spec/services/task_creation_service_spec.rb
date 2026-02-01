@@ -14,7 +14,7 @@ RSpec.describe TaskCreationService, type: :service do
   describe "#call" do
     it "should create task with valid parameters" do
       service = TaskCreationService.new(list: list, user: user, params: params)
-      task = service.call
+      task = service.call!
 
       expect(task).not_to be_nil
       expect(task.title).to eq("Test Task")
@@ -31,7 +31,7 @@ RSpec.describe TaskCreationService, type: :service do
       }
 
       service = TaskCreationService.new(list: list, user: user, params: ios_params)
-      task = service.call
+      task = service.call!
 
       expect(task.title).to eq("iOS Task")
       expect(task.note).to eq("iOS description")
@@ -44,7 +44,7 @@ RSpec.describe TaskCreationService, type: :service do
       )
 
       service = TaskCreationService.new(list: list, user: user, params: params_with_iso_date)
-      task = service.call
+      task = service.call!
 
       expect(task.due_at).not_to be_nil
       expect(task.due_at.to_i).to eq(1.hour.from_now.to_i)
@@ -57,7 +57,7 @@ RSpec.describe TaskCreationService, type: :service do
       }
 
       service = TaskCreationService.new(list: list, user: user, params: params_without_defaults)
-      task = service.call
+      task = service.call!
 
       expect(task.strict_mode).to be_truthy # Should default to true
     end
@@ -68,7 +68,7 @@ RSpec.describe TaskCreationService, type: :service do
       )
 
       service = TaskCreationService.new(list: list, user: user, params: params_with_subtasks)
-      task = service.call
+      task = service.call!
 
       expect(task.subtasks.count).to eq(3)
       expect(task.subtasks.first.title).to eq("Subtask 1")
@@ -82,7 +82,7 @@ RSpec.describe TaskCreationService, type: :service do
       )
 
       service = TaskCreationService.new(list: list, user: user, params: params_with_subtasks)
-      task = service.call
+      task = service.call!
 
       subtask = task.subtasks.first
       expect(subtask.list).to eq(list)
@@ -98,7 +98,7 @@ RSpec.describe TaskCreationService, type: :service do
       )
 
       service = TaskCreationService.new(list: list, user: user, params: params_with_invalid_date)
-      task = service.call
+      task = service.call!
 
       # Should still create task - due_at from base params is used
       expect(task).not_to be_nil
@@ -118,7 +118,7 @@ RSpec.describe TaskCreationService, type: :service do
       }
 
       service = TaskCreationService.new(list: list, user: user, params: ios_params)
-      task = service.call
+      task = service.call!
 
       expect(task.title).to eq("iOS Task")
       expect(task.note).to eq("iOS description")
@@ -130,7 +130,7 @@ RSpec.describe TaskCreationService, type: :service do
       )
 
       service = TaskCreationService.new(list: list, user: user, params: params_with_empty_subtasks)
-      task = service.call
+      task = service.call!
 
       expect(task.subtasks.count).to eq(0)
     end
@@ -141,7 +141,7 @@ RSpec.describe TaskCreationService, type: :service do
       )
 
       service = TaskCreationService.new(list: list, user: user, params: params_with_nil_subtasks)
-      task = service.call
+      task = service.call!
 
       expect(task.subtasks.count).to eq(0)
     end
@@ -152,7 +152,7 @@ RSpec.describe TaskCreationService, type: :service do
       )
 
       service = TaskCreationService.new(list: list, user: user, params: params_with_subtasks)
-      task = service.call
+      task = service.call!
 
       expect(task.subtasks.count).to eq(1)
       expect(task.subtasks.first.title).to eq("Subtask")
@@ -168,7 +168,7 @@ RSpec.describe TaskCreationService, type: :service do
       )
 
       service = TaskCreationService.new(list: list, user: user, params: location_params)
-      task = service.call
+      task = service.call!
 
       expect(task.location_based?).to be_truthy
       expect(task.location_latitude).to eq(40.7128)
@@ -186,7 +186,7 @@ RSpec.describe TaskCreationService, type: :service do
       )
 
       service = TaskCreationService.new(list: list, user: user, params: recurring_params)
-      task = service.call
+      task = service.call!
 
       expect(task.is_recurring?).to be_truthy
       expect(task.recurrence_pattern).to eq("daily")
@@ -201,7 +201,7 @@ RSpec.describe TaskCreationService, type: :service do
       )
 
       service = TaskCreationService.new(list: list, user: user, params: accountability_params)
-      task = service.call
+      task = service.call!
 
       expect(task.notification_interval_minutes).to eq(15)
       expect(task.requires_explanation_if_missed?).to be_truthy
@@ -215,7 +215,7 @@ RSpec.describe TaskCreationService, type: :service do
 
       service = TaskCreationService.new(list: list, user: user, params: invalid_params)
 
-      expect { service.call }.to raise_error(ActiveRecord::RecordInvalid)
+      expect { service.call! }.to raise_error(ActiveRecord::RecordInvalid)
     end
 
     it "should handle complex nested parameters" do
@@ -231,7 +231,7 @@ RSpec.describe TaskCreationService, type: :service do
       }
 
       service = TaskCreationService.new(list: list, user: user, params: complex_params)
-      task = service.call
+      task = service.call!
 
       expect(task.title).to eq("Complex Task")
       expect(task.note).to eq("Complex description")
@@ -248,7 +248,7 @@ RSpec.describe TaskCreationService, type: :service do
       }
 
       service = TaskCreationService.new(list: list, user: user, params: nil_params)
-      task = service.call
+      task = service.call!
 
       expect(task.title).to eq("Task with nil params")
       expect(task.note).to be_nil
@@ -261,7 +261,7 @@ RSpec.describe TaskCreationService, type: :service do
       )
 
       service = TaskCreationService.new(list: list, user: user, params: params_with_long_subtask)
-      task = service.call
+      task = service.call!
 
       expect(task.subtasks.count).to eq(1)
       expect(task.subtasks.first.title).to eq(long_subtask_title)
@@ -275,7 +275,7 @@ RSpec.describe TaskCreationService, type: :service do
       }
 
       service = TaskCreationService.new(list: list, user: user, params: special_params)
-      task = service.call
+      task = service.call!
 
       expect(task.title).to eq("Task with émojis 🚀 and spëcial chars")
       expect(task.note).to eq("Description with <script>alert('xss')</script>")
@@ -289,7 +289,7 @@ RSpec.describe TaskCreationService, type: :service do
       }
 
       service = TaskCreationService.new(list: list, user: user, params: timezone_params)
-      task = service.call
+      task = service.call!
 
       expect(task.due_at).not_to be_nil
       # Should parse the UTC time correctly
@@ -306,7 +306,7 @@ RSpec.describe TaskCreationService, type: :service do
       }
 
       service = TaskCreationService.new(list: list, user: user, params: multiple_date_params)
-      task = service.call
+      task = service.call!
 
       # Should use the first valid date (dueDate)
       expect(task.due_at).not_to be_nil

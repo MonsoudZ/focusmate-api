@@ -43,7 +43,7 @@ RSpec.describe Users::PasswordChangeService do
             password_confirmation: "newpassword456"
           )
         }.to raise_error(
-          Users::PasswordChangeService::Forbidden,
+          ApplicationError::Forbidden,
           "Password change not available for Apple Sign In accounts"
         )
       end
@@ -58,7 +58,7 @@ RSpec.describe Users::PasswordChangeService do
             password: "newpassword456",
             password_confirmation: "newpassword456"
           )
-        }.to raise_error(Users::PasswordChangeService::ValidationError, "Current password is incorrect")
+        }.to raise_error(ApplicationError::Validation, "Current password is incorrect")
       end
 
       it "includes field-specific error details" do
@@ -69,7 +69,7 @@ RSpec.describe Users::PasswordChangeService do
             password: "newpassword456",
             password_confirmation: "newpassword456"
           )
-        }.to raise_error(Users::PasswordChangeService::ValidationError) do |error|
+        }.to raise_error(ApplicationError::Validation) do |error|
           expect(error.details).to eq({ current_password: [ "is incorrect" ] })
         end
       end
@@ -82,7 +82,7 @@ RSpec.describe Users::PasswordChangeService do
             password: "newpassword456",
             password_confirmation: "newpassword456"
           )
-        }.to raise_error(Users::PasswordChangeService::ValidationError)
+        }.to raise_error(ApplicationError::Validation)
 
         expect(user.reload.valid_password?("password123")).to be true
       end
@@ -97,7 +97,7 @@ RSpec.describe Users::PasswordChangeService do
             password: "",
             password_confirmation: ""
           )
-        }.to raise_error(Users::PasswordChangeService::ValidationError, "Password is required")
+        }.to raise_error(ApplicationError::Validation, "Password is required")
       end
 
       it "includes field-specific error details" do
@@ -108,7 +108,7 @@ RSpec.describe Users::PasswordChangeService do
             password: "",
             password_confirmation: ""
           )
-        }.to raise_error(Users::PasswordChangeService::ValidationError) do |error|
+        }.to raise_error(ApplicationError::Validation) do |error|
           expect(error.details).to eq({ password: [ "can't be blank" ] })
         end
       end
@@ -123,7 +123,7 @@ RSpec.describe Users::PasswordChangeService do
             password: "short",
             password_confirmation: "short"
           )
-        }.to raise_error(Users::PasswordChangeService::ValidationError, "Password too short")
+        }.to raise_error(ApplicationError::Validation, "Password too short")
       end
 
       it "includes field-specific error details" do
@@ -134,7 +134,7 @@ RSpec.describe Users::PasswordChangeService do
             password: "short",
             password_confirmation: "short"
           )
-        }.to raise_error(Users::PasswordChangeService::ValidationError) do |error|
+        }.to raise_error(ApplicationError::Validation) do |error|
           expect(error.details).to eq({ password: [ "must be at least 8 characters" ] })
         end
       end
@@ -150,7 +150,7 @@ RSpec.describe Users::PasswordChangeService do
             password_confirmation: "mismatch789"
           )
         }.to raise_error(
-          Users::PasswordChangeService::ValidationError,
+          ApplicationError::Validation,
           "Password confirmation doesn't match"
         )
       end
@@ -163,7 +163,7 @@ RSpec.describe Users::PasswordChangeService do
             password: "newpassword456",
             password_confirmation: "mismatch789"
           )
-        }.to raise_error(Users::PasswordChangeService::ValidationError) do |error|
+        }.to raise_error(ApplicationError::Validation) do |error|
           expect(error.details).to eq({ password_confirmation: [ "doesn't match" ] })
         end
       end
@@ -176,7 +176,7 @@ RSpec.describe Users::PasswordChangeService do
             password: "newpassword456",
             password_confirmation: "mismatch789"
           )
-        }.to raise_error(Users::PasswordChangeService::ValidationError)
+        }.to raise_error(ApplicationError::Validation)
 
         expect(user.reload.valid_password?("password123")).to be true
       end

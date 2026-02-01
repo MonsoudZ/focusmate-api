@@ -1,8 +1,19 @@
 # frozen_string_literal: true
 
-class TaskCompletionService
-  class UnauthorizedError < StandardError; end
-  class MissingReasonError < StandardError; end
+# Service with multiple entry points - uses custom class methods
+# instead of the standard .call! from ApplicationService
+class TaskCompletionService < ApplicationService
+  def self.complete!(task:, user:, missed_reason: nil)
+    new(task:, user:, missed_reason:).complete!
+  end
+
+  def self.uncomplete!(task:, user:)
+    new(task:, user:).uncomplete!
+  end
+
+  def self.toggle!(task:, user:, completed:, missed_reason: nil)
+    new(task:, user:, missed_reason:).toggle_completion!(completed:)
+  end
 
   def initialize(task:, user:, missed_reason: nil)
     @task = task
@@ -27,8 +38,8 @@ class TaskCompletionService
       track_completion_analytics
     end
 
-    generate_next_recurring_instance
-    update_streak
+    enqueue_recurring_task_generation
+    enqueue_streak_update
 
     @task
   end
@@ -56,13 +67,13 @@ class TaskCompletionService
 
   def validate_access!
     return if can_access_task?
-    raise UnauthorizedError, "You do not have permission to modify this task"
+    raise ApplicationError::Forbidden.new("You do not have permission to modify this task", code: "task_completion_forbidden")
   end
 
   def validate_overdue_reason!
     return unless task_requires_reason?
     return if @missed_reason.present?
-    raise MissingReasonError, "This overdue task requires an explanation"
+    raise ApplicationError::UnprocessableEntity.new("This overdue task requires an explanation", code: "missing_reason")
   end
 
   def task_requires_reason?
@@ -101,18 +112,14 @@ class TaskCompletionService
     AnalyticsTracker.task_reopened(@task, @user)
   end
 
-  def generate_next_recurring_instance
+  def enqueue_recurring_task_generation
     return unless @task.template_id.present?
     return unless @task.template&.is_template && @task.template&.template_type == "recurring"
 
-    RecurringTaskService.new(@user).generate_next_instance(@task)
-  rescue StandardError => e
-    Rails.error.report(e, handled: true, context: { task_id: @task.id, user_id: @user.id })
+    RecurringTaskInstanceJob.perform_later(user_id: @user.id, task_id: @task.id)
   end
 
-  def update_streak
-    StreakService.new(@user).update_streak!
-  rescue StandardError => e
-    Rails.error.report(e, handled: true, context: { user_id: @user.id })
+  def enqueue_streak_update
+    StreakUpdateJob.perform_later(user_id: @user.id)
   end
 end

@@ -19,7 +19,7 @@ RSpec.describe TaskNudgeService do
       expect { service.call! }.to change(Nudge, :count).by(1)
     end
 
-    it "sends a push notification" do
+    it "sends a push notification immediately" do
       service = described_class.new(task: task, from_user: from_user)
       service.call!
 
@@ -43,7 +43,7 @@ RSpec.describe TaskNudgeService do
 
       expect {
         service.call!
-      }.to raise_error(TaskNudgeService::SelfNudge, "You cannot nudge yourself")
+      }.to raise_error(ApplicationError::UnprocessableEntity, "You cannot nudge yourself")
     end
 
     it "sends nudge to task creator" do

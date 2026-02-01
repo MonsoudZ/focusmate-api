@@ -35,7 +35,7 @@ module Api
       # POST /api/v1/lists
       def create
         authorize List
-        list = ListCreationService.new(user: current_user, params: list_params).create!
+        list = ListCreationService.call!(user: current_user, params: list_params)
         AnalyticsTracker.list_created(list, current_user)
         render json: { list: ListSerializer.new(list, current_user: current_user).as_json }, status: :created
       end
@@ -43,7 +43,7 @@ module Api
       # PATCH /api/v1/lists/:id
       def update
         authorize @list
-        ListUpdateService.new(list: @list, user: current_user).update!(attributes: list_params)
+        ListUpdateService.call!(list: @list, user: current_user, attributes: list_params)
         render json: { list: ListSerializer.new(@list, current_user: current_user).as_json }, status: :ok
       end
 
@@ -62,8 +62,7 @@ module Api
       end
 
       def list_params
-        container = params[:list].present? ? params.require(:list) : params
-        container.permit(:name, :description, :visibility, :color)
+        params.require(:list).permit(:name, :description, :visibility, :color)
       end
 
       def safe_parse_time(value)

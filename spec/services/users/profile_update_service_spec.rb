@@ -68,13 +68,13 @@ RSpec.describe Users::ProfileUpdateService do
       it "raises a ValidationError" do
         expect {
           described_class.call!(user: user, timezone: "Invalid/Timezone")
-        }.to raise_error(Users::ProfileUpdateService::ValidationError, "Invalid timezone")
+        }.to raise_error(ApplicationError::Validation, "Invalid timezone")
       end
 
       it "includes details with the timezone error" do
         expect {
           described_class.call!(user: user, timezone: "Not_A_Zone")
-        }.to raise_error(Users::ProfileUpdateService::ValidationError) do |error|
+        }.to raise_error(ApplicationError::Validation) do |error|
           expect(error.details).to eq({ timezone: [ "is not a valid timezone" ] })
         end
       end
@@ -82,7 +82,7 @@ RSpec.describe Users::ProfileUpdateService do
       it "does not update the user" do
         expect {
           described_class.call!(user: user, timezone: "Invalid/Timezone")
-        }.to raise_error(Users::ProfileUpdateService::ValidationError)
+        }.to raise_error(ApplicationError::Validation)
 
         expect(user.reload.timezone).to eq("America/New_York")
       end

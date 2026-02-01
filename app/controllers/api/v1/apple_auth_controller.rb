@@ -7,11 +7,10 @@ module Api
 
       def create
         id_token = params[:id_token]
-
         return render_error("id_token is required", status: :bad_request) if id_token.blank?
 
         begin
-          claims = Auth::AppleTokenDecoder.decode(id_token)
+          claims = ::Auth::AppleTokenDecoder.decode(id_token)
           return render_error("Invalid token", status: :unauthorized) unless claims
 
           apple_user_id = claims["sub"]
@@ -36,6 +35,7 @@ module Api
           end
 
         rescue StandardError => e
+          Rails.logger.error("[AppleAuth] Exception caught: #{e.class} - #{e.message}")
           Rails.error.report(e, handled: true, context: { action: "apple_sign_in" })
           render_error("Authentication failed", status: :unauthorized)
         end

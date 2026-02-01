@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class TaskCreationService
+class TaskCreationService < ApplicationService
   include TimeParsing
 
   def initialize(list:, user:, params:)
@@ -9,7 +9,7 @@ class TaskCreationService
     @params = normalize_params(params)
   end
 
-  def call
+  def call!
     task = nil
 
     ActiveRecord::Base.transaction do
@@ -88,18 +88,34 @@ class TaskCreationService
   end
 
   def create_subtasks(parent_task)
-    subtask_titles.each do |title|
-      next if title.blank?
+    valid_titles = subtask_titles.reject(&:blank?)
+    return if valid_titles.empty?
 
-      @list.tasks.create!(
+    now = Time.current
+
+    subtask_records = valid_titles.map do |title|
+      {
         title: title,
-        creator: @user,
-        parent_task: parent_task,
+        list_id: @list.id,
+        creator_id: @user.id,
+        parent_task_id: parent_task.id,
         due_at: parent_task.due_at,
         strict_mode: parent_task.strict_mode,
-        status: :pending
-      )
+        status: Task.statuses[:pending],
+        visibility: Task.visibilities[:visible_to_all],
+        priority: Task.priorities[:no_priority],
+        starred: false,
+        subtasks_count: 0,
+        created_at: now,
+        updated_at: now
+      }
     end
+
+    # Bulk insert all subtasks in a single query
+    Task.insert_all(subtask_records)
+
+    # Manually update counter cache since insert_all skips callbacks
+    Task.update_counters(parent_task.id, subtasks_count: valid_titles.size)
   end
 
   def track_analytics(task)

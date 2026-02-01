@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
-class TaskNudgeService
-  class Error < StandardError; end
-  class SelfNudge < Error; end
-
+class TaskNudgeService < ApplicationService
   def initialize(task:, from_user:)
     @task = task
     @from_user = from_user
@@ -12,11 +9,14 @@ class TaskNudgeService
   def call!
     to_user = @task.creator || @task.list.user
 
-    raise SelfNudge, "You cannot nudge yourself" if to_user.id == @from_user.id
+    if to_user.id == @from_user.id
+      raise ApplicationError::UnprocessableEntity.new("You cannot nudge yourself", code: "self_nudge")
+    end
 
     nudge = Nudge.new(task: @task, from_user: @from_user, to_user: to_user)
     nudge.save!
 
+    # Keep synchronous for immediate feedback (important for ADHD users)
     PushNotifications::Sender.send_nudge(
       from_user: @from_user,
       to_user: to_user,

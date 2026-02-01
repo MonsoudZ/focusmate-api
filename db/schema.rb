@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_30_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
 
   create_table "analytics_events", force: :cascade do |t|
     t.bigint "user_id", null: false
@@ -30,6 +31,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
     t.index ["task_id"], name: "index_analytics_events_on_task_id"
     t.index ["user_id", "event_type", "occurred_at"], name: "idx_analytics_user_event_time"
     t.index ["user_id"], name: "index_analytics_events_on_user_id"
+    t.check_constraint "event_type::text = ANY (ARRAY['task_created'::text, 'task_completed'::text, 'task_reopened'::text, 'task_deleted'::text, 'task_starred'::text, 'task_unstarred'::text, 'task_priority_changed'::text, 'task_edited'::text, 'list_created'::text, 'list_deleted'::text, 'list_shared'::text, 'app_opened'::text, 'session_started'::text])", name: "analytics_events_event_type_check"
   end
 
   create_table "devices", force: :cascade do |t|
@@ -104,7 +106,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
     t.datetime "updated_at", null: false
     t.index ["code"], name: "index_list_invites_on_code", unique: true
     t.index ["inviter_id"], name: "index_list_invites_on_inviter_id"
+    t.index ["list_id", "expires_at"], name: "index_list_invites_on_list_id_and_expires_at"
     t.index ["list_id"], name: "index_list_invites_on_list_id"
+    t.check_constraint "role::text = ANY (ARRAY['editor'::text, 'viewer'::text])", name: "list_invites_role_check"
   end
 
   create_table "lists", force: :cascade do |t|
@@ -136,6 +140,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
     t.boolean "can_add_items", default: true
     t.boolean "receive_overdue_alerts", default: true
     t.index ["list_id", "role"], name: "index_memberships_on_list_and_role"
+    t.index ["list_id", "user_id", "role"], name: "index_memberships_on_list_user_role"
     t.index ["list_id"], name: "index_memberships_on_list_id"
     t.index ["user_id", "list_id"], name: "index_memberships_on_user_id_and_list_id", unique: true
     t.index ["user_id"], name: "index_memberships_on_user_id"
@@ -196,6 +201,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
     t.index ["task_id", "created_at"], name: "index_task_events_on_task_created_at"
     t.index ["task_id", "kind"], name: "index_task_events_on_task_and_kind"
     t.index ["task_id"], name: "index_task_events_on_task_id"
+    t.index ["user_id", "created_at"], name: "index_task_events_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_task_events_on_user_id"
   end
 
@@ -257,6 +263,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
     t.integer "recurrence_count"
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
+    t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_not_deleted", where: "(deleted_at IS NULL)"
     t.index ["completed_at"], name: "index_tasks_on_completed_at"
     t.index ["creator_id", "completed_at"], name: "index_tasks_on_creator_completed_at"
     t.index ["creator_id", "status"], name: "index_tasks_on_creator_status"
@@ -264,10 +271,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
     t.index ["deleted_at"], name: "index_tasks_on_deleted_at"
     t.index ["due_at", "completed_at"], name: "index_tasks_on_due_at_and_completed_at"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_and_status"
+    t.index ["due_at", "status"], name: "index_tasks_on_due_at_pending", where: "((status = 0) AND (deleted_at IS NULL))"
     t.index ["instance_date"], name: "index_tasks_on_instance_date"
     t.index ["is_recurring"], name: "index_tasks_on_is_recurring"
     t.index ["is_template"], name: "index_tasks_on_is_template"
     t.index ["list_id", "deleted_at", "parent_task_id"], name: "index_tasks_on_list_deleted_parent"
+    t.index ["list_id", "deleted_at", "parent_task_id"], name: "index_tasks_on_list_deleted_parent_v2"
     t.index ["list_id", "deleted_at"], name: "index_tasks_on_list_and_deleted"
     t.index ["list_id", "parent_task_id"], name: "index_tasks_on_list_and_parent"
     t.index ["list_id", "position"], name: "index_tasks_on_list_id_and_position"
@@ -277,6 +286,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
     t.index ["list_id"], name: "index_tasks_on_list_id"
     t.index ["location_based"], name: "index_tasks_on_location_based"
     t.index ["missed_reason_reviewed_by_id"], name: "index_tasks_on_missed_reason_reviewed_by_id"
+    t.index ["note"], name: "index_tasks_on_note_trgm", opclass: :gin_trgm_ops, using: :gin
     t.index ["parent_task_id"], name: "index_tasks_on_parent_task_id"
     t.index ["priority"], name: "index_tasks_on_priority"
     t.index ["starred"], name: "index_tasks_on_starred"
@@ -284,6 +294,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_182011) do
     t.index ["status", "due_at"], name: "index_tasks_on_status_and_due_at"
     t.index ["template_id"], name: "index_tasks_on_template_id"
     t.index ["template_type"], name: "index_tasks_on_template_type"
+    t.index ["title"], name: "index_tasks_on_title_trgm", opclass: :gin_trgm_ops, using: :gin
     t.index ["visibility"], name: "index_tasks_on_visibility"
     t.check_constraint "location_latitude >= '-90'::integer::numeric AND location_latitude <= 90::numeric", name: "tasks_latitude_range"
     t.check_constraint "location_longitude >= '-180'::integer::numeric AND location_longitude <= 180::numeric", name: "tasks_longitude_range"

@@ -84,7 +84,7 @@ RSpec.describe Auth::TokenService do
         described_class.refresh(raw_refresh)
 
         # Attempt to reuse the same token
-        expect { described_class.refresh(raw_refresh) }.to raise_error(Auth::TokenService::TokenReused)
+        expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenReused)
       end
 
       it "revokes the entire family when reuse is detected" do
@@ -92,7 +92,7 @@ RSpec.describe Auth::TokenService do
         result = described_class.refresh(raw_refresh)
 
         # Reuse the old token — should revoke the whole family
-        expect { described_class.refresh(raw_refresh) }.to raise_error(Auth::TokenService::TokenReused)
+        expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenReused)
 
         new_digest = Digest::SHA256.hexdigest(result[:refresh_token])
         new_record = RefreshToken.find_by(token_digest: new_digest)
@@ -106,17 +106,17 @@ RSpec.describe Auth::TokenService do
         digest = Digest::SHA256.hexdigest(raw_refresh)
         RefreshToken.find_by(token_digest: digest).update!(expires_at: 1.hour.ago)
 
-        expect { described_class.refresh(raw_refresh) }.to raise_error(Auth::TokenService::TokenExpired)
+        expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenExpired)
       end
     end
 
     context "with invalid token" do
       it "raises TokenInvalid for a blank token" do
-        expect { described_class.refresh("") }.to raise_error(Auth::TokenService::TokenInvalid)
+        expect { described_class.refresh("") }.to raise_error(ApplicationError::TokenInvalid)
       end
 
       it "raises TokenInvalid for an unknown token" do
-        expect { described_class.refresh("nonexistent-token") }.to raise_error(Auth::TokenService::TokenInvalid)
+        expect { described_class.refresh("nonexistent-token") }.to raise_error(ApplicationError::TokenInvalid)
       end
     end
   end
