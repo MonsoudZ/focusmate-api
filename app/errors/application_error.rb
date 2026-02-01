@@ -106,4 +106,9 @@ class ApplicationError < StandardError
     def default_code = "token_reused"
     def default_message = "Token has already been used"
   end
+
+  class TokenAlreadyRefreshed < Unauthorized
+    def default_code = "token_already_refreshed"
+    def default_message = "Token was already refreshed"
+  end
 end

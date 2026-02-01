@@ -40,7 +40,7 @@ RSpec.describe "Auth Refresh", type: :request do
     end
 
     context "with a reused (already-rotated) refresh token" do
-      it "returns 401 and revokes the entire family" do
+      it "returns 401 within grace period but does NOT revoke family (race condition)" do
         # First rotation (valid)
         post "/api/v1/auth/refresh",
              params: { refresh_token: refresh_token }.to_json,
@@ -48,14 +48,38 @@ RSpec.describe "Auth Refresh", type: :request do
 
         new_refresh_token = json_response["refresh_token"]
 
-        # Replay the old token (reuse detection)
+        # Replay the old token within grace period (simulates parallel request race)
         post "/api/v1/auth/refresh",
              params: { refresh_token: refresh_token }.to_json,
              headers: { "Content-Type" => "application/json" }
 
         expect(response).to have_http_status(:unauthorized)
+        expect(json_response["error"]["code"]).to eq("token_already_refreshed")
 
-        # The new token from the first rotation should also be revoked
+        # The new token from the first rotation should NOT be revoked
+        new_digest = Digest::SHA256.hexdigest(new_refresh_token)
+        expect(RefreshToken.find_by(token_digest: new_digest)).not_to be_revoked
+      end
+
+      it "returns 401 and revokes entire family after grace period (real attack)" do
+        # First rotation (valid)
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: refresh_token }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        new_refresh_token = json_response["refresh_token"]
+
+        # Replay the old token after grace period (real reuse attack)
+        travel 15.seconds do
+          post "/api/v1/auth/refresh",
+               params: { refresh_token: refresh_token }.to_json,
+               headers: { "Content-Type" => "application/json" }
+
+          expect(response).to have_http_status(:unauthorized)
+          expect(json_response["error"]["code"]).to eq("token_reused")
+        end
+
+        # The new token from the first rotation should be revoked
         new_digest = Digest::SHA256.hexdigest(new_refresh_token)
         expect(RefreshToken.find_by(token_digest: new_digest)).to be_revoked
       end

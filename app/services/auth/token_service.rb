@@ -30,9 +30,19 @@ module Auth
 
         raise ApplicationError::TokenInvalid, "Invalid refresh token" unless record
 
-        # Reuse detection: if the token was already revoked, someone is replaying it.
-        # Revoke the entire family to protect the user.
+        # Reuse detection: if the token was already revoked, someone may be replaying it.
+        # However, check for race conditions first - parallel requests can cause
+        # multiple refresh attempts with the same token.
         if record.revoked?
+          # Grace period: if token was rotated within last 10 seconds, this is likely
+          # a race condition (parallel 401s triggering multiple refreshes), not an attack.
+          # Don't revoke the family - the first refresh's tokens should remain valid.
+          if record.revoked_at > 10.seconds.ago
+            raise ApplicationError::TokenAlreadyRefreshed, "Token was already refreshed"
+          end
+
+          # Token was revoked more than 10 seconds ago - this is a real reuse attack.
+          # Revoke the entire family to protect the user.
           revoke_family(record.family)
           raise ApplicationError::TokenReused, "Refresh token reuse detected"
         end

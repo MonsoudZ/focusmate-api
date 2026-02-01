@@ -79,24 +79,53 @@ RSpec.describe Auth::TokenService do
     end
 
     context "reuse detection" do
-      it "raises TokenReused when a revoked token is presented" do
-        # Use the token once (valid rotation)
-        described_class.refresh(raw_refresh)
+      context "within grace period (race condition)" do
+        it "raises TokenAlreadyRefreshed when token was just rotated" do
+          # Use the token once (valid rotation)
+          described_class.refresh(raw_refresh)
 
-        # Attempt to reuse the same token
-        expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenReused)
+          # Attempt to reuse within grace period (simulating parallel request race)
+          expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenAlreadyRefreshed)
+        end
+
+        it "does NOT revoke the family during grace period" do
+          # Rotate the token
+          result = described_class.refresh(raw_refresh)
+
+          # Reuse within grace period - should NOT revoke family
+          expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenAlreadyRefreshed)
+
+          # The new token should still be valid (not revoked)
+          new_digest = Digest::SHA256.hexdigest(result[:refresh_token])
+          new_record = RefreshToken.find_by(token_digest: new_digest)
+          expect(new_record).not_to be_revoked
+        end
       end
 
-      it "revokes the entire family when reuse is detected" do
-        # Rotate the token
-        result = described_class.refresh(raw_refresh)
+      context "after grace period (real reuse attack)" do
+        it "raises TokenReused when a revoked token is presented after grace period" do
+          # Use the token once (valid rotation)
+          described_class.refresh(raw_refresh)
 
-        # Reuse the old token — should revoke the whole family
-        expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenReused)
+          # Simulate time passing beyond grace period
+          travel 15.seconds do
+            expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenReused)
+          end
+        end
 
-        new_digest = Digest::SHA256.hexdigest(result[:refresh_token])
-        new_record = RefreshToken.find_by(token_digest: new_digest)
-        expect(new_record).to be_revoked
+        it "revokes the entire family when reuse is detected after grace period" do
+          # Rotate the token
+          result = described_class.refresh(raw_refresh)
+
+          # Reuse after grace period — should revoke the whole family
+          travel 15.seconds do
+            expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenReused)
+          end
+
+          new_digest = Digest::SHA256.hexdigest(result[:refresh_token])
+          new_record = RefreshToken.find_by(token_digest: new_digest)
+          expect(new_record).to be_revoked
+        end
       end
     end
 
