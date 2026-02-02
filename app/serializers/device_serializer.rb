@@ -14,9 +14,9 @@ class DeviceSerializer
       os_version: @device.os_version,
       app_version: @device.app_version,
       active: @device.active,
-      last_seen_at: @device.last_seen_at&.iso8601,
-      created_at: @device.created_at&.iso8601,
-      updated_at: @device.updated_at&.iso8601
+      last_seen_at: @device.last_seen_at,
+      created_at: @device.created_at,
+      updated_at: @device.updated_at
     }
   end
 end

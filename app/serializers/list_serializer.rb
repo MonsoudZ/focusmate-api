@@ -22,8 +22,8 @@ class ListSerializer
       completed_tasks_count: completed_tasks_count,
       overdue_tasks_count: overdue_tasks_count,
       members: serialize_members,
-      created_at: list.created_at.iso8601,
-      updated_at: list.updated_at.iso8601
+      created_at: list.created_at,
+      updated_at: list.updated_at
     }.tap do |hash|
       if options[:include_tasks]
         hash[:tasks] = list.tasks.includes(:tags, :creator, :subtasks, list: :user).map do |task|

@@ -17,7 +17,7 @@ class TaskSerializer
       color: task.color,
       title: task.title,
       note: task.note,
-      due_at: task.due_at&.iso8601,
+      due_at: task.due_at,
       completed_at: completed_at_value,
       priority: Task.priorities[task.priority],
       starred: task.starred,
@@ -29,7 +29,7 @@ class TaskSerializer
       minutes_overdue: minutes_overdue,
       requires_explanation_if_missed: task.requires_explanation_if_missed || false,
       missed_reason: task.missed_reason,
-      missed_reason_submitted_at: task.missed_reason_submitted_at&.iso8601,
+      missed_reason_submitted_at: task.missed_reason_submitted_at,
 
       # Recurring
       is_recurring: task.is_recurring || false,
@@ -37,7 +37,7 @@ class TaskSerializer
       recurrence_interval: task.recurrence_interval || 1,
       recurrence_days: task.recurrence_days,
       template_id: task.template_id,
-      instance_date: task.instance_date&.iso8601,
+      instance_date: task.instance_date,
       instance_number: task.instance_number,
 
       # Location
@@ -64,8 +64,8 @@ class TaskSerializer
       subtask_completion_percentage: subtask_percentage,
 
       # Timestamps
-      created_at: task.created_at.iso8601,
-      updated_at: task.updated_at.iso8601
+      created_at: task.created_at,
+      updated_at: task.updated_at
     }
 
     # Include subtasks array if this is a parent task (not a subtask itself)
@@ -142,16 +142,16 @@ class TaskSerializer
         title: subtask.title,
         note: subtask.note,
         status: subtask.status,
-        completed_at: subtask.status == "done" ? (subtask.completed_at&.iso8601 || subtask.updated_at.iso8601) : nil,
+        completed_at: subtask.status == "done" ? (subtask.completed_at || subtask.updated_at) : nil,
         position: subtask.position,
-        created_at: subtask.created_at.iso8601
+        created_at: subtask.created_at
       }
     end
   end
 
   def completed_at_value
     if task.status == "done"
-      task.completed_at&.iso8601 || task.updated_at.iso8601
+      task.completed_at || task.updated_at
     end
   end
 

@@ -11,7 +11,7 @@ class TagSerializer
       name: @tag.name,
       color: @tag.color,
       tasks_count: @tag.tasks_count,
-      created_at: @tag.created_at.iso8601
+      created_at: @tag.created_at
     }
   end
 end
