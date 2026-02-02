@@ -29,6 +29,12 @@ class TaskCompletionService < ApplicationService
     @minutes_overdue = calculate_minutes_overdue
 
     ActiveRecord::Base.transaction do
+      # Lock task to prevent concurrent completion/modification
+      @task.lock!
+
+      # Skip if already completed (race condition)
+      return @task if @task.done?
+
       if @missed_reason.present?
         @task.missed_reason = @missed_reason
         @task.missed_reason_submitted_at = Time.current

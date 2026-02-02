@@ -52,10 +52,10 @@ RSpec.describe "Api::V1::Memberships", type: :request do
     end
 
     context "as non-member" do
-      it "returns 403 forbidden" do
+      it "returns 404 (no info leakage)" do
         auth_get "/api/v1/lists/#{list.id}/memberships", user: other_user
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
 
@@ -168,7 +168,7 @@ RSpec.describe "Api::V1::Memberships", type: :request do
     context "as list member (non-owner)" do
       let!(:membership) { create(:membership, list: list, user: member, role: "editor") }
 
-      it "returns 403 forbidden" do
+      it "returns 403 forbidden (only owner can manage)" do
         auth_post "/api/v1/lists/#{list.id}/memberships",
                   user: member,
                   params: { membership: { user_identifier: new_member.email, role: "editor" } }
@@ -178,12 +178,12 @@ RSpec.describe "Api::V1::Memberships", type: :request do
     end
 
     context "as non-member" do
-      it "returns 403 forbidden" do
+      it "returns 404 (no info leakage)" do
         auth_post "/api/v1/lists/#{list.id}/memberships",
                   user: other_user,
                   params: { membership: { user_identifier: new_member.email, role: "editor" } }
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end
@@ -258,12 +258,12 @@ RSpec.describe "Api::V1::Memberships", type: :request do
     context "as non-member" do
       let(:outsider) { create(:user) }
 
-      it "returns 403 forbidden" do
+      it "returns 404 (no info leakage)" do
         auth_patch "/api/v1/lists/#{list.id}/memberships/#{membership.id}",
                    user: outsider,
                    params: { membership: { role: "editor" } }
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end
@@ -284,7 +284,7 @@ RSpec.describe "Api::V1::Memberships", type: :request do
         auth_delete "/api/v1/lists/#{list.id}/memberships/#{membership.id}", user: owner
 
         auth_get "/api/v1/lists/#{list.id}", user: member
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
 
       it "returns 404 for non-existent membership" do
@@ -317,10 +317,10 @@ RSpec.describe "Api::V1::Memberships", type: :request do
     context "as non-member" do
       let(:outsider) { create(:user) }
 
-      it "returns 403 forbidden" do
+      it "returns 404 (no info leakage)" do
         auth_delete "/api/v1/lists/#{list.id}/memberships/#{membership.id}", user: outsider
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end

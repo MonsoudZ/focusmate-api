@@ -16,6 +16,7 @@ module Api
         memberships = policy_scope(@list.memberships)
                         .includes(:user)
                         .order(created_at: :asc)
+                        .limit(100)
 
         render json: {
           memberships: memberships.map { |m| MembershipSerializer.new(m).as_json }
@@ -64,7 +65,7 @@ module Api
       private
 
       def set_list
-        @list = List.find(params[:list_id])
+        @list = policy_scope(List).find(params[:list_id])
       end
 
       def set_membership

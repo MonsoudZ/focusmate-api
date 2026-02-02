@@ -128,8 +128,11 @@ module Api
           return render_error("Search query too long (max 255 characters)", status: :bad_request, code: "query_too_long")
         end
 
+        # Escape LIKE special characters to prevent unexpected matching
+        escaped_query = Task.sanitize_sql_like(query)
+
         tasks = policy_scope(Task)
-                  .where("title ILIKE :q OR note ILIKE :q", q: "%#{query}%")
+                  .where("title ILIKE :q OR note ILIKE :q", q: "%#{escaped_query}%")
                   .where(parent_task_id: nil)
                   .not_deleted
                   .includes(:tags, :creator, :subtasks, list: :user)

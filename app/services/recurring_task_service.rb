@@ -109,7 +109,7 @@ class RecurringTaskService
   end
 
   def find_next_weekday(from_date, allowed_days, interval = 1)
-    return from_date + 7.days if allowed_days.empty?
+    return from_date + interval.weeks if allowed_days.empty?
 
     # Max days needed: interval weeks * 7 days (typically 7-14)
     max_days = interval * 7
@@ -124,7 +124,7 @@ class RecurringTaskService
     end
 
     # Fallback (shouldn't reach here with valid input)
-    from_date + 7.days
+    from_date + interval.weeks
   end
 
   def recurrence_ended?(template, last_instance)
