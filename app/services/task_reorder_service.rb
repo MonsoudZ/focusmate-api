@@ -9,6 +9,8 @@ class TaskReorderService < ApplicationService
   def call!
     return if @task_positions.empty?
 
+    validate_positions!
+
     task_ids = @task_positions.map { |entry| entry[:id] }
 
     # Load all tasks in single query
@@ -21,6 +23,20 @@ class TaskReorderService < ApplicationService
     ActiveRecord::Base.transaction do
       @task_positions.each do |entry|
         tasks[entry[:id]].update_column(:position, entry[:position])
+      end
+    end
+  end
+
+  private
+
+  def validate_positions!
+    @task_positions.each do |entry|
+      position = entry[:position]
+      unless position.is_a?(Integer) && position >= 0
+        raise ApplicationError::BadRequest.new(
+          "Invalid position value: must be a non-negative integer",
+          code: "invalid_position"
+        )
       end
     end
   end

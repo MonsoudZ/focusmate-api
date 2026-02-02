@@ -68,6 +68,11 @@ class Rack::Attack
     req.ip if req.post? && req.path == "/api/v1/auth/refresh"
   end
 
+  # Public invite preview — 20 req/min per IP (prevent invite code enumeration)
+  Rack::Attack.throttle("invite_preview/ip", limit: 20, period: 1.minute) do |req|
+    req.ip if req.get? && req.path.match?(%r{^/api/v1/invites/[A-Za-z0-9]+$})
+  end
+
   # ---------------------------------------------------------------------------
   # Per-user throttles (authenticated requests)
   # ---------------------------------------------------------------------------

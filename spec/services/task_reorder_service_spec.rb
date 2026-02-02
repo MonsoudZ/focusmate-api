@@ -45,5 +45,29 @@ RSpec.describe TaskReorderService do
         described_class.call!(list: list, task_positions: [ { id: other_task.id, position: 0 } ])
       }.to raise_error(ActiveRecord::RecordNotFound)
     end
+
+    it "raises BadRequest for negative positions" do
+      task = create(:task, list: list, creator: user, position: 0)
+
+      expect {
+        described_class.call!(list: list, task_positions: [ { id: task.id, position: -1 } ])
+      }.to raise_error(ApplicationError::BadRequest, /Invalid position value/)
+    end
+
+    it "raises BadRequest for non-integer positions" do
+      task = create(:task, list: list, creator: user, position: 0)
+
+      expect {
+        described_class.call!(list: list, task_positions: [ { id: task.id, position: "abc" } ])
+      }.to raise_error(ApplicationError::BadRequest, /Invalid position value/)
+    end
+
+    it "accepts zero as a valid position" do
+      task = create(:task, list: list, creator: user, position: 5)
+
+      described_class.call!(list: list, task_positions: [ { id: task.id, position: 0 } ])
+
+      expect(task.reload.position).to eq(0)
+    end
   end
 end
