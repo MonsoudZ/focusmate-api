@@ -2,9 +2,11 @@
   <div class="card error-card">
     <div class="error-icon">:(</div>
     <p class="error-message"><%= @error %></p>
-    <a href="<%= @app_store_url %>" class="btn btn-primary" style="margin-top: 24px;">
-      Get the App
-    </a>
+    <% if @app_store_url.present? %>
+      <a href="<%= @app_store_url %>" class="btn btn-primary" style="margin-top: 24px;">
+        Get the App
+      </a>
+    <% end %>
   </div>
 <% else %>
   <div class="card">
@@ -41,9 +43,11 @@
       Open in App
     </a>
 
-    <a href="<%= @app_store_url %>" class="btn btn-secondary">
-      Don't have the app? Download it
-    </a>
+    <% if @app_store_url.present? %>
+      <a href="<%= @app_store_url %>" class="btn btn-secondary">
+        Don't have the app? Download it
+      </a>
+    <% end %>
 
     <div class="steps">
       <div class="step">

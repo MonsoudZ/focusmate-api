@@ -15,7 +15,10 @@ class InvitesController < ActionController::Base
       @error = "This invite link has reached its usage limit"
     end
 
-    @app_store_url = ENV.fetch("APP_STORE_URL", "https://apps.apple.com/app/focusmate")
-    @universal_link = "#{ENV.fetch('APP_URL', 'https://focusmate.app')}/invite/#{params[:code]}"
+    @app_store_url = ENV["APP_STORE_URL"]
+    # UNIVERSAL_LINK_DOMAIN is for iOS/Android deep links (requires apple-app-site-association)
+    # Falls back to APP_URL if not set
+    universal_domain = ENV["UNIVERSAL_LINK_DOMAIN"] || ENV.fetch("APP_URL", "https://focusmate.app")
+    @universal_link = "#{universal_domain}/invite/#{params[:code]}"
   end
 end
