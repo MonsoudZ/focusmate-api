@@ -53,30 +53,42 @@ class ListSerializer
     list.tasks.where(deleted_at: nil, parent_task_id: nil)
   end
 
+  # Memoized task counts - single query for both completed and overdue
+  def task_counts
+    @task_counts ||= if list.tasks.loaded?
+                       compute_counts_from_loaded_tasks
+                     else
+                       fetch_counts_from_db
+                     end
+  end
+
   def completed_tasks_count
-    if list.tasks.loaded?
-      list.tasks.reject(&:deleted?).count { |t| t.parent_task_id.nil? && t.status == "done" }
-    else
-      base_tasks_scope.where(status: "done").count
-    end
+    task_counts[:completed]
   end
 
   def overdue_tasks_count
-    if list.tasks.loaded?
-      now = Time.current
-      list.tasks.reject(&:deleted?).count do |t|
-        t.parent_task_id.nil? &&
-          t.due_at.present? &&
-          t.due_at < now &&
-          t.status != "done"
-      end
-    else
-      base_tasks_scope
-        .where.not(due_at: nil)
-        .where("due_at < ?", Time.current)
-        .where.not(status: "done")
-        .count
-    end
+    task_counts[:overdue]
+  end
+
+  def compute_counts_from_loaded_tasks
+    now = Time.current
+    parent_tasks = list.tasks.reject { |t| t.deleted_at.present? || t.parent_task_id.present? }
+
+    completed = parent_tasks.count { |t| t.status == "done" }
+    overdue = parent_tasks.count { |t| t.due_at.present? && t.due_at < now && t.status != "done" }
+
+    { completed: completed, overdue: overdue }
+  end
+
+  def fetch_counts_from_db
+    done_status = Task.statuses[:done]
+
+    result = base_tasks_scope.pick(
+      Arel.sql("COUNT(CASE WHEN status = #{done_status} THEN 1 END)"),
+      Arel.sql("COUNT(CASE WHEN due_at IS NOT NULL AND due_at < NOW() AND status != #{done_status} THEN 1 END)")
+    )
+
+    { completed: result[0].to_i, overdue: result[1].to_i }
   end
 
   def serialize_members
