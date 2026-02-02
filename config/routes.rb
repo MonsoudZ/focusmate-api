@@ -78,6 +78,11 @@ Rails.application.routes.draw do
   get "invite/:code", to: "invites#show", as: :invite_page
 
   # ----------------------------
+  # Apple App Site Association (Universal Links)
+  # ----------------------------
+  get ".well-known/apple-app-site-association", to: "well_known#apple_app_site_association"
+
+  # ----------------------------
   # Health
   # ----------------------------
   namespace :health do
