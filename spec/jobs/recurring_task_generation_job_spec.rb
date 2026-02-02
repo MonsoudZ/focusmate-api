@@ -10,7 +10,13 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
     it "returns generated and error counts" do
       result = described_class.new.perform
 
-      expect(result).to eq({ generated: 0, errors: 0 })
+      expect(result).to eq({
+        generated: 0,
+        errors: 0,
+        skipped_deleted_list: 0,
+        skipped_pending_instance: 0,
+        skipped_no_instances: 0
+      })
     end
 
     it "generates next instance when no pending instance exists" do
@@ -43,6 +49,7 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
       result = described_class.new.perform
 
       expect(result[:generated]).to eq(0)
+      expect(result[:skipped_pending_instance]).to eq(1)
     end
 
     it "skips templates whose list is deleted" do
@@ -56,11 +63,10 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
       recurring[:instance].update!(status: "done", completed_at: Time.current)
       list.update_column(:deleted_at, Time.current)
 
-      # The list's default scope excludes soft-deleted records, so template.list
-      # returns nil. The job should handle this gracefully (counted as error).
       result = described_class.new.perform
 
       expect(result[:generated]).to eq(0)
+      expect(result[:skipped_deleted_list]).to eq(1)
     end
 
     it "skips templates with no completed instances" do
@@ -83,6 +89,7 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
       result = described_class.new.perform
 
       expect(result[:generated]).to eq(0)
+      expect(result[:skipped_no_instances]).to eq(1)
     end
 
     it "handles errors gracefully and continues processing" do

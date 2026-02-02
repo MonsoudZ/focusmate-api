@@ -30,19 +30,6 @@ class JwtCleanupJob < ApplicationJob
       remaining_refresh_tokens: RefreshToken.count
     )
 
-    # Track in Sentry for observability
-    Sentry.capture_message(
-      "JWT cleanup completed",
-      level: :info,
-      extra: {
-        expired_tokens_removed: expired_count,
-        expired_refresh_tokens_removed: expired_refresh_count,
-        stale_revoked_refresh_tokens_removed: stale_revoked_count,
-        remaining_tokens: JwtDenylist.count,
-        remaining_refresh_tokens: RefreshToken.count
-      }
-    ) if total_cleaned > 1000 # Only alert if significant cleanup
-
     total_cleaned
   end
 end

@@ -13,6 +13,9 @@ class RecurringTaskGenerationJob < ApplicationJob
   def perform
     generated_count = 0
     error_count = 0
+    skipped_deleted_list = 0
+    skipped_pending_instance = 0
+    skipped_no_instances = 0
 
     # Find all recurring templates
     templates = Task
@@ -22,7 +25,10 @@ class RecurringTaskGenerationJob < ApplicationJob
 
     templates.find_each do |template|
       # Skip if template's list is deleted or missing (soft-deleted)
-      next if template.list.nil? || template.list.deleted?
+      if template.list.nil? || template.list.deleted?
+        skipped_deleted_list += 1
+        next
+      end
 
       # Single query: get most recent instance (any status)
       # This replaces two separate queries (pending + completed)
@@ -32,10 +38,16 @@ class RecurringTaskGenerationJob < ApplicationJob
                                 .first
 
       # Skip if there's a pending instance (not yet completed)
-      next if latest_instance && latest_instance.status != "done"
+      if latest_instance && latest_instance.status != "done"
+        skipped_pending_instance += 1
+        next
+      end
 
-      # Generate next instance if last one was completed (or no instances exist yet)
-      next unless latest_instance # Skip templates with no instances yet
+      # Skip templates with no instances yet
+      unless latest_instance
+        skipped_no_instances += 1
+        next
+      end
 
       begin
         service = RecurringTaskService.new(template.creator)
@@ -55,10 +67,19 @@ class RecurringTaskGenerationJob < ApplicationJob
     Rails.logger.info(
       event: "recurring_task_generation_completed",
       templates_checked: templates.count,
+      skipped_deleted_list: skipped_deleted_list,
+      skipped_pending_instance: skipped_pending_instance,
+      skipped_no_instances: skipped_no_instances,
       tasks_generated: generated_count,
       errors: error_count
     )
 
-    { generated: generated_count, errors: error_count }
+    {
+      generated: generated_count,
+      errors: error_count,
+      skipped_deleted_list: skipped_deleted_list,
+      skipped_pending_instance: skipped_pending_instance,
+      skipped_no_instances: skipped_no_instances
+    }
   end
 end
