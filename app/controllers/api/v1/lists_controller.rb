@@ -58,7 +58,7 @@ module Api
       private
 
       def set_list
-        @list = List.find(params[:id])
+        @list = policy_scope(List).find(params[:id])
       end
 
       def list_params

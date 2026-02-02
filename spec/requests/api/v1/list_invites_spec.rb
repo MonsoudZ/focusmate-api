@@ -17,12 +17,12 @@ RSpec.describe "Api::V1::ListInvites", type: :request do
       expect(json_response["invites"].length).to eq(3)
     end
 
-    it "returns 403 for non-owner" do
+    it "returns 404 for non-owner (no info leakage)" do
       other_user = create(:user)
 
       get "/api/v1/lists/#{list.id}/invites", headers: auth_headers(other_user)
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:not_found)
     end
   end
 

@@ -55,7 +55,7 @@ module Api
       private
 
       def set_list
-        @list = List.find(params[:list_id])
+        @list = policy_scope(List).find(params[:list_id])
       end
 
       def set_invite
