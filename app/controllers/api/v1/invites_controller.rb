@@ -13,8 +13,6 @@ module Api
         render json: {
           invite: ListInviteSerializer.new(invite).as_preview_json
         }, status: :ok
-      rescue ActiveRecord::RecordNotFound
-        render json: { error: { message: "Invite not found" } }, status: :not_found
       end
 
       # POST /api/v1/invites/:code/accept
@@ -23,15 +21,15 @@ module Api
 
         unless invite.usable?
           message = invite.expired? ? "This invite has expired" : "This invite has reached its usage limit"
-          return render json: { error: { message: message } }, status: :gone
+          return render_error(message, status: :gone, code: "invite_unusable")
         end
 
         if invite.list.user_id == current_user.id
-          return render json: { error: { message: "You are the owner of this list" } }, status: :unprocessable_entity
+          return render_error("You are the owner of this list", status: :unprocessable_entity, code: "already_owner")
         end
 
         if invite.list.memberships.exists?(user_id: current_user.id)
-          return render json: { error: { message: "You are already a member of this list" } }, status: :conflict
+          return render_error("You are already a member of this list", status: :conflict, code: "already_member")
         end
 
         ActiveRecord::Base.transaction do
@@ -50,8 +48,6 @@ module Api
           message: "Successfully joined list",
           list: ListSerializer.new(invite.list, current_user: current_user).as_json
         }, status: :ok
-      rescue ActiveRecord::RecordNotFound
-        render json: { error: { message: "Invite not found" } }, status: :not_found
       end
     end
   end

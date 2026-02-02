@@ -28,7 +28,7 @@ module Api
         friend = User.find(params[:id])
 
         unless Friendship.friends?(current_user, friend)
-          return render json: { error: { message: "Not friends with this user" } }, status: :not_found
+          return render_error("Not friends with this user", status: :not_found, code: "not_friends")
         end
 
         Friendship.destroy_mutual!(current_user, friend)

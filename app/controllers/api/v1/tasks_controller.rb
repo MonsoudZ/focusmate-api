@@ -41,7 +41,7 @@ module Api
       # POST /api/v1/lists/:list_id/tasks
       def create
         if empty_json_body?
-          return render json: { error: { message: "Bad Request" } }, status: :bad_request
+          return render_error("Bad Request", status: :bad_request, code: "empty_body")
         end
 
         @list ||= current_user.owned_lists.first
@@ -125,7 +125,7 @@ module Api
 
         if query.length > 255
           skip_policy_scope
-          return render json: { error: { message: "Search query too long (max 255 characters)" } }, status: :bad_request
+          return render_error("Search query too long (max 255 characters)", status: :bad_request, code: "query_too_long")
         end
 
         tasks = policy_scope(Task)
@@ -148,7 +148,7 @@ module Api
         if list_id.present?
           @list = List.find(list_id)
           unless @list.accessible_by?(current_user)
-            render json: { error: { message: "Forbidden" } }, status: :forbidden
+            render_error("Forbidden", status: :forbidden, code: "not_authorized")
           end
         end
       end
