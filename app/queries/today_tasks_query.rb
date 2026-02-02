@@ -134,11 +134,20 @@ class TodayTasksQuery
   def base_scope
     Task
       .joins(:list)
-      .where(lists: { user_id: user.id, deleted_at: nil })
+      .where(list_id: accessible_list_ids)
+      .where(lists: { deleted_at: nil })
       .where(parent_task_id: nil)
       .where(is_template: [ false, nil ])
       .where(deleted_at: nil)
       .includes(:tags, :creator, :subtasks, list: :user)
+  end
+
+  def accessible_list_ids
+    @accessible_list_ids ||= List
+      .left_joins(:memberships)
+      .where("lists.user_id = :uid OR memberships.user_id = :uid", uid: user.id)
+      .where(deleted_at: nil)
+      .select(:id)
   end
 
   def beginning_of_today

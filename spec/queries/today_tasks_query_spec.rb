@@ -144,9 +144,18 @@ RSpec.describe TodayTasksQuery do
     let(:other_list) { create(:list, user: other_user) }
     let!(:other_task) { create(:task, list: other_list, creator: other_user, due_at: Time.current) }
 
-    it "only returns tasks from user's lists" do
+    it "excludes tasks from lists user has no access to" do
       query = described_class.new(user)
       expect(query.due_today).not_to include(other_task)
+    end
+
+    it "includes tasks from shared lists where user is a member" do
+      shared_list = create(:list, user: other_user)
+      create(:membership, list: shared_list, user: user, role: "editor")
+      shared_task = create(:task, list: shared_list, creator: other_user, due_at: Time.current)
+
+      query = described_class.new(user)
+      expect(query.due_today).to include(shared_task)
     end
 
     it "excludes subtasks" do
