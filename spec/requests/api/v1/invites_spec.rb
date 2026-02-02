@@ -112,6 +112,42 @@ RSpec.describe "Api::V1::Invites", type: :request do
 
       expect(response).to have_http_status(:unauthorized)
     end
+
+    it "atomically increments uses_count when invite is usable" do
+      multi_use_invite = create(:list_invite, list: list, inviter: owner, max_uses: 5, uses_count: 2)
+
+      post "/api/v1/invites/#{multi_use_invite.code}/accept", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(multi_use_invite.reload.uses_count).to eq(3)
+    end
+
+    it "atomic update respects max_uses constraint" do
+      # Verify the atomic SQL correctly checks max_uses
+      # This tests the core of the race condition prevention
+      invite_at_limit = create(:list_invite, list: list, inviter: owner, max_uses: 5, uses_count: 5)
+
+      # The atomic update should return 0 rows because uses_count is already at max
+      rows_updated = ListInvite
+        .where(id: invite_at_limit.id)
+        .where("max_uses IS NULL OR uses_count < max_uses")
+        .update_all("uses_count = uses_count + 1")
+
+      expect(rows_updated).to eq(0)
+      expect(invite_at_limit.reload.uses_count).to eq(5) # unchanged
+    end
+
+    it "atomic update respects expiration constraint" do
+      expired_invite = create(:list_invite, :expired, list: list, inviter: owner)
+
+      rows_updated = ListInvite
+        .where(id: expired_invite.id)
+        .where("max_uses IS NULL OR uses_count < max_uses")
+        .where("expires_at IS NULL OR expires_at > ?", Time.current)
+        .update_all("uses_count = uses_count + 1")
+
+      expect(rows_updated).to eq(0)
+    end
   end
 
   def json_response

@@ -33,7 +33,7 @@ RSpec.describe TaskAssignmentService do
     it "raises InvalidAssignee when user does not exist" do
       expect {
         service.assign!(assigned_to_id: 99999)
-      }.to raise_error(ApplicationError::UnprocessableEntity, "User cannot be assigned to this task")
+      }.to raise_error(ApplicationError::UnprocessableEntity, "User not found")
     end
 
     it "raises InvalidAssignee when user has no access to the list" do
@@ -47,6 +47,31 @@ RSpec.describe TaskAssignmentService do
     it "returns the task" do
       result = service.assign!(assigned_to_id: user.id)
       expect(result).to eq(task)
+    end
+
+    it "uses pessimistic locking to prevent race conditions" do
+      assignee = create(:user)
+      create(:membership, list: list, user: assignee, role: "editor")
+
+      # Verify that lock! is called on the list during assignment
+      expect_any_instance_of(List).to receive(:lock!).and_call_original
+
+      service.assign!(assigned_to_id: assignee.id)
+    end
+
+    it "re-checks access after acquiring lock" do
+      assignee = create(:user)
+      membership = create(:membership, list: list, user: assignee, role: "editor")
+
+      # Simulate membership being deleted after lock is acquired
+      allow(list).to receive(:lock!).and_wrap_original do |method|
+        method.call
+        membership.destroy!
+      end
+
+      expect {
+        service.assign!(assigned_to_id: assignee.id)
+      }.to raise_error(ApplicationError::UnprocessableEntity, "User cannot be assigned to this task")
     end
   end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_01_191528) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_02_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -109,6 +109,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_01_191528) do
     t.index ["list_id", "expires_at"], name: "index_list_invites_on_list_id_and_expires_at"
     t.index ["list_id"], name: "index_list_invites_on_list_id"
     t.check_constraint "role::text = ANY (ARRAY['editor'::text, 'viewer'::text])", name: "list_invites_role_check"
+    t.check_constraint "uses_count >= 0 AND (max_uses IS NULL OR uses_count <= max_uses)", name: "list_invites_uses_count_valid"
   end
 
   create_table "lists", force: :cascade do |t|

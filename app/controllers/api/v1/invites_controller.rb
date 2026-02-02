@@ -17,8 +17,9 @@ module Api
 
       # POST /api/v1/invites/:code/accept
       def accept
-        invite = ListInvite.includes(:list).find_by!(code: params[:code].upcase)
+        invite = ListInvite.includes(:list, :inviter).find_by!(code: params[:code].upcase)
 
+        # Quick pre-checks for better error messages
         unless invite.usable?
           message = invite.expired? ? "This invite has expired" : "This invite has reached its usage limit"
           return render_error(message, status: :gone, code: "invite_unusable")
@@ -33,8 +34,23 @@ module Api
         end
 
         ActiveRecord::Base.transaction do
+          # Atomic increment that only succeeds if invite is still usable
+          # This prevents race conditions without explicit locking
+          rows_updated = ListInvite
+            .where(id: invite.id)
+            .where("max_uses IS NULL OR uses_count < max_uses")
+            .where("expires_at IS NULL OR expires_at > ?", Time.current)
+            .update_all("uses_count = uses_count + 1")
+
+          if rows_updated == 0
+            invite.reload
+            raise ApplicationError::Gone.new(
+              invite.expired? ? "This invite has expired" : "This invite has reached its usage limit",
+              code: "invite_unusable"
+            )
+          end
+
           invite.list.memberships.create!(user: current_user, role: invite.role)
-          invite.increment_uses!
 
           # Create mutual friendship if not already friends
           unless Friendship.friends?(invite.inviter, current_user)

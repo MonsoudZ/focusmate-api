@@ -19,11 +19,19 @@ class TaskAssignmentService < ApplicationService
     raise ApplicationError::BadRequest, "assigned_to is required" if assigned_to_id.blank?
 
     assignee = User.find_by(id: assigned_to_id)
-    unless assignee && @task.list.accessible_by?(assignee)
-      raise ApplicationError::UnprocessableEntity.new("User cannot be assigned to this task", code: "invalid_assignee")
+    raise ApplicationError::UnprocessableEntity.new("User not found", code: "invalid_assignee") unless assignee
+
+    ActiveRecord::Base.transaction do
+      # Lock the list to prevent concurrent membership changes
+      @task.list.lock!
+
+      unless @task.list.accessible_by?(assignee)
+        raise ApplicationError::UnprocessableEntity.new("User cannot be assigned to this task", code: "invalid_assignee")
+      end
+
+      @task.update!(assigned_to_id: assigned_to_id)
     end
 
-    @task.update!(assigned_to_id: assigned_to_id)
     @task
   end
 

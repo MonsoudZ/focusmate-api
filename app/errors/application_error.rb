@@ -70,6 +70,13 @@ class ApplicationError < StandardError
     def default_message = "Conflict"
   end
 
+  # === HTTP 410 Gone ===
+  class Gone < ApplicationError
+    def status = :gone
+    def default_code = "gone"
+    def default_message = "Resource is no longer available"
+  end
+
   # === HTTP 422 Unprocessable Entity (with validation details) ===
   class Validation < ApplicationError
     def initialize(message = nil, details: {}, code: nil)
