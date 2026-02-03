@@ -62,6 +62,8 @@ group :development, :test do
   gem "shoulda-matchers"
   gem "simplecov", require: false
   gem "dotenv-rails"
+  gem "bullet"  # N+1 query detection
+  gem "benchmark-ips"  # Benchmarking
 end
 
 gem "rack-timeout", "~> 0.7"

@@ -20,6 +20,7 @@ class TaskReminderJob < ApplicationJob
     # 3. Are not templates
     # 4. Are not deleted
     Task
+      .includes(:assigned_to, :creator)  # Prevent N+1 queries
       .where(status: [:pending, :in_progress])
       .where(deleted_at: nil)
       .where(is_template: [false, nil])
