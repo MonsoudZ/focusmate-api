@@ -21,9 +21,9 @@ class TaskReminderJob < ApplicationJob
     # 4. Are not deleted
     Task
       .includes(:assigned_to, :creator)  # Prevent N+1 queries
-      .where(status: [:pending, :in_progress])
+      .where(status: [ :pending, :in_progress ])
       .where(deleted_at: nil)
-      .where(is_template: [false, nil])
+      .where(is_template: [ false, nil ])
       .where("due_at IS NOT NULL")
       .where("due_at > ?", Time.current)
       .where("due_at <= ?", max_reminder_window.from_now)

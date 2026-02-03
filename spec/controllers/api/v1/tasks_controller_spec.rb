@@ -84,7 +84,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
     it 'validates required fields' do
       post "/api/v1/lists/#{list.id}/tasks", params: { task: { note: "No title" } }, headers: auth_headers
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
   end
 

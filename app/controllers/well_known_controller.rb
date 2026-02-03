@@ -10,7 +10,7 @@ class WellKnownController < ActionController::Base
         details: [
           {
             appID: ENV.fetch("APPLE_APP_ID", "CNK57345QT.com.monsoudzanaty.focusmate"),
-            paths: ["/invite/*"]
+            paths: [ "/invite/*" ]
           }
         ]
       }

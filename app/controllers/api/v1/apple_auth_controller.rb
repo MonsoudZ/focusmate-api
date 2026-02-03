@@ -31,7 +31,7 @@ module Api
               refresh_token: pair[:refresh_token]
             }, status: :ok
           else
-            render_error(user.errors.full_messages.join(", "), status: :unprocessable_entity)
+            render_error(user.errors.full_messages.join(", "), status: :unprocessable_content)
           end
 
         rescue StandardError => e

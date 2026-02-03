@@ -83,12 +83,12 @@ class ApplicationError < StandardError
       super(message || "Validation failed", code: code || "validation_error", details: details)
     end
 
-    def status = :unprocessable_entity
+    def status = :unprocessable_content
   end
 
   # === HTTP 422 Unprocessable Entity (generic) ===
   class UnprocessableEntity < ApplicationError
-    def status = :unprocessable_entity
+    def status = :unprocessable_content
     def default_code = "unprocessable_entity"
     def default_message = "Unprocessable entity"
   end

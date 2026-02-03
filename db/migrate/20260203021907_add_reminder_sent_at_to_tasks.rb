@@ -5,7 +5,7 @@ class AddReminderSentAtToTasks < ActiveRecord::Migration[8.0]
 
   def change
     add_column :tasks, :reminder_sent_at, :datetime, if_not_exists: true
-    add_index :tasks, [:due_at, :reminder_sent_at],
+    add_index :tasks, [ :due_at, :reminder_sent_at ],
               where: "status != 2 AND deleted_at IS NULL",
               algorithm: :concurrently,
               if_not_exists: true

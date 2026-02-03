@@ -7,7 +7,7 @@ module Api
       # Optional param: exclude_list_id - filters out friends who are already members of that list
       def index
         page = (params[:page] || 1).to_i
-        per_page = [(params[:per_page] || 50).to_i, 100].min
+        per_page = [ (params[:per_page] || 50).to_i, 100 ].min
 
         friends = current_user.friends.order(:name)
 
@@ -16,7 +16,7 @@ module Api
           list = List.find_by(id: params[:exclude_list_id])
           if list && list.accessible_by?(current_user)
             # Get all member IDs (including owner)
-            existing_member_ids = list.memberships.pluck(:user_id) + [list.user_id]
+            existing_member_ids = list.memberships.pluck(:user_id) + [ list.user_id ]
             friends = friends.where.not(id: existing_member_ids)
           end
         end

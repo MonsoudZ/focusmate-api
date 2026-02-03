@@ -11,6 +11,6 @@ class CreateRescheduleEvents < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :reschedule_events, [:task_id, :created_at]
+    add_index :reschedule_events, [ :task_id, :created_at ]
   end
 end

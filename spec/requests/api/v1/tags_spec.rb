@@ -83,7 +83,7 @@ RSpec.describe "Tags API", type: :request do
       it "returns error for missing name" do
         auth_post "/api/v1/tags", user: user, params: { tag: { color: "blue" } }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
 
       it "returns error for duplicate name" do
@@ -91,7 +91,7 @@ RSpec.describe "Tags API", type: :request do
 
         auth_post "/api/v1/tags", user: user, params: { tag: { name: "Existing" } }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end

@@ -2,7 +2,7 @@
 
 namespace :performance do
   desc "Run all performance checks"
-  task all: [:check_indexes, :check_n1_queries, :benchmark_reminder_job]
+  task all: [ :check_indexes, :check_n1_queries, :benchmark_reminder_job ]
 
   desc "Check for missing indexes on foreign keys and common query patterns"
   task check_indexes: :environment do
@@ -122,9 +122,9 @@ namespace :performance do
     puts "\n--- Test: TaskReminderJob query pattern ---"
     queries.clear
     Task
-      .where(status: [:pending, :in_progress])
+      .where(status: [ :pending, :in_progress ])
       .where(deleted_at: nil)
-      .where(is_template: [false, nil])
+      .where(is_template: [ false, nil ])
       .where("due_at IS NOT NULL")
       .where("due_at > ?", Time.current)
       .where("due_at <= ?", 15.minutes.from_now)
@@ -188,9 +188,9 @@ namespace :performance do
       x.report("find_tasks:") do
         10.times do
           Task
-            .where(status: [:pending, :in_progress])
+            .where(status: [ :pending, :in_progress ])
             .where(deleted_at: nil)
-            .where(is_template: [false, nil])
+            .where(is_template: [ false, nil ])
             .where("due_at IS NOT NULL")
             .where("due_at > ?", Time.current)
             .where("due_at <= ?", 15.minutes.from_now)
@@ -205,9 +205,9 @@ namespace :performance do
         # Just test the query portion, not actual notifications
         5.times do
           Task
-            .where(status: [:pending, :in_progress])
+            .where(status: [ :pending, :in_progress ])
             .where(deleted_at: nil)
-            .where(is_template: [false, nil])
+            .where(is_template: [ false, nil ])
             .where("due_at IS NOT NULL")
             .where("due_at > ?", Time.current)
             .where("due_at <= ?", 15.minutes.from_now)

@@ -136,7 +136,7 @@ module PushNotifications
           cleanup_temp_file!
 
           # Write to temp file (apnotic requires a file path)
-          @temp_key_file = Tempfile.new(["apns_key", ".p8"])
+          @temp_key_file = Tempfile.new([ "apns_key", ".p8" ])
           @temp_key_file.write(key_content)
           @temp_key_file.close
           @temp_key_file.path

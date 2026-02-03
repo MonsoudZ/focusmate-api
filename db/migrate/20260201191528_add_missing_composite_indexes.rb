@@ -6,7 +6,7 @@ class AddMissingCompositeIndexes < ActiveRecord::Migration[8.0]
   def change
     # Optimize recurring task generation job query:
     # Task.where(is_template: true, template_type: "recurring").where(deleted_at: nil)
-    add_index :tasks, [:is_template, :template_type],
+    add_index :tasks, [ :is_template, :template_type ],
               where: "deleted_at IS NULL",
               name: "index_tasks_recurring_templates",
               algorithm: :concurrently,
@@ -14,7 +14,7 @@ class AddMissingCompositeIndexes < ActiveRecord::Migration[8.0]
 
     # Optimize template instance lookup:
     # template.instances.where(deleted_at: nil).order(due_at: :desc)
-    add_index :tasks, [:template_id, :due_at],
+    add_index :tasks, [ :template_id, :due_at ],
               where: "deleted_at IS NULL",
               name: "index_tasks_template_instances",
               algorithm: :concurrently,

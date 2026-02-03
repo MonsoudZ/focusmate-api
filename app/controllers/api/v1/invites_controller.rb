@@ -26,7 +26,7 @@ module Api
         end
 
         if invite.list.user_id == current_user.id
-          return render_error("You are the owner of this list", status: :unprocessable_entity, code: "already_owner")
+          return render_error("You are the owner of this list", status: :unprocessable_content, code: "already_owner")
         end
 
         if invite.list.memberships.exists?(user_id: current_user.id)

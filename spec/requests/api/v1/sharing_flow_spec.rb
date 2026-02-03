@@ -283,7 +283,7 @@ RSpec.describe "List Sharing & Collaboration Flow E2E", type: :request do
       invite_code = json_response["invite"]["code"]
 
       auth_post "/api/v1/invites/#{invite_code}/accept", user: owner, params: {}
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(json_response["error"]["message"]).to include("owner")
     end
   end

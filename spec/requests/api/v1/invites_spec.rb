@@ -108,7 +108,7 @@ RSpec.describe "Api::V1::Invites", type: :request do
     it "returns 422 if user is owner" do
       post "/api/v1/invites/#{invite.code}/accept", headers: auth_headers(owner)
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(json_response["error"]["message"]).to eq("You are the owner of this list")
     end
 

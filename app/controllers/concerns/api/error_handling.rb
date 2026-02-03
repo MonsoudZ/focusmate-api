@@ -63,7 +63,7 @@ module Api
           message: message,
           details: details
         }
-      }, status: :unprocessable_entity
+      }, status: :unprocessable_content
     end
 
     def handle_unexpected_error(exception)

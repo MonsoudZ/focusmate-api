@@ -130,7 +130,7 @@ RSpec.describe "Tasks Authorization", type: :request do
               params: { assigned_to: stranger.id }.to_json,
               headers: auth_headers_for(owner)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to include("cannot be assigned")
       end

@@ -57,9 +57,9 @@ class ListSerializer
   def task_counts
     @task_counts ||= if list.tasks.loaded?
                        compute_counts_from_loaded_tasks
-                     else
+    else
                        fetch_counts_from_db
-                     end
+    end
   end
 
   def completed_tasks_count
