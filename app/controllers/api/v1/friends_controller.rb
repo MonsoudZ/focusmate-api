@@ -3,12 +3,11 @@
 module Api
   module V1
     class FriendsController < BaseController
+      include Paginatable
+
       # GET /api/v1/friends
       # Optional param: exclude_list_id - filters out friends who are already members of that list
       def index
-        page = (params[:page] || 1).to_i
-        per_page = [ (params[:per_page] || 50).to_i, 100 ].min
-
         friends = current_user.friends.order(:name)
 
         # Filter out friends who are already members of a specific list
@@ -21,16 +20,22 @@ module Api
           end
         end
 
-        total_count = friends.count
-        paginated_friends = friends.offset((page - 1) * per_page).limit(per_page)
+        result = paginate(
+          friends,
+          page: params[:page],
+          per_page: params[:per_page],
+          default_per_page: 50,
+          max_per_page: 100
+        )
+        pagination = result[:pagination]
 
         render json: {
-          friends: paginated_friends.map { |f| FriendSerializer.new(f).as_json },
+          friends: result[:records].map { |f| FriendSerializer.new(f).as_json },
           pagination: {
-            page: page,
-            per_page: per_page,
-            total_count: total_count,
-            total_pages: (total_count.to_f / per_page).ceil
+            page: pagination[:page],
+            per_page: pagination[:per_page],
+            total_count: pagination[:total],
+            total_pages: pagination[:total_pages]
           }
         }, status: :ok
       end

@@ -1,24 +1,5 @@
 {
-  "ignored_warnings": [
-    {
-      "warning_type": "Mass Assignment",
-      "fingerprint": "e7d5787e3df88a95af204a1b619965e1f73d87da92048916a5bb367c2ad85ad1",
-      "check_name": "PermitAttributes",
-      "message": "Potentially dangerous key allowed for mass assignment",
-      "file": "app/controllers/api/v1/memberships_controller.rb",
-      "line": 72,
-      "note": "user_identifier is passed to Memberships::Create service which validates it — not used for direct mass assignment"
-    },
-    {
-      "warning_type": "Mass Assignment",
-      "fingerprint": "8db8f86744c43faa0b1fa70528f11b7003667c2ce524ecd5c02cd534b84f1ed1",
-      "check_name": "PermitAttributes",
-      "message": "Potentially dangerous key allowed for mass assignment",
-      "file": "app/controllers/api/v1/memberships_controller.rb",
-      "line": 76,
-      "note": "role refers to membership role (viewer/editor), not user role — validated by Memberships::Update service"
-    }
-  ],
-  "updated": "2026-01-28",
+  "ignored_warnings": [],
+  "updated": "2026-02-03",
   "brakeman_version": "7.1.1"
 }

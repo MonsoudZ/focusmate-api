@@ -4,6 +4,7 @@ module Auth
   class TokenService
     REFRESH_TOKEN_LIFETIME = 30.days
     REFRESH_TOKEN_BYTE_LENGTH = 32
+    TokenReuseDetected = Class.new(StandardError)
 
     class << self
       # Issue a new access + refresh token pair for the user.
@@ -26,45 +27,46 @@ module Auth
         raise ApplicationError::TokenInvalid, "Refresh token is required" if raw_refresh_token.blank?
 
         digest = token_digest(raw_refresh_token)
-        record = RefreshToken.find_by(token_digest: digest)
+        begin
+          ActiveRecord::Base.transaction do
+            # Lock the token row to make rotation atomic across concurrent requests.
+            # This prevents two parallel refreshes from minting two successor tokens.
+            record = RefreshToken.lock("FOR UPDATE").find_by(token_digest: digest)
 
-        raise ApplicationError::TokenInvalid, "Invalid refresh token" unless record
+            raise ApplicationError::TokenInvalid, "Invalid refresh token" unless record
 
-        # Reuse detection: if the token was already revoked, someone may be replaying it.
-        # However, check for race conditions first - parallel requests can cause
-        # multiple refresh attempts with the same token.
-        if record.revoked?
-          # Grace period: if token was rotated within last 10 seconds, this is likely
-          # a race condition (parallel 401s triggering multiple refreshes), not an attack.
-          # Don't revoke the family - the first refresh's tokens should remain valid.
-          if record.revoked_at > 10.seconds.ago
-            raise ApplicationError::TokenAlreadyRefreshed, "Token was already refreshed"
+            # Reuse detection: if the token was already revoked, someone may be replaying it.
+            # However, check for race conditions first - parallel requests can cause
+            # multiple refresh attempts with the same token.
+            if record.revoked?
+              # Grace period: if token was rotated within last 10 seconds, this is likely
+              # a race condition (parallel 401s triggering multiple refreshes), not an attack.
+              # Don't revoke the family - the first refresh's tokens should remain valid.
+              if record.revoked_at > 10.seconds.ago
+                raise ApplicationError::TokenAlreadyRefreshed, "Token was already refreshed"
+              end
+
+              # Token was revoked more than 10 seconds ago - this is a real reuse attack.
+              # Revoke the family after we release the lock/transaction.
+              raise TokenReuseDetected, record.family
+            end
+
+            raise ApplicationError::TokenExpired, "Refresh token has expired" if record.expired?
+
+            user = record.user
+            raw_refresh, new_record = create_refresh_token(user, family: record.family)
+            record.update!(revoked_at: Time.current, replaced_by_jti: new_record.jti)
+
+            {
+              access_token: encode_access_token(user),
+              refresh_token: raw_refresh,
+              user: user
+            }
           end
-
-          # Token was revoked more than 10 seconds ago - this is a real reuse attack.
-          # Revoke the entire family to protect the user.
-          revoke_family(record.family)
+        rescue TokenReuseDetected => e
+          revoke_family(e.message)
           raise ApplicationError::TokenReused, "Refresh token reuse detected"
         end
-
-        raise ApplicationError::TokenExpired, "Refresh token has expired" if record.expired?
-
-        # Rotate: revoke old token + issue new pair in a transaction
-        user = record.user
-        new_pair = nil
-
-        ActiveRecord::Base.transaction do
-          raw_refresh, new_record = create_refresh_token(user, family: record.family)
-          record.update!(revoked_at: Time.current, replaced_by_jti: new_record.jti)
-
-          new_pair = {
-            access_token: encode_access_token(user),
-            refresh_token: raw_refresh,
-            user: user
-          }
-        end
-
-        new_pair
       end
 
       # Revoke a specific refresh token (e.g. on sign-out).

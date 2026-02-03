@@ -175,6 +175,15 @@ RSpec.describe "Api::V1::Memberships", type: :request do
 
         expect(response).to have_http_status(:bad_request)
       end
+
+      it "returns 400 when membership payload is not an object" do
+        auth_post "/api/v1/lists/#{list.id}/memberships",
+                  user: owner,
+                  params: { membership: "invalid" }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("membership must be an object")
+      end
     end
 
     context "as list member (non-owner)" do
@@ -231,6 +240,15 @@ RSpec.describe "Api::V1::Memberships", type: :request do
                    params: { membership: { role: "owner" } }
 
         expect(response).to have_http_status(:bad_request)
+      end
+
+      it "returns 400 when membership payload is not an object" do
+        auth_patch "/api/v1/lists/#{list.id}/memberships/#{membership.id}",
+                   user: owner,
+                   params: { membership: "invalid" }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("membership must be an object")
       end
 
       it "returns 404 for membership in different list" do

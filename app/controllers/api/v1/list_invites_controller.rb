@@ -32,7 +32,8 @@ module Api
       def create
         authorize @list, :manage_memberships?
 
-        invite = @list.invites.build(invite_params)
+        invite = @list.invites.build
+        assign_invite_attributes(invite)
         invite.inviter = current_user
 
         if invite.save
@@ -62,8 +63,29 @@ module Api
         @invite = @list.invites.find(params[:id])
       end
 
-      def invite_params
-        params.fetch(:invite, {}).permit(:role, :expires_at, :max_uses)
+      def assign_invite_attributes(invite)
+        attrs = invite_attributes
+        invite.role = attrs[:role] if attrs.key?(:role)
+        invite.expires_at = attrs[:expires_at] if attrs.key?(:expires_at)
+        invite.max_uses = attrs[:max_uses] if attrs.key?(:max_uses)
+      end
+
+      def invite_attributes
+        payload = invite_payload
+        {}.tap do |attrs|
+          attrs[:role] = payload[:role] if payload.key?(:role)
+          attrs[:expires_at] = payload[:expires_at] if payload.key?(:expires_at)
+          attrs[:max_uses] = payload[:max_uses] if payload.key?(:max_uses)
+        end
+      end
+
+      def invite_payload
+        raw = params[:invite]
+        return ActionController::Parameters.new if raw.blank?
+
+        raise ApplicationError::BadRequest, "invite must be an object" unless raw.is_a?(ActionController::Parameters)
+
+        raw
       end
     end
   end

@@ -111,6 +111,36 @@ RSpec.describe "Api::V1::Friends", type: :request do
         expect(json_response["pagination"]["total_count"]).to eq(1)
       end
     end
+
+    describe "pagination parameter normalization" do
+      before do
+        3.times do |i|
+          friend = create(:user, name: "Friend #{i}")
+          Friendship.create_mutual!(user, friend)
+        end
+      end
+
+      it "falls back to defaults when per_page is zero" do
+        get "/api/v1/friends", headers: headers, params: { per_page: 0 }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["pagination"]["per_page"]).to eq(50)
+      end
+
+      it "falls back to defaults when per_page is negative" do
+        get "/api/v1/friends", headers: headers, params: { per_page: -10 }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["pagination"]["per_page"]).to eq(50)
+      end
+
+      it "falls back to page 1 when page is non-positive" do
+        get "/api/v1/friends", headers: headers, params: { page: 0 }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["pagination"]["page"]).to eq(1)
+      end
+    end
   end
 
   describe "DELETE /api/v1/friends/:id" do

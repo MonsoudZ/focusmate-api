@@ -81,11 +81,26 @@ module Api
       end
 
       def create_params
-        params.require(:membership).permit(:user_identifier, :friend_id, :role)
+        payload = membership_payload
+        {
+          user_identifier: payload[:user_identifier],
+          friend_id: payload[:friend_id],
+          role: payload[:role]
+        }
       end
 
       def update_params
-        params.require(:membership).permit(:role)
+        payload = membership_payload
+        {
+          role: payload[:role]
+        }
+      end
+
+      def membership_payload
+        raw = params.require(:membership)
+        raise ApplicationError::BadRequest, "membership must be an object" unless raw.is_a?(ActionController::Parameters)
+
+        raw
       end
     end
   end

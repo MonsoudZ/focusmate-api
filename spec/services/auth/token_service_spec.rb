@@ -78,6 +78,12 @@ RSpec.describe Auth::TokenService do
       expect(new_family).to eq(old_family)
     end
 
+    it "locks the refresh token row while rotating" do
+      expect(RefreshToken).to receive(:lock).with("FOR UPDATE").and_call_original
+
+      described_class.refresh(raw_refresh)
+    end
+
     context "reuse detection" do
       context "within grace period (race condition)" do
         it "raises TokenAlreadyRefreshed when token was just rotated" do

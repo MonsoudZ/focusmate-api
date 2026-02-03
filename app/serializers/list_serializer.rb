@@ -82,11 +82,23 @@ class ListSerializer
 
   def fetch_counts_from_db
     done_status = Task.statuses[:done]
+    task_table = Task.arel_table
+    now = Arel::Nodes::NamedFunction.new("NOW", [])
 
-    result = base_tasks_scope.pick(
-      Arel.sql("COUNT(CASE WHEN status = #{done_status} THEN 1 END)"),
-      Arel.sql("COUNT(CASE WHEN due_at IS NOT NULL AND due_at < NOW() AND status != #{done_status} THEN 1 END)")
-    )
+    completed_count = Arel::Nodes::Case.new
+                                        .when(task_table[:status].eq(done_status))
+                                        .then(1)
+                                        .count
+
+    overdue_condition = task_table[:due_at].not_eq(nil)
+                                          .and(task_table[:due_at].lt(now))
+                                          .and(task_table[:status].not_eq(done_status))
+    overdue_count = Arel::Nodes::Case.new
+                                      .when(overdue_condition)
+                                      .then(1)
+                                      .count
+
+    result = base_tasks_scope.pick(completed_count, overdue_count)
 
     { completed: result[0].to_i, overdue: result[1].to_i }
   end
