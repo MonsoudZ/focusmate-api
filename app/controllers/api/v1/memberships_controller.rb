@@ -10,6 +10,7 @@ module Api
       after_action :verify_policy_scoped, only: :index
 
       # GET /api/v1/lists/:list_id/memberships
+      # Returns list owner and all members
       def index
         authorize @list, :show?
 
@@ -18,7 +19,14 @@ module Api
                         .order(created_at: :asc)
                         .limit(100)
 
+        owner = @list.user
+
         render json: {
+          owner: {
+            id: owner.id,
+            email: owner.email,
+            name: owner.name
+          },
           memberships: memberships.map { |m| MembershipSerializer.new(m).as_json }
         }, status: :ok
       end

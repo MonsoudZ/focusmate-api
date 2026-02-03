@@ -10,44 +10,56 @@ RSpec.describe "Api::V1::Memberships", type: :request do
 
   describe "GET /api/v1/lists/:list_id/memberships" do
     context "as list owner" do
-      it "returns all memberships" do
+      it "returns owner and all memberships" do
         create(:membership, list: list, user: member, role: "editor")
         create(:membership, list: list, user: other_user, role: "viewer")
 
         auth_get "/api/v1/lists/#{list.id}/memberships", user: owner
 
         expect(response).to have_http_status(:ok)
+        expect(json_response["owner"]).to be_present
         expect(json_response["memberships"].length).to eq(2)
       end
 
-      it "returns empty array when no members" do
+      it "returns owner with empty memberships when no other members" do
         auth_get "/api/v1/lists/#{list.id}/memberships", user: owner
 
         expect(response).to have_http_status(:ok)
+        expect(json_response["owner"]["id"]).to eq(owner.id)
         expect(json_response["memberships"]).to eq([])
       end
 
-      it "includes member details" do
+      it "includes owner details separately" do
+        auth_get "/api/v1/lists/#{list.id}/memberships", user: owner
+
+        expect(json_response["owner"]["id"]).to eq(owner.id)
+        expect(json_response["owner"]["name"]).to eq("Owner")
+        expect(json_response["owner"]["email"]).to eq(owner.email)
+      end
+
+      it "includes member details in memberships array" do
         create(:membership, list: list, user: member, role: "editor")
 
         auth_get "/api/v1/lists/#{list.id}/memberships", user: owner
 
-        membership = json_response["memberships"][0]
-        expect(membership["id"]).to be_present
-        expect(membership["role"]).to eq("editor")
-        expect(membership["user"]["id"]).to eq(member.id)
-        expect(membership["user"]["name"]).to eq("Member")
+        member_entry = json_response["memberships"][0]
+        expect(member_entry["id"]).to be_present
+        expect(member_entry["role"]).to eq("editor")
+        expect(member_entry["user"]["id"]).to eq(member.id)
+        expect(member_entry["user"]["name"]).to eq("Member")
       end
     end
 
     context "as list member" do
       let!(:membership) { create(:membership, list: list, user: member, role: "editor") }
 
-      it "can view memberships" do
+      it "can view owner and memberships" do
         auth_get "/api/v1/lists/#{list.id}/memberships", user: member
 
         expect(response).to have_http_status(:ok)
+        expect(json_response["owner"]["id"]).to eq(owner.id)
         expect(json_response["memberships"].length).to eq(1)
+        expect(json_response["memberships"][0]["role"]).to eq("editor")
       end
     end
 
