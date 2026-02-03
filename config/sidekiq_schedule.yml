@@ -67,3 +67,9 @@ recurring_task_generation:
   class: "RecurringTaskGenerationJob"
   queue: "default"
   description: "Generate upcoming recurring task instances"
+
+task_reminders:
+  cron: "* * * * *"  # Every minute
+  class: "TaskReminderJob"
+  queue: "default"
+  description: "Send push notifications for tasks due soon"
