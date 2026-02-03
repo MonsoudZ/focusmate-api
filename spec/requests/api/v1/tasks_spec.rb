@@ -547,6 +547,114 @@ RSpec.describe "Tasks API", type: :request do
     end
   end
 
+  describe "POST /api/v1/lists/:list_id/tasks/:id/reschedule" do
+    let(:task) { create(:task, list: list, creator: user, due_at: 1.day.from_now) }
+
+    context "as list owner" do
+      it "reschedules the task" do
+        new_due = 3.days.from_now.iso8601
+
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: new_due, reason: "priorities_shifted" }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["task"]["due_at"]).to eq(new_due)
+      end
+
+      it "creates a reschedule event with user tracking" do
+        original_due = task.due_at
+        new_due = 3.days.from_now.iso8601
+
+        expect {
+          auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                    user: user,
+                    params: { new_due_at: new_due, reason: "blocked" }
+        }.to change(RescheduleEvent, :count).by(1)
+
+        event = RescheduleEvent.last
+        expect(event.previous_due_at.to_i).to eq(original_due.to_i)
+        expect(event.reason).to eq("blocked")
+        expect(event.user).to eq(user)
+      end
+
+      it "includes reschedule_events in response with user info" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: 3.days.from_now.iso8601, reason: "underestimated" }
+
+        expect(json_response["task"]["reschedule_events"]).to be_an(Array)
+        expect(json_response["task"]["reschedule_events"].length).to eq(1)
+        event = json_response["task"]["reschedule_events"][0]
+        expect(event["reason"]).to eq("underestimated")
+        expect(event["rescheduled_by"]["id"]).to eq(user.id)
+        expect(event["rescheduled_by"]["name"]).to eq(user.name)
+      end
+
+      it "accepts custom reason text" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: 3.days.from_now.iso8601, reason: "Client requested delay" }
+
+        expect(response).to have_http_status(:ok)
+        expect(RescheduleEvent.last.reason).to eq("Client requested delay")
+      end
+
+      it "returns reschedule events in reverse chronological order" do
+        # Create existing reschedule event
+        create(:reschedule_event, task: task, reason: "first", created_at: 1.hour.ago)
+
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: 3.days.from_now.iso8601, reason: "second" }
+
+        events = json_response["task"]["reschedule_events"]
+        expect(events[0]["reason"]).to eq("second")
+        expect(events[1]["reason"]).to eq("first")
+      end
+
+      it "returns 400 when new_due_at is missing" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { reason: "blocked" }
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it "returns 400 when reason is missing" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: 3.days.from_now.iso8601 }
+
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    context "as viewer" do
+      before { list.memberships.create!(user: other_user, role: "viewer") }
+
+      it "returns forbidden" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: other_user,
+                  params: { new_due_at: 3.days.from_now.iso8601, reason: "blocked" }
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "as editor" do
+      before { list.memberships.create!(user: other_user, role: "editor") }
+
+      it "can reschedule the task" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: other_user,
+                  params: { new_due_at: 3.days.from_now.iso8601, reason: "priorities_shifted" }
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+  end
+
   describe "POST /api/v1/lists/:list_id/tasks/reorder" do
     let!(:task1) { create(:task, list: list, creator: user, position: 1) }
     let!(:task2) { create(:task, list: list, creator: user, position: 2) }

@@ -14,6 +14,7 @@ class Task < ApplicationRecord
   has_many :task_events, dependent: :destroy
   has_many :task_tags, dependent: :destroy
   has_many :tags, through: :task_tags
+  has_many :reschedule_events, dependent: :destroy
 
   # Enums
   enum :status, { pending: 0, in_progress: 1, done: 2 }, default: :pending

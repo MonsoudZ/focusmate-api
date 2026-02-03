@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_02_100001) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_03_020747) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -176,6 +176,19 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_02_100001) do
     t.index ["token_digest"], name: "index_refresh_tokens_on_token_digest", unique: true
     t.index ["user_id", "revoked_at"], name: "index_refresh_tokens_on_user_id_and_revoked_at"
     t.index ["user_id"], name: "index_refresh_tokens_on_user_id"
+  end
+
+  create_table "reschedule_events", force: :cascade do |t|
+    t.bigint "task_id", null: false
+    t.datetime "previous_due_at"
+    t.datetime "new_due_at"
+    t.string "reason", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["task_id", "created_at"], name: "index_reschedule_events_on_task_id_and_created_at"
+    t.index ["task_id"], name: "index_reschedule_events_on_task_id"
+    t.index ["user_id"], name: "index_reschedule_events_on_user_id"
   end
 
   create_table "tags", force: :cascade do |t|
@@ -352,6 +365,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_02_100001) do
   add_foreign_key "nudges", "users", column: "from_user_id", on_delete: :cascade
   add_foreign_key "nudges", "users", column: "to_user_id", on_delete: :cascade
   add_foreign_key "refresh_tokens", "users", on_delete: :cascade
+  add_foreign_key "reschedule_events", "tasks"
   add_foreign_key "tags", "users", on_delete: :cascade
   add_foreign_key "task_events", "tasks", on_delete: :cascade
   add_foreign_key "task_events", "users", on_delete: :cascade

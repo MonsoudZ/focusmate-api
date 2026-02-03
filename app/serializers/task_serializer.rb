@@ -76,6 +76,11 @@ class TaskSerializer
       result[:subtasks] = serialize_subtasks
     end
 
+    # Include reschedule_events only when requested (to avoid N+1 in list views)
+    if options[:include_reschedule_events] != false
+      result[:reschedule_events] = serialize_reschedule_events
+    end
+
     result
   end
 
@@ -162,5 +167,25 @@ class TaskSerializer
   def serialize_tags
     tags = task.tags.loaded? ? task.tags.to_a : task.tags
     tags.map { |t| { id: t.id, name: t.name, color: t.color } }
+  end
+
+  def serialize_reschedule_events
+    events = if task.reschedule_events.loaded?
+               task.reschedule_events.sort_by(&:created_at).reverse
+    else
+               task.reschedule_events.includes(:user).recent_first.to_a
+    end
+
+    events.map do |event|
+      {
+        id: event.id,
+        task_id: event.task_id,
+        previous_due_at: event.previous_due_at,
+        new_due_at: event.new_due_at,
+        reason: event.reason,
+        rescheduled_by: event.user ? { id: event.user.id, name: event.user.name } : nil,
+        created_at: event.created_at
+      }
+    end
   end
 end

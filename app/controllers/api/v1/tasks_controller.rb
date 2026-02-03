@@ -6,7 +6,7 @@ module Api
       include Paginatable
 
       before_action :set_list, only: [ :index, :create, :reorder ]
-      before_action :set_task, only: [ :show, :update, :destroy, :complete, :reopen, :assign, :unassign, :nudge ]
+      before_action :set_task, only: [ :show, :update, :destroy, :complete, :reopen, :assign, :unassign, :nudge, :reschedule ]
 
       after_action :verify_authorized, except: [ :index, :search ]
       after_action :verify_policy_scoped, only: [ :index, :search ]
@@ -26,7 +26,7 @@ module Api
         result = paginate(tasks, page: params[:page], per_page: params[:per_page])
 
         render json: {
-          tasks: result[:records].map { |t| TaskSerializer.new(t, current_user: current_user).as_json },
+          tasks: result[:records].map { |t| TaskSerializer.new(t, current_user: current_user, include_reschedule_events: false).as_json },
           tombstones: [],
           pagination: result[:pagination]
         }, status: :ok
@@ -107,6 +107,19 @@ module Api
         render json: { message: "Nudge sent" }, status: :ok
       end
 
+      # POST /api/v1/lists/:list_id/tasks/:id/reschedule
+      def reschedule
+        authorize @task, :update?
+        TaskRescheduleService.call!(
+          task: @task,
+          user: current_user,
+          new_due_at: params[:new_due_at],
+          reason: params[:reason]
+        )
+        @task.reload
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
+      end
+
       # POST /api/v1/lists/:list_id/tasks/reorder
       def reorder
         authorize @list, :update?
@@ -139,7 +152,7 @@ module Api
                   .limit(50)
 
         render json: {
-          tasks: tasks.map { |t| TaskSerializer.new(t, current_user: current_user).as_json }
+          tasks: tasks.map { |t| TaskSerializer.new(t, current_user: current_user, include_reschedule_events: false).as_json }
         }, status: :ok
       end
 

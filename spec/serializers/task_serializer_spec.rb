@@ -343,6 +343,67 @@ RSpec.describe TaskSerializer do
     end
   end
 
+  describe "reschedule_events" do
+    it "includes empty array when no reschedule events" do
+      serializer = described_class.new(task, current_user: user)
+      json = serializer.as_json
+
+      expect(json[:reschedule_events]).to eq([])
+    end
+
+    it "includes reschedule events in reverse chronological order" do
+      older_event = create(:reschedule_event, task: task, reason: "first", created_at: 2.hours.ago)
+      newer_event = create(:reschedule_event, task: task, reason: "second", created_at: 1.hour.ago)
+
+      serializer = described_class.new(task.reload, current_user: user)
+      json = serializer.as_json
+
+      expect(json[:reschedule_events].length).to eq(2)
+      expect(json[:reschedule_events][0][:id]).to eq(newer_event.id)
+      expect(json[:reschedule_events][1][:id]).to eq(older_event.id)
+    end
+
+    it "includes all event fields" do
+      event = create(:reschedule_event,
+                     task: task,
+                     previous_due_at: 1.day.ago,
+                     new_due_at: 2.days.from_now,
+                     reason: "blocked",
+                     user: user)
+
+      serializer = described_class.new(task.reload, current_user: user)
+      json = serializer.as_json
+
+      event_json = json[:reschedule_events][0]
+      expect(event_json[:id]).to eq(event.id)
+      expect(event_json[:task_id]).to eq(task.id)
+      expect(event_json[:previous_due_at]).to be_present
+      expect(event_json[:new_due_at]).to be_present
+      expect(event_json[:reason]).to eq("blocked")
+      expect(event_json[:rescheduled_by][:id]).to eq(user.id)
+      expect(event_json[:rescheduled_by][:name]).to eq(user.name)
+      expect(event_json[:created_at]).to be_present
+    end
+
+    it "handles nil user gracefully" do
+      event = create(:reschedule_event, task: task, user: nil)
+
+      serializer = described_class.new(task.reload, current_user: user)
+      json = serializer.as_json
+
+      expect(json[:reschedule_events][0][:rescheduled_by]).to be_nil
+    end
+
+    it "excludes reschedule_events when include_reschedule_events is false" do
+      create(:reschedule_event, task: task)
+
+      serializer = described_class.new(task.reload, current_user: user, include_reschedule_events: false)
+      json = serializer.as_json
+
+      expect(json).not_to have_key(:reschedule_events)
+    end
+  end
+
   describe "missed reason attributes" do
     let(:overdue_task) do
       create(:task,

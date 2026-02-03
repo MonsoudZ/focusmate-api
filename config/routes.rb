@@ -60,6 +60,7 @@ Rails.application.routes.draw do
             patch :assign
             patch :unassign
             post :nudge
+            post :reschedule
           end
           resources :subtasks, only: [ :index, :show, :create, :update, :destroy ] do
             member do
