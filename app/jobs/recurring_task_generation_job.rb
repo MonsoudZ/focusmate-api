@@ -51,8 +51,8 @@ class RecurringTaskGenerationJob < ApplicationJob
 
       begin
         service = RecurringTaskService.new(template.creator)
-        service.generate_next_instance(latest_instance)
-        generated_count += 1
+        generated_instance = service.generate_next_instance(latest_instance)
+        generated_count += 1 if generated_instance
       rescue StandardError => e
         error_count += 1
         Rails.logger.error(

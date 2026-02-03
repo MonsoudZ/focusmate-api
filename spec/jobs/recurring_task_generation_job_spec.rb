@@ -37,6 +37,22 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
       expect(result[:errors]).to eq(0)
     end
 
+    it "does not increment generated count when recurrence has ended" do
+      service = RecurringTaskService.new(user)
+      recurring = service.create_recurring_task(
+        list: list,
+        params: { title: "One-time recurring task", due_at: 1.day.ago },
+        recurrence_params: { pattern: "daily", interval: 1, count: 1 }
+      )
+
+      recurring[:instance].update!(status: "done", completed_at: Time.current)
+
+      result = described_class.new.perform
+
+      expect(result[:generated]).to eq(0)
+      expect(result[:errors]).to eq(0)
+    end
+
     it "skips templates that already have a pending instance" do
       service = RecurringTaskService.new(user)
       service.create_recurring_task(
