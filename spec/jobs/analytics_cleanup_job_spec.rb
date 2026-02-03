@@ -65,5 +65,16 @@ RSpec.describe AnalyticsCleanupJob, type: :job do
     it "is enqueued to maintenance queue" do
       expect(described_class.new.queue_name).to eq("maintenance")
     end
+
+    it "continues when Sentry reporting fails" do
+      if defined?(Sentry)
+        allow(Sentry).to receive(:capture_message).and_raise(StandardError.new("sentry down"))
+      else
+        stub_const("Sentry", Class.new)
+        allow(Sentry).to receive(:capture_message).and_raise(StandardError.new("sentry down"))
+      end
+
+      expect { described_class.new.send(:report_large_cleanup, 100_001) }.not_to raise_error
+    end
   end
 end

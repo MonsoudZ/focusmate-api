@@ -29,16 +29,26 @@ class AnalyticsCleanupJob < ApplicationJob
 
     # Alert if we're deleting a lot - might indicate a problem
     if deleted_count > 100_000
-      Sentry.capture_message(
-        "Large analytics cleanup",
-        level: :warning,
-        extra: {
-          events_deleted: deleted_count,
-          retention_days: RETENTION_DAYS
-        }
-      )
+      report_large_cleanup(deleted_count)
     end
 
     deleted_count
+  end
+
+  private
+
+  def report_large_cleanup(deleted_count)
+    return unless defined?(Sentry)
+
+    Sentry.capture_message(
+      "Large analytics cleanup",
+      level: :warning,
+      extra: {
+        events_deleted: deleted_count,
+        retention_days: RETENTION_DAYS
+      }
+    )
+  rescue StandardError => e
+    Rails.logger.error("AnalyticsCleanupJob Sentry report failed: #{e.message}")
   end
 end

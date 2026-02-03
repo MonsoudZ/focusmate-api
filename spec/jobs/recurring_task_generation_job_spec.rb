@@ -128,6 +128,28 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
       expect(result[:generated]).to eq(0)
     end
 
+    it "continues when Sentry reporting fails during error handling" do
+      service = RecurringTaskService.new(user)
+      recurring = service.create_recurring_task(
+        list: list,
+        params: { title: "Failing task", due_at: 1.day.ago },
+        recurrence_params: { pattern: "daily", interval: 1 }
+      )
+      recurring[:instance].update!(status: "done", completed_at: Time.current)
+
+      allow_any_instance_of(RecurringTaskService).to receive(:generate_next_instance)
+        .and_raise(StandardError.new("generation failed"))
+
+      if defined?(Sentry)
+        allow(Sentry).to receive(:capture_exception).and_raise(StandardError.new("sentry down"))
+      else
+        stub_const("Sentry", Class.new)
+        allow(Sentry).to receive(:capture_exception).and_raise(StandardError.new("sentry down"))
+      end
+
+      expect { described_class.new.perform }.not_to raise_error
+    end
+
     it "logs completion with counts" do
       expect(Rails.logger).to receive(:info).with(hash_including(
         event: "recurring_task_generation_completed"

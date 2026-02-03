@@ -60,7 +60,7 @@ class RecurringTaskGenerationJob < ApplicationJob
           template_id: template.id,
           error: e.message
         )
-        Sentry.capture_exception(e, extra: { template_id: template.id })
+        report_generation_error(e, template_id: template.id)
       end
     end
 
@@ -81,5 +81,15 @@ class RecurringTaskGenerationJob < ApplicationJob
       skipped_pending_instance: skipped_pending_instance,
       skipped_no_instances: skipped_no_instances
     }
+  end
+
+  private
+
+  def report_generation_error(error, template_id:)
+    return unless defined?(Sentry)
+
+    Sentry.capture_exception(error, extra: { template_id: template_id })
+  rescue StandardError => e
+    Rails.logger.error("RecurringTaskGenerationJob Sentry report failed: #{e.message}")
   end
 end
