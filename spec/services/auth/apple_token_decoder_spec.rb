@@ -48,6 +48,12 @@ RSpec.describe Auth::AppleTokenDecoder do
       expect(described_class.decode(wrong_token)).to be_nil
     end
 
+    it "returns nil when Apple keys payload is malformed" do
+      allow_any_instance_of(described_class).to receive(:fetch_apple_public_keys).and_return(nil)
+
+      expect(described_class.decode(id_token)).to be_nil
+    end
+
     it "returns nil for malformed tokens" do
       expect(described_class.decode("not.a.jwt")).to be_nil
       expect(described_class.decode("totally-invalid")).to be_nil

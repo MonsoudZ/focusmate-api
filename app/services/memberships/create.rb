@@ -58,6 +58,13 @@ module Memberships
 
     def create_membership!(target_user)
       @list.memberships.create!(user: target_user, role: @role)
+    rescue ActiveRecord::RecordNotUnique
+      raise ApplicationError::Conflict, "User is already a member of this list"
+    rescue ActiveRecord::RecordInvalid => e
+      if e.record.errors.added?(:user_id, :taken)
+        raise ApplicationError::Conflict, "User is already a member of this list"
+      end
+      raise
     end
   end
 end

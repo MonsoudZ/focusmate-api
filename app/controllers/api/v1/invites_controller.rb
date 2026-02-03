@@ -50,7 +50,16 @@ module Api
             )
           end
 
-          invite.list.memberships.create!(user: current_user, role: invite.role)
+          begin
+            invite.list.memberships.create!(user: current_user, role: invite.role)
+          rescue ActiveRecord::RecordNotUnique
+            raise ApplicationError::Conflict.new("You are already a member of this list", code: "already_member")
+          rescue ActiveRecord::RecordInvalid => e
+            if e.record.errors.added?(:user_id, :taken)
+              raise ApplicationError::Conflict.new("You are already a member of this list", code: "already_member")
+            end
+            raise
+          end
 
           # Ensure mutual friendship between inviter and invitee.
           # This is idempotent and race-safe under concurrent accept flows.

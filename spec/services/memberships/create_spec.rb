@@ -178,6 +178,21 @@ RSpec.describe Memberships::Create do
       end
     end
 
+    context "when membership insert hits a uniqueness race" do
+      it "maps RecordNotUnique to Conflict" do
+        allow(list.memberships).to receive(:create!).and_raise(ActiveRecord::RecordNotUnique)
+
+        expect {
+          described_class.call!(
+            list: list,
+            inviter: inviter,
+            user_identifier: target_user.email,
+            role: "editor"
+          )
+        }.to raise_error(ApplicationError::Conflict, "User is already a member of this list")
+      end
+    end
+
     context "using friend_id" do
       let(:friend) { create(:user) }
 

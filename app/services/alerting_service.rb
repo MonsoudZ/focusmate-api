@@ -73,13 +73,14 @@ class AlertingService
       alert_config = ALERTS[alert_name]
       return { error: "Unknown alert: #{alert_name}" } unless alert_config
 
+      cooldown_before_check = in_cooldown?(alert_name)
       triggered = threshold_exceeded?(
         current_value,
         alert_config[:threshold],
         alert_config[:comparison]
       )
 
-      if triggered && !in_cooldown?(alert_name)
+      if triggered && !cooldown_before_check
         fire_alert(alert_name, alert_config, current_value)
         record_alert_fired(alert_name)
       end
@@ -89,7 +90,7 @@ class AlertingService
         triggered: triggered,
         current_value: current_value,
         threshold: alert_config[:threshold],
-        in_cooldown: in_cooldown?(alert_name)
+        in_cooldown: cooldown_before_check
       }
     end
 

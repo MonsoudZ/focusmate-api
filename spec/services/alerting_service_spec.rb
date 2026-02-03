@@ -43,6 +43,30 @@ RSpec.describe AlertingService do
       end
     end
 
+    context "when threshold is exceeded and alert just fired" do
+      around do |example|
+        original_cache = Rails.cache
+        Rails.cache = ActiveSupport::Cache::MemoryStore.new
+        example.run
+        Rails.cache = original_cache
+      end
+
+      it "reports not in cooldown for the current check result" do
+        result = described_class.check(:queue_backlog, current_value: 1500)
+
+        expect(result[:triggered]).to be true
+        expect(result[:in_cooldown]).to be false
+      end
+
+      it "reports in cooldown on subsequent checks" do
+        described_class.check(:queue_backlog, current_value: 1500)
+        second = described_class.check(:queue_backlog, current_value: 1500)
+
+        expect(second[:triggered]).to be true
+        expect(second[:in_cooldown]).to be true
+      end
+    end
+
     context "with unknown alert" do
       it "returns error" do
         result = described_class.check(:unknown_alert, current_value: 100)

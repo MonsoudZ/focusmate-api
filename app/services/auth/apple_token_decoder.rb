@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require "base64"
+require "net/http"
+
 module Auth
   class AppleTokenDecoder
     class InvalidToken < StandardError; end
@@ -15,10 +18,13 @@ module Auth
       header_segment = id_token.to_s.split(".").first
       return nil if header_segment.blank?
 
-      header = JSON.parse(Base64.decode64(header_segment))
-      kid = header["kid"]
+      header = decode_header_segment(header_segment)
+      kid = header["kid"].to_s
+      return nil if kid.blank?
 
       apple_keys = fetch_apple_public_keys
+      return nil unless apple_keys.is_a?(Array)
+
       key_data = apple_keys.find { |k| k["kid"] == kid }
 
       if key_data.nil?
@@ -42,7 +48,7 @@ module Auth
       )
 
       decoded.first
-    rescue JSON::ParserError, ArgumentError => e
+    rescue JSON::ParserError, ArgumentError, InvalidToken => e
       Rails.logger.error("[AppleAuth] Parse error: #{e.message}")
       nil
     rescue JWT::DecodeError => e
@@ -59,8 +65,23 @@ module Auth
                                    open_timeout: 5, read_timeout: 5) do |http|
           http.get(uri.path)
         end
-        JSON.parse(response.body)["keys"]
+
+        raise InvalidToken, "Apple keys endpoint returned #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+
+        payload = JSON.parse(response.body)
+        keys = payload["keys"]
+        raise InvalidToken, "Apple keys payload missing keys" unless keys.is_a?(Array)
+
+        keys
       end
+    end
+
+    def decode_header_segment(segment)
+      normalized = segment.to_s
+      padding_needed = (4 - (normalized.length % 4)) % 4
+      normalized += "=" * padding_needed
+
+      JSON.parse(Base64.urlsafe_decode64(normalized))
     end
   end
 end

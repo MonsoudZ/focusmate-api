@@ -121,6 +121,17 @@ RSpec.describe "Api::V1::Invites", type: :request do
       expect(json_response["error"]["message"]).to eq("You are already a member of this list")
     end
 
+    it "returns 409 when membership insert hits uniqueness race" do
+      allow_any_instance_of(ActiveRecord::Associations::CollectionProxy)
+        .to receive(:create!)
+        .and_raise(ActiveRecord::RecordNotUnique)
+
+      post "/api/v1/invites/#{invite.code}/accept", headers: headers
+
+      expect(response).to have_http_status(:conflict)
+      expect(json_response["error"]["message"]).to eq("You are already a member of this list")
+    end
+
     it "requires authentication" do
       post "/api/v1/invites/#{invite.code}/accept"
 
