@@ -208,8 +208,18 @@ module Api
             raise ApplicationError::BadRequest, "each task entry must include id and position"
           end
 
-          { id: id, position: position }
+          {
+            id: parse_integer!(id, field: "id"),
+            position: parse_integer!(position, field: "position")
+          }
         end
+      end
+
+      def parse_integer!(value, field:)
+        parsed = Integer(value, exception: false)
+        raise ApplicationError::BadRequest, "#{field} must be an integer" if parsed.nil?
+
+        parsed
       end
 
       def permitted_task_attributes

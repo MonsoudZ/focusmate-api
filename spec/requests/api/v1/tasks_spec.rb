@@ -676,6 +676,19 @@ RSpec.describe "Tasks API", type: :request do
         expect(task2.reload.position).to eq(3)
       end
 
+      it "accepts numeric string ids and positions" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: user, params: {
+          tasks: [
+            { id: task2.id.to_s, position: "1" },
+            { id: task1.id.to_s, position: "2" }
+          ]
+        }
+
+        expect(response).to have_http_status(:ok)
+        expect(task2.reload.position).to eq(1)
+        expect(task1.reload.position).to eq(2)
+      end
+
       it "returns bad request when tasks payload is missing" do
         auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: user, params: {}
 
@@ -689,6 +702,15 @@ RSpec.describe "Tasks API", type: :request do
 
         expect(response).to have_http_status(:bad_request)
         expect(json_response["error"]["message"]).to eq("each task entry must be an object")
+      end
+
+      it "returns bad request when task id is not an integer" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: user, params: {
+          tasks: [ { id: "abc", position: 1 } ]
+        }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("id must be an integer")
       end
     end
 

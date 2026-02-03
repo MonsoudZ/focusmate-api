@@ -52,10 +52,9 @@ module Api
 
           invite.list.memberships.create!(user: current_user, role: invite.role)
 
-          # Create mutual friendship if not already friends
-          unless Friendship.friends?(invite.inviter, current_user)
-            Friendship.create_mutual!(invite.inviter, current_user)
-          end
+          # Ensure mutual friendship between inviter and invitee.
+          # This is idempotent and race-safe under concurrent accept flows.
+          Friendship.ensure_mutual!(invite.inviter, current_user)
         end
 
         AnalyticsTracker.list_shared(invite.list, invite.inviter, shared_with: current_user, role: invite.role)

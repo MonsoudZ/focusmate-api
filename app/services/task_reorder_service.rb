@@ -31,7 +31,16 @@ class TaskReorderService < ApplicationService
 
   def validate_positions!
     @task_positions.each do |entry|
+      task_id = entry[:id]
       position = entry[:position]
+
+      unless task_id.is_a?(Integer) && task_id.positive?
+        raise ApplicationError::BadRequest.new(
+          "Invalid task id: must be a positive integer",
+          code: "invalid_task_id"
+        )
+      end
+
       unless position.is_a?(Integer) && position >= 0
         raise ApplicationError::BadRequest.new(
           "Invalid position value: must be a non-negative integer",

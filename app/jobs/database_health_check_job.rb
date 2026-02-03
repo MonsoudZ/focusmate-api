@@ -25,16 +25,18 @@ class DatabaseHealthCheckJob < ApplicationJob
     )
 
     # Send alerts to Sentry
-    alerts.each do |alert|
-      Sentry.capture_message(
-        "Database health alert: #{alert[:issue]}",
-        level: :warning,
-        extra: {
-          metric: alert[:metric],
-          current_value: alert[:value],
-          threshold: alert[:threshold]
-        }
-      )
+    if defined?(Sentry)
+      alerts.each do |alert|
+        Sentry.capture_message(
+          "Database health alert: #{alert[:issue]}",
+          level: :warning,
+          extra: {
+            metric: alert[:metric],
+            current_value: alert[:value],
+            threshold: alert[:threshold]
+          }
+        )
+      end
     end
 
     { metrics: metrics, alerts: alerts }

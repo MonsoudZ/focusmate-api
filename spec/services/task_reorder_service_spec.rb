@@ -62,6 +62,12 @@ RSpec.describe TaskReorderService do
       }.to raise_error(ApplicationError::BadRequest, /Invalid position value/)
     end
 
+    it "raises BadRequest for invalid task ids" do
+      expect {
+        described_class.call!(list: list, task_positions: [ { id: "abc", position: 0 } ])
+      }.to raise_error(ApplicationError::BadRequest, /Invalid task id/)
+    end
+
     it "accepts zero as a valid position" do
       task = create(:task, list: list, creator: user, position: 5)
 
