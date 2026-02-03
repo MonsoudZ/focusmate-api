@@ -8,6 +8,10 @@ RSpec.describe TaskAssignmentService do
   let(:task) { create(:task, list: list, creator: user) }
   let(:service) { described_class.new(task: task, user: user) }
 
+  before do
+    allow(PushNotifications::Sender).to receive(:send_task_assigned)
+  end
+
   describe "#assign!" do
     it "assigns a user who has access to the list" do
       assignee = create(:user)
@@ -16,6 +20,25 @@ RSpec.describe TaskAssignmentService do
       service.assign!(assigned_to_id: assignee.id)
 
       expect(task.reload.assigned_to_id).to eq(assignee.id)
+    end
+
+    it "sends push notification to assignee" do
+      assignee = create(:user)
+      create(:membership, list: list, user: assignee, role: "editor")
+
+      service.assign!(assigned_to_id: assignee.id)
+
+      expect(PushNotifications::Sender).to have_received(:send_task_assigned).with(
+        to_user: assignee,
+        task: task,
+        assigned_by: user
+      )
+    end
+
+    it "does not send notification when assigning to self" do
+      service.assign!(assigned_to_id: user.id)
+
+      expect(PushNotifications::Sender).not_to have_received(:send_task_assigned)
     end
 
     it "allows assigning the list owner" do

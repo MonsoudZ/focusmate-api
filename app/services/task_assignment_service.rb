@@ -32,6 +32,15 @@ class TaskAssignmentService < ApplicationService
       @task.update!(assigned_to_id: assigned_to_id)
     end
 
+    # Notify assignee (unless assigning to self)
+    if assignee.id != @user.id
+      PushNotifications::Sender.send_task_assigned(
+        to_user: assignee,
+        task: @task,
+        assigned_by: @user
+      )
+    end
+
     @task
   end
 

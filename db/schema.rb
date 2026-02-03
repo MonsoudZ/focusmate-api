@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_03_020747) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_03_021907) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -275,6 +275,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_03_020747) do
     t.date "instance_date"
     t.integer "instance_number"
     t.integer "recurrence_count"
+    t.datetime "reminder_sent_at"
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_not_deleted", where: "(deleted_at IS NULL)"
@@ -284,6 +285,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_03_020747) do
     t.index ["creator_id"], name: "index_tasks_on_creator_id"
     t.index ["deleted_at"], name: "index_tasks_on_deleted_at"
     t.index ["due_at", "completed_at"], name: "index_tasks_on_due_at_and_completed_at"
+    t.index ["due_at", "reminder_sent_at"], name: "index_tasks_on_due_at_and_reminder_sent_at", where: "((status <> 2) AND (deleted_at IS NULL))"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_and_status"
     t.index ["due_at", "status"], name: "index_tasks_on_due_at_pending", where: "((status = 0) AND (deleted_at IS NULL))"
     t.index ["instance_date"], name: "index_tasks_on_instance_date"

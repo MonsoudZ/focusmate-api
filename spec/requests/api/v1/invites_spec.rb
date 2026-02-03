@@ -35,6 +35,10 @@ RSpec.describe "Api::V1::Invites", type: :request do
     let(:user) { create(:user) }
     let(:headers) { auth_headers(user) }
 
+    before do
+      allow(PushNotifications::Sender).to receive(:send_list_joined)
+    end
+
     it "adds user to the list" do
       expect {
         post "/api/v1/invites/#{invite.code}/accept", headers: headers
@@ -63,6 +67,16 @@ RSpec.describe "Api::V1::Invites", type: :request do
       }.to change(Friendship, :count).by(2)
 
       expect(Friendship.friends?(owner, user)).to be true
+    end
+
+    it "sends push notification to list owner" do
+      post "/api/v1/invites/#{invite.code}/accept", headers: headers
+
+      expect(PushNotifications::Sender).to have_received(:send_list_joined).with(
+        to_user: owner,
+        new_member: user,
+        list: list
+      )
     end
 
     it "does not duplicate friendship if already friends" do

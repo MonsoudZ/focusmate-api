@@ -58,6 +58,46 @@ module PushNotifications
         )
       end
 
+      def send_list_joined(to_user:, new_member:, list:)
+        send_to_user(
+          user: to_user,
+          title: "#{new_member.name} joined your list",
+          body: "#{new_member.name} is now a member of \"#{list.name}\"",
+          data: {
+            type: "list_joined",
+            list_id: list.id,
+            user_id: new_member.id
+          }
+        )
+      end
+
+      def send_task_assigned(to_user:, task:, assigned_by:)
+        send_to_user(
+          user: to_user,
+          title: "New task assigned to you",
+          body: "#{assigned_by.name} assigned you: #{task.title}",
+          data: {
+            type: "task_assigned",
+            task_id: task.id,
+            list_id: task.list_id,
+            assigned_by_id: assigned_by.id
+          }
+        )
+      end
+
+      def send_task_reminder(to_user:, task:)
+        send_to_user(
+          user: to_user,
+          title: "Task due soon",
+          body: task.title,
+          data: {
+            type: "task_reminder",
+            task_id: task.id,
+            list_id: task.list_id
+          }
+        )
+      end
+
       # Reset connection (useful for testing or after errors)
       def reset_connection!
         CONNECTION_MUTEX.synchronize do

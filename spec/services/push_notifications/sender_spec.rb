@@ -129,4 +129,75 @@ RSpec.describe PushNotifications::Sender do
       )
     end
   end
+
+  describe ".send_list_joined" do
+    let(:owner) { create(:user) }
+    let(:new_member) { create(:user, name: "Bob") }
+    let(:list) { create(:list, user: owner, name: "My List") }
+
+    it "sends notification to list owner with correct content" do
+      allow(described_class).to receive(:send_to_user)
+
+      described_class.send_list_joined(to_user: owner, new_member: new_member, list: list)
+
+      expect(described_class).to have_received(:send_to_user).with(
+        user: owner,
+        title: "Bob joined your list",
+        body: "Bob is now a member of \"My List\"",
+        data: hash_including(
+          type: "list_joined",
+          list_id: list.id,
+          user_id: new_member.id
+        )
+      )
+    end
+  end
+
+  describe ".send_task_assigned" do
+    let(:assignee) { create(:user) }
+    let(:assigner) { create(:user, name: "Alice") }
+    let(:list) { create(:list, user: assigner) }
+    let(:task) { create(:task, list: list, creator: assigner, title: "Important task") }
+
+    it "sends notification to assignee with correct content" do
+      allow(described_class).to receive(:send_to_user)
+
+      described_class.send_task_assigned(to_user: assignee, task: task, assigned_by: assigner)
+
+      expect(described_class).to have_received(:send_to_user).with(
+        user: assignee,
+        title: "New task assigned to you",
+        body: "Alice assigned you: Important task",
+        data: hash_including(
+          type: "task_assigned",
+          task_id: task.id,
+          list_id: task.list_id,
+          assigned_by_id: assigner.id
+        )
+      )
+    end
+  end
+
+  describe ".send_task_reminder" do
+    let(:user) { create(:user) }
+    let(:list) { create(:list, user: user) }
+    let(:task) { create(:task, list: list, creator: user, title: "Reminder task") }
+
+    it "sends reminder notification with correct content" do
+      allow(described_class).to receive(:send_to_user)
+
+      described_class.send_task_reminder(to_user: user, task: task)
+
+      expect(described_class).to have_received(:send_to_user).with(
+        user: user,
+        title: "Task due soon",
+        body: "Reminder task",
+        data: hash_including(
+          type: "task_reminder",
+          task_id: task.id,
+          list_id: task.list_id
+        )
+      )
+    end
+  end
 end

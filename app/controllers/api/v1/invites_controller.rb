@@ -60,6 +60,13 @@ module Api
 
         AnalyticsTracker.list_shared(invite.list, invite.inviter, shared_with: current_user, role: invite.role)
 
+        # Notify list owner that someone joined
+        PushNotifications::Sender.send_list_joined(
+          to_user: invite.list.user,
+          new_member: current_user,
+          list: invite.list
+        )
+
         render json: {
           message: "Successfully joined list",
           list: ListSerializer.new(invite.list, current_user: current_user).as_json
