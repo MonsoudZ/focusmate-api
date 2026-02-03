@@ -254,6 +254,25 @@ RSpec.describe TaskCreationService, type: :service do
       expect(task.note).to be_nil
     end
 
+    it "safely handles ActionController::Parameters input with extra keys" do
+      tag = create(:tag, user: user)
+      ac_params = ActionController::Parameters.new(
+        title: "Params Task",
+        due_at: 1.hour.from_now.iso8601,
+        tag_ids: [ tag.id ],
+        subtasks: [ "AC Subtask" ],
+        unexpected_admin_flag: true
+      )
+
+      service = TaskCreationService.new(list: list, user: user, params: ac_params)
+      task = service.call!
+
+      expect(task.title).to eq("Params Task")
+      expect(task.tags).to contain_exactly(tag)
+      expect(task.subtasks.count).to eq(1)
+      expect(task.subtasks.first.title).to eq("AC Subtask")
+    end
+
     it "should handle very long subtask titles" do
       long_subtask_title = "a" * 250 # Long but within 255 character limit
       params_with_long_subtask = params.merge(

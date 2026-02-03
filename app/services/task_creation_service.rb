@@ -3,6 +3,17 @@
 class TaskCreationService < ApplicationService
   include TimeParsing
 
+  PERMITTED_SCALAR_PARAMS = %i[
+    title note due_at priority color starred strict_mode
+    notification_interval_minutes requires_explanation_if_missed visibility
+    parent_task_id location_based location_name location_latitude
+    location_longitude location_radius_meters notify_on_arrival
+    notify_on_departure is_recurring recurrence_pattern recurrence_interval
+    recurrence_time recurrence_end_date recurrence_count name description
+    dueDate due_date
+  ].freeze
+  PERMITTED_ARRAY_PARAMS = { tag_ids: [], recurrence_days: [], subtasks: [] }.freeze
+
   def initialize(list:, user:, params:)
     @list = list
     @user = user
@@ -28,9 +39,7 @@ class TaskCreationService < ApplicationService
   private
 
   def normalize_params(params)
-    # Convert ActionController::Parameters to hash if needed
-    params = params.to_unsafe_h if params.respond_to?(:to_unsafe_h)
-    params = params.with_indifferent_access
+    params = sanitize_params(params).with_indifferent_access
 
     # Handle iOS naming conventions
     params[:title] ||= params.delete(:name)
@@ -38,6 +47,22 @@ class TaskCreationService < ApplicationService
     params[:due_at] ||= parse_due_date(params)
 
     params
+  end
+
+  def sanitize_params(params)
+    case params
+    when ActionController::Parameters
+      params.permit(*PERMITTED_SCALAR_PARAMS, PERMITTED_ARRAY_PARAMS).to_h
+    when Hash
+      params.with_indifferent_access.slice(
+        *PERMITTED_SCALAR_PARAMS,
+        :tag_ids,
+        :recurrence_days,
+        :subtasks
+      )
+    else
+      {}
+    end
   end
 
   def parse_due_date(params)
