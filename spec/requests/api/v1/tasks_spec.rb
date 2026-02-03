@@ -29,6 +29,46 @@ RSpec.describe "Tasks API", type: :request do
       end
     end
 
+    context "with hidden tasks" do
+      let(:member) { create(:user) }
+      let!(:visible_task) { create(:task, list: list, creator: user, title: "Visible Task") }
+      let!(:hidden_owner_task) { create(:task, list: list, creator: user, title: "Hidden Owner Task", visibility: :private_task) }
+      let!(:hidden_member_task) { create(:task, list: list, creator: member, title: "Hidden Member Task", visibility: :private_task) }
+
+      before do
+        list.memberships.create!(user: member, role: "editor")
+      end
+
+      it "shows hidden tasks to creator" do
+        auth_get "/api/v1/lists/#{list.id}/tasks", user: user
+
+        titles = json_response["tasks"].map { |t| t["title"] }
+        expect(titles).to include("Hidden Owner Task")
+      end
+
+      it "hides other members' hidden tasks" do
+        auth_get "/api/v1/lists/#{list.id}/tasks", user: user
+
+        titles = json_response["tasks"].map { |t| t["title"] }
+        expect(titles).not_to include("Hidden Member Task")
+      end
+
+      it "shows member's own hidden tasks to them" do
+        auth_get "/api/v1/lists/#{list.id}/tasks", user: member
+
+        titles = json_response["tasks"].map { |t| t["title"] }
+        expect(titles).to include("Hidden Member Task")
+        expect(titles).not_to include("Hidden Owner Task")
+      end
+
+      it "always shows visible tasks to all members" do
+        auth_get "/api/v1/lists/#{list.id}/tasks", user: member
+
+        titles = json_response["tasks"].map { |t| t["title"] }
+        expect(titles).to include("Visible Task")
+      end
+    end
+
     context "with status filters" do
       let!(:pending_task) { create(:task, list: list, creator: user, status: :pending, title: "Pending") }
       let!(:done_task) { create(:task, list: list, creator: user, status: :done, title: "Done") }
@@ -237,6 +277,40 @@ RSpec.describe "Tasks API", type: :request do
       end
     end
 
+    context "with hidden param" do
+      it "creates a hidden task when hidden is true" do
+        hidden_params = {
+          task: {
+            title: "Hidden Task",
+            due_at: 1.day.from_now.iso8601,
+            hidden: true
+          }
+        }
+
+        auth_post "/api/v1/lists/#{list.id}/tasks", user: user, params: hidden_params
+
+        expect(response).to have_http_status(:created)
+        expect(json_response["task"]["hidden"]).to be true
+        expect(Task.last.visibility).to eq("private_task")
+      end
+
+      it "creates a visible task when hidden is false" do
+        visible_params = {
+          task: {
+            title: "Visible Task",
+            due_at: 1.day.from_now.iso8601,
+            hidden: false
+          }
+        }
+
+        auth_post "/api/v1/lists/#{list.id}/tasks", user: user, params: visible_params
+
+        expect(response).to have_http_status(:created)
+        expect(json_response["task"]["hidden"]).to be false
+        expect(Task.last.visibility).to eq("visible_to_all")
+      end
+    end
+
     context "with params at root level (no :task key)" do
       it "creates a task with root-level params" do
         expect {
@@ -271,6 +345,26 @@ RSpec.describe "Tasks API", type: :request do
         auth_patch "/api/v1/lists/#{list.id}/tasks/#{task.id}", user: other_user, params: { task: { title: "Viewer Update" } }
 
         expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "toggling hidden status" do
+      it "updates task to hidden" do
+        auth_patch "/api/v1/lists/#{list.id}/tasks/#{task.id}", user: user, params: { task: { hidden: true } }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["task"]["hidden"]).to be true
+        expect(task.reload.visibility).to eq("private_task")
+      end
+
+      it "updates task to visible" do
+        hidden_task = create(:task, list: list, creator: user, visibility: :private_task)
+
+        auth_patch "/api/v1/lists/#{list.id}/tasks/#{hidden_task.id}", user: user, params: { task: { hidden: false } }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["task"]["hidden"]).to be false
+        expect(hidden_task.reload.visibility).to eq("visible_to_all")
       end
     end
   end

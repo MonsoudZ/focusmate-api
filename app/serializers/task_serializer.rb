@@ -52,6 +52,9 @@ class TaskSerializer
       # Creator
       creator: creator_data,
 
+      # Visibility
+      hidden: task.private_task?,
+
       # Permissions
       can_edit: can_edit?,
       can_delete: can_delete?,

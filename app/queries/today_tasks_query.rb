@@ -139,6 +139,7 @@ class TodayTasksQuery
       .where(parent_task_id: nil)
       .where(is_template: [ false, nil ])
       .where(deleted_at: nil)
+      .visible_to_user(user)
       .includes(:tags, :creator, :subtasks, list: :user)
   end
 

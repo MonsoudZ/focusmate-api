@@ -134,5 +134,32 @@ RSpec.describe TaskNudgeService do
         }.to raise_error(ApplicationError::UnprocessableEntity, /only member/)
       end
     end
+
+    context "with a hidden task (private_task visibility)" do
+      let(:hidden_task) { create(:task, list: list, creator: list_owner, visibility: :private_task) }
+
+      before do
+        list.add_member!(member1, "editor")
+        list.add_member!(member2, "viewer")
+      end
+
+      it "raises no recipients error" do
+        service = described_class.new(task: hidden_task, from_user: list_owner)
+
+        expect {
+          service.call!
+        }.to raise_error(ApplicationError::UnprocessableEntity, /only member/)
+      end
+
+      it "does not send any notifications" do
+        service = described_class.new(task: hidden_task, from_user: list_owner)
+
+        expect {
+          service.call!
+        }.to raise_error(ApplicationError::UnprocessableEntity)
+
+        expect(PushNotifications::Sender).not_to have_received(:send_nudge)
+      end
+    end
   end
 end

@@ -27,6 +27,9 @@ module Permissions
       return false if task.deleted?
       return false if task.list.nil?
 
+      # Hidden tasks only visible to creator
+      return false if task.private_task? && !creator?
+
       list_permissions.can_view?
     end
 
@@ -35,6 +38,9 @@ module Permissions
       return false if user.nil? || task.nil?
       return false if task.deleted?
       return false if task.list.nil?
+
+      # Hidden tasks only editable by creator
+      return false if task.private_task? && !creator?
 
       # List owner can always edit
       return true if list_permissions.owner?

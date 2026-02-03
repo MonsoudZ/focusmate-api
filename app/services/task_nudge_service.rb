@@ -60,7 +60,12 @@ class TaskNudgeService < ApplicationService
     recipient_ids.uniq!
     recipient_ids.delete(@from_user.id)
 
-    User.where(id: recipient_ids)
+    users = User.where(id: recipient_ids)
+
+    # Hidden tasks can't be nudged to others (only creator can see them)
+    users = users.none if @task.private_task?
+
+    users
   end
 
   def recent_nudge_recipient_ids

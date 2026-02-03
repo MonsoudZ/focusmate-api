@@ -34,6 +34,21 @@ RSpec.describe TaskSerializer do
       expect(json[:can_edit]).to be false
       expect(json[:can_delete]).to be false
     end
+
+    it "includes hidden field as false for visible tasks" do
+      serializer = described_class.new(task, current_user: user)
+      json = serializer.as_json
+
+      expect(json[:hidden]).to be false
+    end
+
+    it "includes hidden field as true for private tasks" do
+      hidden_task = create(:task, list: list, creator: user, visibility: :private_task)
+      serializer = described_class.new(hidden_task, current_user: user)
+      json = serializer.as_json
+
+      expect(json[:hidden]).to be true
+    end
   end
 
   describe "overdue logic" do

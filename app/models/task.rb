@@ -65,6 +65,9 @@ class Task < ApplicationRecord
   }
 
   scope :visible, -> { where(is_template: [ false, nil ]) }
+  scope :visible_to_user, ->(user) {
+    where("visibility = :visible OR creator_id = :uid", visible: visibilities[:visible_to_all], uid: user.id)
+  }
   scope :templates, -> { where(is_template: true) }
   scope :recurring_templates, -> { where(is_template: true, template_type: "recurring") }
 
@@ -92,7 +95,12 @@ class Task < ApplicationRecord
   def visible_to?(user)
     return false unless user
     return false if list.deleted?
+    return false if private_task? && creator_id != user.id
     list.accessible_by?(user)
+  end
+
+  def hidden?
+    private_task?
   end
 
   def subtask?

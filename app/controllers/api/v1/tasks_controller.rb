@@ -165,12 +165,17 @@ module Api
       end
 
       def task_params
-        params.require(:task).permit(permitted_task_attributes)
+        p = params.require(:task).permit(permitted_task_attributes)
+        if p.key?(:hidden)
+          hidden = ActiveModel::Type::Boolean.new.cast(p.delete(:hidden))
+          p[:visibility] = hidden ? :private_task : :visible_to_all
+        end
+        p
       end
 
       def permitted_task_attributes
         %i[
-          title note due_at priority strict_mode
+          title note due_at priority strict_mode hidden
           notification_interval_minutes list_id visibility color starred position
           is_recurring recurrence_pattern recurrence_interval recurrence_end_date recurrence_count recurrence_time
           parent_task_id

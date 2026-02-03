@@ -34,6 +34,7 @@ class TaskPolicy < ApplicationPolicy
 
       scope.where(deleted_at: nil)
            .where(list_id: list_ids)
+           .visible_to_user(user)
     end
   end
 
