@@ -387,13 +387,28 @@ RSpec.describe "Tasks API", type: :request do
       end
     end
 
-    context "when trying to nudge yourself" do
+    context "when nudging your own task" do
       let(:own_task) { create(:task, list: list, creator: user) }
 
-      it "returns unprocessable entity" do
+      it "sends nudge to other list members" do
+        # With the new behavior, nudging your own task sends to other members
+        # (e.g., "hey everyone, remind me about this task")
         auth_post "/api/v1/lists/#{list.id}/tasks/#{own_task.id}/nudge", user: user
 
+        expect(response).to have_http_status(:ok)
+        expect(Nudge.last.to_user).to eq(task_creator)
+      end
+    end
+
+    context "when no other members in list" do
+      let(:private_list) { create(:list, user: user) }
+      let(:solo_task) { create(:task, list: private_list, creator: user) }
+
+      it "returns unprocessable entity" do
+        auth_post "/api/v1/lists/#{private_list.id}/tasks/#{solo_task.id}/nudge", user: user
+
         expect(response).to have_http_status(:unprocessable_content)
+        expect(json_response["error"]["message"]).to include("only member")
       end
     end
   end
