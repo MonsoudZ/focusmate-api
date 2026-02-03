@@ -3,20 +3,31 @@
 require "rails_helper"
 
 RSpec.describe "Analytics API", type: :request do
+  include ActiveJob::TestHelper
+
   let(:user) { create(:user) }
+
+  before do
+    clear_enqueued_jobs
+    clear_performed_jobs
+  end
 
   describe "POST /api/v1/analytics/app_opened" do
     context "when authenticated" do
       it "tracks app opened event" do
         expect {
-          auth_post "/api/v1/analytics/app_opened", user: user, params: { platform: "ios", version: "1.0.0" }
+          perform_enqueued_jobs do
+            auth_post "/api/v1/analytics/app_opened", user: user, params: { platform: "ios", version: "1.0.0" }
+          end
         }.to change(AnalyticsEvent, :count).by(1)
 
         expect(response).to have_http_status(:ok)
       end
 
       it "records platform and version" do
-        auth_post "/api/v1/analytics/app_opened", user: user, params: { platform: "ios", version: "1.0.0" }
+        perform_enqueued_jobs do
+          auth_post "/api/v1/analytics/app_opened", user: user, params: { platform: "ios", version: "1.0.0" }
+        end
 
         event = AnalyticsEvent.last
         expect(event.event_type).to eq("app_opened")

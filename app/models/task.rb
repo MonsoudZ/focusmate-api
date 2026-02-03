@@ -66,8 +66,15 @@ class Task < ApplicationRecord
   }
 
   scope :visible, -> { where(is_template: [ false, nil ]) }
-  scope :visible_to_user, ->(user) {
-    where("visibility = :visible OR creator_id = :uid", visible: visibilities[:visible_to_all], uid: user.id)
+  scope :visible_to_user, lambda { |user|
+    task_table = arel_table
+    visible_to_all = task_table[:visibility].eq(visibilities[:visible_to_all])
+
+    if user&.id
+      where(visible_to_all.or(task_table[:creator_id].eq(user.id)))
+    else
+      where(visible_to_all)
+    end
   }
   scope :templates, -> { where(is_template: true) }
   scope :recurring_templates, -> { where(is_template: true, template_type: "recurring") }

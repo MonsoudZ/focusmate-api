@@ -150,7 +150,7 @@ class TaskSerializer
         title: subtask.title,
         note: subtask.note,
         status: subtask.status,
-        completed_at: subtask.status == "done" ? (subtask.completed_at || subtask.updated_at) : nil,
+        completed_at: subtask.status == "done" ? iso8601_or_nil(subtask.completed_at || subtask.updated_at) : nil,
         position: subtask.position,
         created_at: subtask.created_at
       }
@@ -159,8 +159,12 @@ class TaskSerializer
 
   def completed_at_value
     if task.status == "done"
-      task.completed_at || task.updated_at
+      iso8601_or_nil(task.completed_at || task.updated_at)
     end
+  end
+
+  def iso8601_or_nil(value)
+    value&.iso8601
   end
 
   # Use loaded tags if available

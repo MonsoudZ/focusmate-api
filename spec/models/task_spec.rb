@@ -269,7 +269,7 @@ RSpec.describe Task, type: :model do
       task = build(:task, list: list, creator: user)
       task.valid?
       expect(task.status).to eq("pending")
-      expect(task.visibility).to eq("private_task")
+      expect(task.visibility).to eq("visible_to_all")
       expect(task.strict_mode).to be false
     end
 

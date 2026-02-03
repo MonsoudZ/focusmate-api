@@ -78,13 +78,13 @@ RSpec.describe Api::V1::ListsController, type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it 'forbids access to other users list' do
+    it 'returns not found for other users list (no info leakage)' do
       other_user = create(:user)
       other_list = create(:list, user: other_user)
 
       get "/api/v1/lists/#{other_list.id}", headers: auth_headers
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:not_found)
     end
 
     it 'allows access to list user is member of' do
@@ -150,12 +150,12 @@ RSpec.describe Api::V1::ListsController, type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it 'forbids updating other users list' do
+    it 'returns not found when updating other users list (no info leakage)' do
       other_list = create(:list, user: create(:user))
 
       patch "/api/v1/lists/#{other_list.id}", params: { list: { name: "Updated" } }, headers: auth_headers
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -172,12 +172,12 @@ RSpec.describe Api::V1::ListsController, type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it 'forbids deleting other users list' do
+    it 'returns not found when deleting other users list (no info leakage)' do
       other_list = create(:list, user: create(:user))
 
       delete "/api/v1/lists/#{other_list.id}", headers: auth_headers
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:not_found)
     end
 
     it 'forbids deleting list user is only member of' do
