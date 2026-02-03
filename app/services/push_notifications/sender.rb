@@ -13,15 +13,18 @@ module PushNotifications
       def send_to_user(user:, title:, body:, data: {})
         devices = user.devices.ios.active
 
-        return if devices.empty?
+        return false if devices.empty?
 
+        sent_count = 0
         devices.each do |device|
-          send_to_device(device: device, title: title, body: body, data: data)
+          sent_count += 1 if send_to_device(device: device, title: title, body: body, data: data)
         end
+
+        sent_count.positive?
       end
 
       def send_to_device(device:, title:, body:, data: {})
-        return unless device.apns_token.present?
+        return false unless device.apns_token.present?
 
         notification = build_notification(
           token: device.apns_token,
@@ -32,6 +35,7 @@ module PushNotifications
 
         connection.push_async(notification)
         Rails.logger.info("Push sent to device #{device.id}: #{title}")
+        true
       rescue => e
         Rails.logger.error("Push failed for device #{device.id}: #{e.message}")
 
@@ -42,6 +46,7 @@ module PushNotifications
         end
 
         Sentry.capture_exception(e) if defined?(Sentry)
+        false
       end
 
       def send_nudge(from_user:, to_user:, task:)

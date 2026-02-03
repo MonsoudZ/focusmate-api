@@ -675,6 +675,21 @@ RSpec.describe "Tasks API", type: :request do
         expect(task1.reload.position).to eq(2)
         expect(task2.reload.position).to eq(3)
       end
+
+      it "returns bad request when tasks payload is missing" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: user, params: {}
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it "returns bad request when a task entry is not an object" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: user, params: {
+          tasks: [ "invalid" ]
+        }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("each task entry must be an object")
+      end
     end
 
     context "as viewer" do

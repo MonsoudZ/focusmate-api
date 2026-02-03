@@ -21,13 +21,19 @@ class Task < ApplicationRecord
   enum :visibility, { visible_to_all: 0, private_task: 1 }, default: :visible_to_all
   enum :priority, { no_priority: 0, low: 1, medium: 2, high: 3, urgent: 4 }, default: :no_priority
   COLORS = %w[blue green orange red purple pink teal yellow gray].freeze
+  MAX_NOTIFICATION_INTERVAL_MINUTES = 30
 
   # Validations
   validates :title, presence: true, length: { maximum: 255 }
   validates :note, length: { maximum: 1000 }, allow_nil: true
   validates :due_at, presence: true, unless: :subtask?
   validates :strict_mode, inclusion: { in: [ true, false ] }
-  validates :notification_interval_minutes, numericality: { greater_than: 0 }, allow_nil: true
+  validates :notification_interval_minutes,
+            numericality: {
+              greater_than: 0,
+              less_than_or_equal_to: MAX_NOTIFICATION_INTERVAL_MINUTES
+            },
+            allow_nil: true
   validates :recurrence_pattern, inclusion: { in: %w[daily weekly monthly yearly] }, allow_nil: true
   validates :recurrence_interval, numericality: { greater_than: 0 }, allow_nil: true
 

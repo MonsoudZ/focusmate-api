@@ -8,7 +8,7 @@ RSpec.describe "TaskReminderJob Performance", type: :performance do
   let(:list) { create(:list, user: user) }
 
   before do
-    allow(PushNotifications::Sender).to receive(:send_task_reminder)
+    allow(PushNotifications::Sender).to receive(:send_task_reminder).and_return(true)
   end
 
   describe "query efficiency" do

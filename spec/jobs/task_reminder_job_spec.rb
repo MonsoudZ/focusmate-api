@@ -7,7 +7,7 @@ RSpec.describe TaskReminderJob, type: :job do
   let(:list) { create(:list, user: user) }
 
   before do
-    allow(PushNotifications::Sender).to receive(:send_task_reminder)
+    allow(PushNotifications::Sender).to receive(:send_task_reminder).and_return(true)
   end
 
   describe "#perform" do
@@ -29,6 +29,15 @@ RSpec.describe TaskReminderJob, type: :job do
         expect {
           described_class.new.perform
         }.to change { task.reload.reminder_sent_at }.from(nil)
+      end
+
+      it "does not mark reminder as sent when delivery fails" do
+        task = create(:task, list: list, creator: user, due_at: 5.minutes.from_now)
+        allow(PushNotifications::Sender).to receive(:send_task_reminder).and_return(false)
+
+        expect {
+          described_class.new.perform
+        }.not_to change { task.reload.reminder_sent_at }
       end
 
       it "sends to assignee if task is assigned" do

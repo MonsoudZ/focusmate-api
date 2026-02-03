@@ -14,7 +14,7 @@ RSpec.describe PushNotifications::Sender do
   describe ".send_to_user" do
     it "does nothing when user has no iOS devices" do
       expect(described_class).not_to receive(:send_to_device)
-      described_class.send_to_user(user: user, title: "Test", body: "Body")
+      expect(described_class.send_to_user(user: user, title: "Test", body: "Body")).to be(false)
     end
 
     it "sends to each active iOS device" do
@@ -27,6 +27,13 @@ RSpec.describe PushNotifications::Sender do
       described_class.send_to_user(user: user, title: "Test", body: "Body")
 
       expect(described_class).to have_received(:send_to_device).twice
+    end
+
+    it "returns true when at least one device receives push" do
+      create(:device, user: user, platform: "ios")
+      allow(described_class).to receive(:send_to_device).and_return(true)
+
+      expect(described_class.send_to_user(user: user, title: "Test", body: "Body")).to be(true)
     end
 
     it "skips inactive devices" do
@@ -48,24 +55,26 @@ RSpec.describe PushNotifications::Sender do
     end
 
     it "builds and sends a notification" do
-      described_class.send_to_device(
+      result = described_class.send_to_device(
         device: device,
         title: "Hello",
         body: "World"
       )
 
+      expect(result).to be(true)
       expect(mock_connection).to have_received(:push_async).with(an_instance_of(Apnotic::Notification))
     end
 
     it "skips devices without apns_token" do
       device.update_column(:apns_token, nil)
 
-      described_class.send_to_device(
+      result = described_class.send_to_device(
         device: device,
         title: "Hello",
         body: "World"
       )
 
+      expect(result).to be(false)
       expect(mock_connection).not_to have_received(:push_async)
     end
 
@@ -76,7 +85,7 @@ RSpec.describe PushNotifications::Sender do
       expect(Rails.logger).to receive(:error).with(/Push failed for device #{device.id}/)
 
       expect {
-        described_class.send_to_device(device: device, title: "Hello", body: "World")
+        expect(described_class.send_to_device(device: device, title: "Hello", body: "World")).to be(false)
       }.not_to raise_error
     end
 

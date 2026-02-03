@@ -123,7 +123,7 @@ module Api
       # POST /api/v1/lists/:list_id/tasks/reorder
       def reorder
         authorize @list, :update?
-        TaskReorderService.call!(list: @list, task_positions: params[:tasks].map { |t| t.permit(:id, :position).to_h.symbolize_keys })
+        TaskReorderService.call!(list: @list, task_positions: reorder_task_positions)
         head :ok
       end
 
@@ -184,6 +184,32 @@ module Api
           p[:visibility] = hidden ? :private_task : :visible_to_all
         end
         p
+      end
+
+      def reorder_task_positions
+        tasks = params.require(:tasks)
+        raise ApplicationError::BadRequest, "tasks must be an array" unless tasks.is_a?(Array)
+
+        tasks.map do |entry|
+          entry_params =
+            if entry.is_a?(ActionController::Parameters)
+              entry
+            elsif entry.is_a?(Hash)
+              ActionController::Parameters.new(entry)
+            else
+              raise ApplicationError::BadRequest, "each task entry must be an object"
+            end
+
+          permitted = entry_params.permit(:id, :position)
+          id = permitted[:id]
+          position = permitted[:position]
+
+          if id.blank? || position.nil?
+            raise ApplicationError::BadRequest, "each task entry must include id and position"
+          end
+
+          { id: id, position: position }
+        end
       end
 
       def permitted_task_attributes

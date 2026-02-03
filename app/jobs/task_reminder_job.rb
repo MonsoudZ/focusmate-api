@@ -38,7 +38,7 @@ class TaskReminderJob < ApplicationJob
   def max_reminder_window
     # Look ahead for tasks due in the next 30 minutes
     # (covers even the longest reasonable notification_interval_minutes)
-    30.minutes
+    Task::MAX_NOTIFICATION_INTERVAL_MINUTES.minutes
   end
 
   def send_reminder(task)
@@ -51,14 +51,17 @@ class TaskReminderJob < ApplicationJob
     interval = task.notification_interval_minutes || 10
     return unless task.due_at <= interval.minutes.from_now
 
-    PushNotifications::Sender.send_task_reminder(
+    delivered = PushNotifications::Sender.send_task_reminder(
       to_user: recipient,
       task: task
     )
 
-    task.update_column(:reminder_sent_at, Time.current)
-
-    Rails.logger.info("Sent reminder for task #{task.id} to user #{recipient.id}")
+    if delivered
+      task.update_column(:reminder_sent_at, Time.current)
+      Rails.logger.info("Sent reminder for task #{task.id} to user #{recipient.id}")
+    else
+      Rails.logger.warn("Reminder for task #{task.id} was not delivered to any device")
+    end
   rescue => e
     Rails.logger.error("Failed to send reminder for task #{task.id}: #{e.message}")
     Sentry.capture_exception(e) if defined?(Sentry)

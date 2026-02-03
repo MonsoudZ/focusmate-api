@@ -82,6 +82,16 @@ RSpec.describe Task, type: :model do
       expect(task).not_to be_valid
       expect(task.errors[:notification_interval_minutes]).to include("must be greater than 0")
     end
+
+    it 'validates notification_interval_minutes upper bound' do
+      task = build(:task,
+                   notification_interval_minutes: 31,
+                   due_at: 1.hour.from_now,
+                   list: list,
+                   creator: user)
+      expect(task).not_to be_valid
+      expect(task.errors[:notification_interval_minutes]).to include("must be less than or equal to 30")
+    end
   end
 
   describe 'associations' do
