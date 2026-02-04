@@ -9,10 +9,12 @@ module Api
       # Optional param: exclude_list_id - filters out friends who are already members of that list
       def index
         friends = current_user.friends.order(:name)
+        query = friends_query_params
 
         # Filter out friends who are already members of a specific list
-        if params[:exclude_list_id].present?
-          list = List.find_by(id: params[:exclude_list_id])
+        if query[:exclude_list_id].present?
+          list_id = parse_positive_integer(query[:exclude_list_id])
+          list = List.find_by(id: list_id) if list_id
           if list && list.accessible_by?(current_user)
             # Get all member IDs (including owner)
             existing_member_ids = list.memberships.pluck(:user_id) + [ list.user_id ]
@@ -22,8 +24,8 @@ module Api
 
         result = paginate(
           friends,
-          page: params[:page],
-          per_page: params[:per_page],
+          page: query[:page],
+          per_page: query[:per_page],
           default_per_page: 50,
           max_per_page: 100
         )
@@ -51,6 +53,19 @@ module Api
         Friendship.destroy_mutual!(current_user, friend)
 
         head :no_content
+      end
+
+      private
+
+      def friends_query_params
+        params.permit(:exclude_list_id, :page, :per_page)
+      end
+
+      def parse_positive_integer(value)
+        parsed = Integer(value, exception: false)
+        return nil if parsed.nil? || parsed <= 0
+
+        parsed
       end
     end
   end

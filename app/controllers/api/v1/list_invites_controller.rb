@@ -72,11 +72,11 @@ module Api
 
       def invite_attributes
         payload = invite_payload
-        {}.tap do |attrs|
-          attrs[:role] = payload[:role] if payload.key?(:role)
-          attrs[:expires_at] = payload[:expires_at] if payload.key?(:expires_at)
-          attrs[:max_uses] = payload[:max_uses] if payload.key?(:max_uses)
-        end
+        {
+          role: payload[:role],
+          expires_at: payload[:expires_at],
+          max_uses: payload[:max_uses]
+        }.compact
       end
 
       def invite_payload
@@ -85,7 +85,7 @@ module Api
 
         raise ApplicationError::BadRequest, "invite must be an object" unless raw.is_a?(ActionController::Parameters)
 
-        raw
+        raw.permit(:role, :expires_at, :max_uses)
       end
     end
   end

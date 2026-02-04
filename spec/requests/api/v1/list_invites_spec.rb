@@ -75,6 +75,16 @@ RSpec.describe "Api::V1::ListInvites", type: :request do
       expect(response).to have_http_status(:bad_request)
       expect(json_response["error"]["message"]).to eq("invite must be an object")
     end
+
+    it "ignores non-scalar invite attributes" do
+      post "/api/v1/lists/#{list.id}/invites",
+           params: { invite: { role: { bad: "input" }, max_uses: [ 5 ] } }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      expect(json_response["invite"]["role"]).to eq("viewer")
+      expect(json_response["invite"]["max_uses"]).to be_nil
+    end
   end
 
   describe "DELETE /api/v1/lists/:list_id/invites/:id" do

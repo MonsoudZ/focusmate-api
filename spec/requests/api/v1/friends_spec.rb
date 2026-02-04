@@ -110,6 +110,13 @@ RSpec.describe "Api::V1::Friends", type: :request do
 
         expect(json_response["pagination"]["total_count"]).to eq(1)
       end
+
+      it "ignores non-scalar exclude_list_id values" do
+        get "/api/v1/friends", headers: headers, params: { exclude_list_id: { bad: "input" } }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["friends"].length).to eq(2)
+      end
     end
 
     describe "pagination parameter normalization" do
@@ -139,6 +146,17 @@ RSpec.describe "Api::V1::Friends", type: :request do
 
         expect(response).to have_http_status(:ok)
         expect(json_response["pagination"]["page"]).to eq(1)
+      end
+
+      it "falls back to defaults when page/per_page are non-scalar" do
+        get "/api/v1/friends", headers: headers, params: {
+          page: { bad: "input" },
+          per_page: [ "10" ]
+        }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["pagination"]["page"]).to eq(1)
+        expect(json_response["pagination"]["per_page"]).to eq(50)
       end
     end
   end
