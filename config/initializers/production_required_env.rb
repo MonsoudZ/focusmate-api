@@ -12,6 +12,7 @@ required = %w[
   APNS_BUNDLE_ID
   APNS_KEY_CONTENT
   APPLE_BUNDLE_ID
+  HEALTH_DIAGNOSTICS_TOKEN
 ]
 missing = required.select { |k| ENV[k].blank? }
 

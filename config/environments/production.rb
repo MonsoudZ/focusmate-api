@@ -27,8 +27,10 @@ Rails.application.configure do
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
   config.force_ssl = true
 
-  # Skip http-to-https redirect for the default health check endpoint.
-  config.ssl_options = { redirect: { exclude: ->(request) { request.path.start_with?("/health") } } }
+  health_probe_paths = %w[/health/live /health/ready].freeze
+
+  # Keep liveness/readiness probe endpoints reachable by plain HTTP for load balancers.
+  config.ssl_options = { redirect: { exclude: ->(request) { health_probe_paths.include?(request.path) } } }
 
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]
@@ -112,6 +114,6 @@ Rails.application.configure do
     /.*\.up\.railway\.app/
   ]
 
-  # Skip DNS rebinding protection for health check endpoints.
-  config.host_authorization = { exclude: ->(request) { request.path.start_with?("/health") } }
+  # Allow only probe endpoints to bypass host authorization (not detailed diagnostics).
+  config.host_authorization = { exclude: ->(request) { health_probe_paths.include?(request.path) } }
 end

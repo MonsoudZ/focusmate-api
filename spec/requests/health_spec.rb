@@ -60,4 +60,39 @@ RSpec.describe "Health API", type: :request do
       expect(json_response["timestamp"]).to be_present
     end
   end
+
+  describe "diagnostic auth in production" do
+    before do
+      allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("production"))
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("HEALTH_DIAGNOSTICS_TOKEN").and_return("health-secret")
+    end
+
+    it "requires X-Health-Token for detailed endpoint" do
+      get "/health/detailed"
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "requires X-Health-Token for metrics endpoint" do
+      get "/health/metrics"
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "allows diagnostics when token is valid" do
+      get "/health/metrics", headers: { "X-Health-Token" => "health-secret" }
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response["health"]).to be_in([ 0, 1 ])
+    end
+
+    it "returns 404 when production token is not configured" do
+      allow(ENV).to receive(:[]).with("HEALTH_DIAGNOSTICS_TOKEN").and_return(nil)
+
+      get "/health/detailed", headers: { "X-Health-Token" => "anything" }
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
 end
