@@ -26,7 +26,7 @@ class ListSerializer
       updated_at: list.updated_at
     }.tap do |hash|
       if options[:include_tasks]
-        hash[:tasks] = list.tasks.includes(:tags, :creator, :subtasks, :list).map do |task|
+        hash[:tasks] = list.tasks.includes(:tags, :creator, :subtasks, :list, reschedule_events: :user).map do |task|
           TaskSerializer.new(
             task,
             current_user: current_user,
