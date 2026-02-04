@@ -142,11 +142,36 @@ RSpec.describe AlertingService do
 
       described_class.check(:dead_jobs, current_value: 15)
     end
+
+    it "does not raise when Sentry capture_message fails" do
+      if defined?(Sentry)
+        allow(Sentry).to receive(:capture_message).and_raise(StandardError, "Sentry API down")
+        allow(Rails.logger).to receive(:error)
+      end
+
+      expect { described_class.check(:queue_backlog, current_value: 1500) }.not_to raise_error
+
+      if defined?(Sentry)
+        expect(Rails.logger).to have_received(:error).with(hash_including(
+          event: "alerting_service_sentry_failure",
+          error_class: "StandardError",
+          error_message: "Sentry API down"
+        ))
+      end
+    end
   end
 
   describe "metric collection" do
     it "handles sidekiq errors gracefully" do
       allow(Sidekiq::Stats).to receive(:new).and_raise(StandardError, "Connection failed")
+      expect(Rails.logger).to receive(:error).with(hash_including(
+        event: "alerting_metric_collection_failed",
+        metric: "sidekiq_enqueued"
+      ))
+      expect(Rails.logger).to receive(:error).with(hash_including(
+        event: "alerting_metric_collection_failed",
+        metric: "sidekiq_dead"
+      ))
 
       results = described_class.check_all_thresholds
 

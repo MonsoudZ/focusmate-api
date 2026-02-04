@@ -9,6 +9,8 @@
 #   AlertingService.check(:high_error_rate, current_value: 0.15)
 #
 class AlertingService
+  SENTRY_FAILURE_TTL = 5.minutes
+
   # Define alert thresholds and conditions
   ALERTS = {
     high_error_rate: {
@@ -130,7 +132,7 @@ class AlertingService
 
       # Send to Sentry
       if defined?(Sentry)
-        Sentry.capture_message(
+        capture_sentry_message(
           "Alert: #{config[:description]}",
           level: config[:severity] == :error ? :error : :warning,
           extra: {
@@ -152,28 +154,59 @@ class AlertingService
     # Metric collection methods
     def sidekiq_enqueued
       Sidekiq::Stats.new.enqueued
-    rescue StandardError
+    rescue StandardError => e
+      log_metric_collection_error_once(e, metric: "sidekiq_enqueued")
       0
     end
 
     def sidekiq_dead
       Sidekiq::Stats.new.dead_size
-    rescue StandardError
+    rescue StandardError => e
+      log_metric_collection_error_once(e, metric: "sidekiq_dead")
       0
     end
 
     def db_connection_ratio
       pool = ActiveRecord::Base.connection_pool
       pool.connections.size.to_f / pool.size
-    rescue StandardError
+    rescue StandardError => e
+      log_metric_collection_error_once(e, metric: "db_connection_ratio")
       0
     end
 
     def memory_mb
       return 0 unless defined?(GetProcessMem)
       GetProcessMem.new.mb
-    rescue StandardError
+    rescue StandardError => e
+      log_metric_collection_error_once(e, metric: "memory_mb")
       0
+    end
+
+    def capture_sentry_message(*args, **kwargs)
+      Sentry.capture_message(*args, **kwargs)
+    rescue StandardError => e
+      cache_key = "alerting_service:sentry_failure:#{e.class.name}:#{e.message}"
+      return if Rails.cache.read(cache_key).present?
+
+      Rails.cache.write(cache_key, true, expires_in: SENTRY_FAILURE_TTL)
+      Rails.logger.error(
+        event: "alerting_service_sentry_failure",
+        error_class: e.class.name,
+        error_message: e.message
+      )
+    end
+
+    def log_metric_collection_error_once(error, metric:)
+      cache_key = "alerting_service:metric_failure:#{metric}:#{error.class.name}:#{error.message}"
+      return if Rails.cache.read(cache_key).present?
+
+      Rails.cache.write(cache_key, true, expires_in: SENTRY_FAILURE_TTL)
+      Rails.logger.error(
+        event: "alerting_metric_collection_failed",
+        metric: metric,
+        error_class: error.class.name,
+        error_message: error.message
+      )
     end
   end
 end

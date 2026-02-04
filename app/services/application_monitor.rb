@@ -10,6 +10,8 @@
 #   ApplicationMonitor.alert("High error rate detected", severity: :warning)
 #
 class ApplicationMonitor
+  SENTRY_FAILURE_TTL = 5.minutes
+
   class << self
     # Track a business event
     def track_event(event_name, **metadata)
@@ -84,7 +86,7 @@ class ApplicationMonitor
         context: context
       )
 
-      Sentry.capture_exception(error, extra: context) if defined?(Sentry)
+      capture_exception(error, context)
     end
 
     # Health metrics for dashboards
@@ -113,8 +115,37 @@ class ApplicationMonitor
 
       Sentry.capture_message(message, level: level, extra: context)
     rescue StandardError => e
-      # Log only - can't use Rails.error.report as it would loop back to Sentry
-      Rails.logger.error("Failed to send to Sentry: #{e.message}")
+      log_sentry_failure_once(
+        e,
+        operation: "capture_message",
+        payload: { message: message, level: level }
+      )
+    end
+
+    def capture_exception(error, context)
+      return unless defined?(Sentry)
+
+      Sentry.capture_exception(error, extra: context)
+    rescue StandardError => e
+      log_sentry_failure_once(
+        e,
+        operation: "capture_exception",
+        payload: { error_class: error.class.name, error_message: error.message }
+      )
+    end
+
+    def log_sentry_failure_once(error, operation:, payload:)
+      cache_key = "application_monitor:sentry_failure:#{operation}:#{error.class.name}:#{error.message}"
+      return if Rails.cache.read(cache_key).present?
+
+      Rails.cache.write(cache_key, true, expires_in: SENTRY_FAILURE_TTL)
+      Rails.logger.error(
+        event: "application_monitor_sentry_failure",
+        operation: operation,
+        error_class: error.class.name,
+        error_message: error.message,
+        payload: payload
+      )
     end
 
     def database_health

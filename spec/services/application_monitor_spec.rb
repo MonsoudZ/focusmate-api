@@ -191,16 +191,47 @@ RSpec.describe ApplicationMonitor do
   end
 
   describe "send_to_sentry error handling" do
-    it "logs error if Sentry fails" do
+    around do |example|
+      original_cache = Rails.cache
+      Rails.cache = ActiveSupport::Cache::MemoryStore.new
+      example.run
+      Rails.cache = original_cache
+    end
+
+    it "logs structured metadata if Sentry capture_message fails" do
       if defined?(Sentry)
         allow(Sentry).to receive(:capture_message).and_raise(StandardError, "Sentry API error")
-        expect(Rails.logger).to receive(:error).with("Failed to send to Sentry: Sentry API error")
+        allow(Rails.logger).to receive(:error)
       end
 
-      # Should not raise, just log the error
-      expect {
-        described_class.track_event("test_event")
-      }.not_to raise_error
+      expect { described_class.track_event("test_event") }.not_to raise_error
+
+      if defined?(Sentry)
+        expect(Rails.logger).to have_received(:error).with(hash_including(
+          event: "application_monitor_sentry_failure",
+          operation: "capture_message",
+          error_class: "StandardError",
+          error_message: "Sentry API error"
+        ))
+      end
+    end
+
+    it "logs structured metadata if Sentry capture_exception fails" do
+      error = StandardError.new("Inner error")
+
+      if defined?(Sentry)
+        allow(Sentry).to receive(:capture_exception).and_raise(StandardError, "Sentry API error")
+        allow(Rails.logger).to receive(:error)
+      end
+
+      expect { described_class.track_error(error, context: "test") }.not_to raise_error
+
+      if defined?(Sentry)
+        expect(Rails.logger).to have_received(:error).with(hash_including(
+          event: "application_monitor_sentry_failure",
+          operation: "capture_exception"
+        ))
+      end
     end
   end
 end
