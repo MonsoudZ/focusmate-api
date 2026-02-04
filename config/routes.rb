@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "sidekiq/web"
+require "digest"
 
 Rails.application.routes.draw do
   # ----------------------------
@@ -16,9 +17,20 @@ Rails.application.routes.draw do
   # Sidekiq Web (ops only)
   # ----------------------------
   if Rails.env.production?
+    expected_sidekiq_username = ENV["SIDEKIQ_USERNAME"].to_s
+    expected_sidekiq_password = ENV["SIDEKIQ_PASSWORD"].to_s
+
     Sidekiq::Web.use Rack::Auth::Basic do |username, password|
-      ActiveSupport::SecurityUtils.secure_compare(username, ENV["SIDEKIQ_USERNAME"].to_s) &&
-        ActiveSupport::SecurityUtils.secure_compare(password, ENV["SIDEKIQ_PASSWORD"].to_s)
+      next false if expected_sidekiq_username.blank? || expected_sidekiq_password.blank?
+
+      ActiveSupport::SecurityUtils.secure_compare(
+        Digest::SHA256.hexdigest(username.to_s),
+        Digest::SHA256.hexdigest(expected_sidekiq_username)
+      ) &&
+        ActiveSupport::SecurityUtils.secure_compare(
+          Digest::SHA256.hexdigest(password.to_s),
+          Digest::SHA256.hexdigest(expected_sidekiq_password)
+        )
     end
   end
   mount Sidekiq::Web => "/sidekiq"

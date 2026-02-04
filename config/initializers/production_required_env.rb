@@ -13,6 +13,8 @@ required = %w[
   APNS_KEY_CONTENT
   APPLE_BUNDLE_ID
   HEALTH_DIAGNOSTICS_TOKEN
+  SIDEKIQ_USERNAME
+  SIDEKIQ_PASSWORD
 ]
 missing = required.select { |k| ENV[k].blank? }
 
