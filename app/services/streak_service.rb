@@ -70,10 +70,9 @@ class StreakService
   def check_day_completion(date)
     base_scope = tasks_due_on(date)
 
-    total_count = base_scope.count
+    total_count, completed_count = completion_counts(base_scope)
     return :no_tasks if total_count.zero?
 
-    completed_count = base_scope.where(status: "done").count
     total_count == completed_count ? :all_completed : :incomplete
   end
 
@@ -88,5 +87,19 @@ class StreakService
     if @user.current_streak > @user.longest_streak
       @user.longest_streak = @user.current_streak
     end
+  end
+
+  def completion_counts(scope)
+    task_table = Task.arel_table
+    done_status = Task.statuses.fetch("done")
+
+    total_count = task_table[:id].count
+    completed_count = Arel::Nodes::Case.new
+                                      .when(task_table[:status].eq(done_status))
+                                      .then(1)
+                                      .sum
+
+    totals = scope.pick(total_count, completed_count)
+    [ totals[0].to_i, totals[1].to_i ]
   end
 end

@@ -13,6 +13,7 @@ class RecurringTaskGenerationJob < ApplicationJob
   def perform
     generated_count = 0
     error_count = 0
+    templates_checked = 0
     skipped_deleted_list = 0
     skipped_pending_instance = 0
     skipped_no_instances = 0
@@ -24,6 +25,8 @@ class RecurringTaskGenerationJob < ApplicationJob
                   .includes(:list, :creator)
 
     templates.find_each do |template|
+      templates_checked += 1
+
       # Skip if template's list is deleted or missing (soft-deleted)
       if template.list.nil? || template.list.deleted?
         skipped_deleted_list += 1
@@ -66,7 +69,7 @@ class RecurringTaskGenerationJob < ApplicationJob
 
     Rails.logger.info(
       event: "recurring_task_generation_completed",
-      templates_checked: templates.count,
+      templates_checked: templates_checked,
       skipped_deleted_list: skipped_deleted_list,
       skipped_pending_instance: skipped_pending_instance,
       skipped_no_instances: skipped_no_instances,
