@@ -30,6 +30,21 @@ RSpec.describe Auth::TokenService do
 
       expect(decoded["sub"]).to eq(user.id.to_s)
     end
+
+    it "retries refresh token creation on transient uniqueness collisions" do
+      attempts = 0
+      allow(RefreshToken).to receive(:create!).and_wrap_original do |original, *args|
+        attempts += 1
+        if attempts == 1
+          raise ActiveRecord::RecordNotUnique, "duplicate key"
+        end
+
+        original.call(*args)
+      end
+
+      expect { described_class.issue_pair(user) }.to change(RefreshToken, :count).by(1)
+      expect(attempts).to eq(2)
+    end
   end
 
   describe ".refresh" do
@@ -150,6 +165,14 @@ RSpec.describe Auth::TokenService do
         expect { described_class.refresh("") }.to raise_error(ApplicationError::TokenInvalid)
       end
 
+      it "raises TokenInvalid for non-string token payloads" do
+        expect { described_class.refresh(123) }.to raise_error(ApplicationError::TokenInvalid)
+      end
+
+      it "raises TokenInvalid for excessively long tokens" do
+        expect { described_class.refresh("a" * 513) }.to raise_error(ApplicationError::TokenInvalid)
+      end
+
       it "raises TokenInvalid for an unknown token" do
         expect { described_class.refresh("nonexistent-token") }.to raise_error(ApplicationError::TokenInvalid)
       end
@@ -167,6 +190,14 @@ RSpec.describe Auth::TokenService do
 
     it "does nothing for a blank token" do
       expect { described_class.revoke("") }.not_to raise_error
+    end
+
+    it "does nothing for non-string token payloads" do
+      expect { described_class.revoke(123) }.not_to raise_error
+    end
+
+    it "does nothing for excessively long token payloads" do
+      expect { described_class.revoke("a" * 513) }.not_to raise_error
     end
 
     it "does nothing for an unknown token" do

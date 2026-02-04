@@ -4,6 +4,8 @@ module Auth
   class TokenService
     REFRESH_TOKEN_LIFETIME = 30.days
     REFRESH_TOKEN_BYTE_LENGTH = 32
+    MAX_REFRESH_TOKEN_LENGTH = 512
+    MAX_REFRESH_TOKEN_CREATE_ATTEMPTS = 3
     TokenReuseDetected = Class.new(StandardError)
 
     class << self
@@ -24,9 +26,10 @@ module Auth
       # @return [Hash] { access_token:, refresh_token:, user: }
       # @raise [ApplicationError::TokenInvalid, ApplicationError::TokenExpired, ApplicationError::TokenReused]
       def refresh(raw_refresh_token)
-        raise ApplicationError::TokenInvalid, "Refresh token is required" if raw_refresh_token.blank?
+        token = normalize_refresh_token(raw_refresh_token)
+        raise ApplicationError::TokenInvalid, "Refresh token is required" unless token
 
-        digest = token_digest(raw_refresh_token)
+        digest = token_digest(token)
         begin
           ActiveRecord::Base.transaction do
             # Lock the token row to make rotation atomic across concurrent requests.
@@ -73,9 +76,10 @@ module Auth
       #
       # @param raw_refresh_token [String]
       def revoke(raw_refresh_token)
-        return if raw_refresh_token.blank?
+        token = normalize_refresh_token(raw_refresh_token)
+        return unless token
 
-        digest = token_digest(raw_refresh_token)
+        digest = token_digest(token)
         record = RefreshToken.find_by(token_digest: digest)
         record&.revoke!
       end
@@ -94,23 +98,52 @@ module Auth
       end
 
       def create_refresh_token(user, family: nil)
-        raw = SecureRandom.urlsafe_base64(REFRESH_TOKEN_BYTE_LENGTH)
-        jti = SecureRandom.uuid
-        family ||= SecureRandom.uuid
+        attempts = 0
+        token_family = family || SecureRandom.uuid
 
-        record = RefreshToken.create!(
-          user: user,
-          token_digest: token_digest(raw),
-          jti: jti,
-          family: family,
-          expires_at: REFRESH_TOKEN_LIFETIME.from_now
-        )
+        begin
+          raw = SecureRandom.urlsafe_base64(REFRESH_TOKEN_BYTE_LENGTH)
+          jti = SecureRandom.uuid
 
-        [ raw, record ]
+          record = RefreshToken.create!(
+            user: user,
+            token_digest: token_digest(raw),
+            jti: jti,
+            family: token_family,
+            expires_at: REFRESH_TOKEN_LIFETIME.from_now
+          )
+
+          [ raw, record ]
+        rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => e
+          attempts += 1
+          raise unless retryable_token_collision?(e) && attempts < MAX_REFRESH_TOKEN_CREATE_ATTEMPTS
+
+          retry
+        end
       end
 
       def token_digest(raw_token)
         Digest::SHA256.hexdigest(raw_token)
+      end
+
+      def normalize_refresh_token(raw_token)
+        return nil unless raw_token.is_a?(String)
+
+        token = raw_token.strip
+        return nil if token.blank?
+        return nil if token.length > MAX_REFRESH_TOKEN_LENGTH
+
+        token
+      end
+
+      def retryable_token_collision?(error)
+        return true if error.is_a?(ActiveRecord::RecordNotUnique)
+        return false unless error.is_a?(ActiveRecord::RecordInvalid)
+
+        record = error.record
+        return false unless record.respond_to?(:errors)
+
+        record.errors.added?(:token_digest, :taken) || record.errors.added?(:jti, :taken)
       end
 
       def revoke_family(family)

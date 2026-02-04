@@ -127,5 +127,27 @@ RSpec.describe "Auth Refresh", type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context "with a non-string scalar refresh token" do
+      it "returns 401" do
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: 12345 }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(json_response["error"]["code"]).to eq("token_invalid")
+      end
+    end
+
+    context "with an excessively long refresh token" do
+      it "returns 401" do
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: "a" * 513 }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(json_response["error"]["code"]).to eq("token_invalid")
+      end
+    end
   end
 end
