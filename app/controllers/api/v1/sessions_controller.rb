@@ -17,9 +17,13 @@ module Api
       end
 
       def respond_to_on_destroy
-        raw = request.headers["X-Refresh-Token"].presence || params[:refresh_token]
+        raw = request.headers["X-Refresh-Token"].presence || sign_out_params[:refresh_token]
         ::Auth::TokenService.revoke(raw) if raw
         head :no_content
+      end
+
+      def sign_out_params
+        params.permit(:refresh_token)
       end
     end
   end

@@ -39,6 +39,19 @@ RSpec.describe "Analytics API", type: :request do
 
         expect(response).to have_http_status(:ok)
       end
+
+      it "ignores non-scalar platform and version params" do
+        perform_enqueued_jobs do
+          auth_post "/api/v1/analytics/app_opened",
+                    user: user,
+                    params: { platform: { bad: "input" }, version: [ "1.0.0" ] }
+        end
+
+        expect(response).to have_http_status(:ok)
+        event = AnalyticsEvent.last
+        expect(event.metadata["platform"]).to eq("ios")
+        expect(event.metadata["version"]).to be_nil
+      end
     end
 
     context "when not authenticated" do

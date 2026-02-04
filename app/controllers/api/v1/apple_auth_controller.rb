@@ -6,7 +6,7 @@ module Api
       skip_before_action :authenticate_user!
 
       def create
-        id_token = params[:id_token]
+        id_token = apple_auth_params[:id_token]
         return render_error("id_token is required", status: :bad_request) if id_token.blank?
 
         begin
@@ -15,7 +15,7 @@ module Api
 
           apple_user_id = claims["sub"]
           email = claims["email"]
-          name = params[:name] # Apple only sends name on first auth
+          name = apple_auth_params[:name] # Apple only sends name on first auth
 
           user = UserFinder.find_or_create_by_apple(
             apple_user_id: apple_user_id,
@@ -39,6 +39,12 @@ module Api
           Rails.error.report(e, handled: true, context: { action: "apple_sign_in" })
           render_error("Authentication failed", status: :unauthorized)
         end
+      end
+
+      private
+
+      def apple_auth_params
+        params.permit(:id_token, :name)
       end
     end
   end

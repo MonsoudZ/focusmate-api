@@ -78,6 +78,16 @@ RSpec.describe "Auth Sessions", type: :request do
         get "/api/v1/users/profile", headers: headers
         expect(response).to have_http_status(:unauthorized)
       end
+
+      it "ignores non-scalar refresh_token param" do
+        expect(Auth::TokenService).not_to receive(:revoke)
+
+        delete "/api/v1/auth/sign_out",
+               params: { refresh_token: { bad: "input" } }.to_json,
+               headers: auth_headers_for(user)
+
+        expect(response).to have_http_status(:no_content)
+      end
     end
 
     context "when not authenticated" do

@@ -4,7 +4,7 @@ module Memberships
   class Update
     ALLOWED_ROLES = %w[viewer editor].freeze
 
-    def self.call!(membership:, actor:, role:)
+    def self.call!(membership:, role:)
       new(membership:, role:).call!
     end
 

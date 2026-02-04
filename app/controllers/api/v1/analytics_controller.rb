@@ -10,11 +10,17 @@ module Api
       def app_opened
         AnalyticsTracker.app_opened(
           current_user,
-          platform: params[:platform] || "ios",
-          version: params[:version]
+          platform: analytics_params[:platform] || "ios",
+          version: analytics_params[:version]
         )
 
         head :ok
+      end
+
+      private
+
+      def analytics_params
+        params.permit(:platform, :version)
       end
     end
   end

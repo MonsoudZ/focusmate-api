@@ -117,5 +117,15 @@ RSpec.describe "Auth Refresh", type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context "with a non-scalar refresh token" do
+      it "returns 401" do
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: { bad: "input" } }.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
   end
 end

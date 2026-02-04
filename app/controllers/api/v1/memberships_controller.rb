@@ -54,7 +54,6 @@ module Api
 
         membership = Memberships::Update.call!(
           membership: @membership,
-          actor: current_user,
           role: update_params[:role]
         )
 

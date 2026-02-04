@@ -7,15 +7,22 @@ module Api
         skip_before_action :authenticate_user!
 
         def create
-          raise ApplicationError::TokenInvalid, "Refresh token is required" if params[:refresh_token].blank?
+          token = refresh_params[:refresh_token]
+          raise ApplicationError::TokenInvalid, "Refresh token is required" if token.blank?
 
-          result = ::Auth::TokenService.refresh(params[:refresh_token])
+          result = ::Auth::TokenService.refresh(token)
 
           render json: {
             user: UserSerializer.one(result[:user]),
             token: result[:access_token],
             refresh_token: result[:refresh_token]
           }, status: :ok
+        end
+
+        private
+
+        def refresh_params
+          params.permit(:refresh_token)
         end
       end
     end
