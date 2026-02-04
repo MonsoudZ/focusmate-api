@@ -273,4 +273,56 @@ RSpec.describe Auth::TokenService do
       expect(other_user.refresh_tokens.active.count).to eq(1)
     end
   end
+
+  describe "active refresh token limits" do
+    context "token cap enforcement" do
+      before do
+        allow(described_class).to receive(:max_active_refresh_tokens).and_return(2)
+        allow(described_class).to receive(:max_active_refresh_families).and_return(10)
+      end
+
+      it "revokes the oldest active token when cap is exceeded" do
+        first = described_class.issue_pair(user)
+        second = described_class.issue_pair(user)
+        third = described_class.issue_pair(user)
+
+        first_record = RefreshToken.find_by(token_digest: Digest::SHA256.hexdigest(first[:refresh_token]))
+        second_record = RefreshToken.find_by(token_digest: Digest::SHA256.hexdigest(second[:refresh_token]))
+        third_record = RefreshToken.find_by(token_digest: Digest::SHA256.hexdigest(third[:refresh_token]))
+
+        expect(first_record).to be_revoked
+        expect(second_record).not_to be_revoked
+        expect(third_record).not_to be_revoked
+      end
+
+      it "keeps latest token issuance working when eviction telemetry fails" do
+        described_class.issue_pair(user)
+        allow(ApplicationMonitor).to receive(:track_metric).and_raise(StandardError.new("metrics down"))
+
+        expect { described_class.issue_pair(user) }.not_to raise_error
+        expect(user.refresh_tokens.active.count).to eq(2)
+      end
+    end
+
+    context "family cap enforcement" do
+      before do
+        allow(described_class).to receive(:max_active_refresh_tokens).and_return(10)
+        allow(described_class).to receive(:max_active_refresh_families).and_return(2)
+      end
+
+      it "revokes the oldest active family when cap is exceeded" do
+        first = described_class.issue_pair(user)
+        second = described_class.issue_pair(user)
+        third = described_class.issue_pair(user)
+
+        family_one = RefreshToken.find_by(token_digest: Digest::SHA256.hexdigest(first[:refresh_token])).family
+        family_two = RefreshToken.find_by(token_digest: Digest::SHA256.hexdigest(second[:refresh_token])).family
+        family_three = RefreshToken.find_by(token_digest: Digest::SHA256.hexdigest(third[:refresh_token])).family
+
+        active_families = user.refresh_tokens.active.distinct.pluck(:family)
+        expect(active_families).to contain_exactly(family_two, family_three)
+        expect(active_families).not_to include(family_one)
+      end
+    end
+  end
 end

@@ -6,6 +6,8 @@ module Auth
     REFRESH_TOKEN_BYTE_LENGTH = 32
     MAX_REFRESH_TOKEN_LENGTH = 512
     MAX_REFRESH_TOKEN_CREATE_ATTEMPTS = 3
+    MAX_ACTIVE_REFRESH_TOKENS_PER_USER = ENV.fetch("MAX_ACTIVE_REFRESH_TOKENS_PER_USER", 20).to_i
+    MAX_ACTIVE_REFRESH_FAMILIES_PER_USER = ENV.fetch("MAX_ACTIVE_REFRESH_FAMILIES_PER_USER", 10).to_i
     REFRESH_REUSE_GRACE_PERIOD = 10.seconds
     REFRESH_REUSE_METRIC = "auth.refresh_token_reuse".freeze
 
@@ -27,6 +29,7 @@ module Auth
       def issue_pair(user)
         access_token = encode_access_token(user)
         raw_refresh, record = create_refresh_token(user)
+        enforce_active_limits!(user: user, keep_family: record.family, keep_jti: record.jti)
         observe_refresh_issue(user_id: user.id, family: record.family)
 
         { access_token: access_token, refresh_token: raw_refresh }
@@ -72,6 +75,7 @@ module Auth
             user = record.user
             raw_refresh, new_record = create_refresh_token(user, family: record.family)
             record.update!(revoked_at: Time.current, replaced_by_jti: new_record.jti)
+            enforce_active_limits!(user: user, keep_family: record.family, keep_jti: new_record.jti)
             observe_refresh_rotation(user_id: user.id, family: record.family, previous_jti: record.jti, new_jti: new_record.jti)
 
             {
@@ -165,6 +169,51 @@ module Auth
         RefreshToken.for_family(family).active.update_all(revoked_at: Time.current)
       end
 
+      def enforce_active_limits!(user:, keep_family:, keep_jti:)
+        now = Time.current
+        token_evictions = revoke_excess_active_tokens(user_id: user.id, now: now, keep_jti: keep_jti)
+        family_evictions = revoke_excess_active_families(user_id: user.id, now: now, keep_family: keep_family)
+
+        observe_cap_enforcement(user_id: user.id, evicted_tokens: token_evictions, reason: "token_cap") if token_evictions.positive?
+        observe_cap_enforcement(user_id: user.id, evicted_tokens: family_evictions, reason: "family_cap") if family_evictions.positive?
+      end
+
+      def revoke_excess_active_tokens(user_id:, now:, keep_jti:)
+        scope = active_tokens_scope(user_id: user_id, now: now)
+        excess = scope.count - max_active_refresh_tokens
+        return 0 if excess <= 0
+
+        victim_ids = scope.where.not(jti: keep_jti).order(:created_at, :id).limit(excess).pluck(:id)
+        return 0 if victim_ids.empty?
+
+        RefreshToken.where(id: victim_ids).update_all(revoked_at: now)
+      end
+
+      def revoke_excess_active_families(user_id:, now:, keep_family:)
+        scope = active_tokens_scope(user_id: user_id, now: now)
+        family_last_seen = scope.group(:family).maximum(:created_at)
+        excess_families = family_last_seen.size - max_active_refresh_families
+        return 0 if excess_families <= 0
+
+        oldest_families = family_last_seen.sort_by { |_family, seen_at| seen_at || Time.at(0) }.map(&:first)
+        families_to_revoke = oldest_families.reject { |family| family == keep_family }.first(excess_families)
+        return 0 if families_to_revoke.empty?
+
+        scope.where(family: families_to_revoke).update_all(revoked_at: now)
+      end
+
+      def active_tokens_scope(user_id:, now:)
+        RefreshToken.where(user_id: user_id, revoked_at: nil).where("expires_at > ?", now)
+      end
+
+      def max_active_refresh_tokens
+        [ MAX_ACTIVE_REFRESH_TOKENS_PER_USER, 1 ].max
+      end
+
+      def max_active_refresh_families
+        [ MAX_ACTIVE_REFRESH_FAMILIES_PER_USER, 1 ].max
+      end
+
       def observe_refresh_issue(user_id:, family:)
         Rails.logger.info(
           event: "auth_refresh_token_issued",
@@ -212,6 +261,19 @@ module Auth
             family: family,
             revoked_tokens: revoked_tokens
           )
+        end
+      end
+
+      def observe_cap_enforcement(user_id:, evicted_tokens:, reason:)
+        Rails.logger.warn(
+          event: "auth_refresh_token_cap_enforced",
+          user_id: user_id,
+          reason: reason,
+          evicted_tokens: evicted_tokens
+        )
+
+        with_observability do
+          ApplicationMonitor.track_metric("auth.refresh_tokens.evicted", evicted_tokens, tags: { reason: reason })
         end
       end
 
