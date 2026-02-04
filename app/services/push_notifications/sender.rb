@@ -36,7 +36,7 @@ module PushNotifications
         connection.push_async(notification)
         Rails.logger.info("Push sent to device #{device.id}: #{title}")
         true
-      rescue => e
+      rescue StandardError => e
         Rails.logger.error("Push failed for device #{device.id}: #{e.message}")
 
         # Reset connection on connection-related errors

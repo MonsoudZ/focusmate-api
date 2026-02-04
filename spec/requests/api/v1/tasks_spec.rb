@@ -411,6 +411,17 @@ RSpec.describe "Tasks API", type: :request do
         expect(overdue_task.reload.status).to eq("done")
         expect(overdue_task.missed_reason).to eq("Was in a meeting")
       end
+
+      it "rejects non-scalar missed_reason values" do
+        overdue_task = create(:task, list: list, creator: user, status: :pending, due_at: 1.hour.ago, requires_explanation_if_missed: true)
+
+        auth_patch "/api/v1/lists/#{list.id}/tasks/#{overdue_task.id}/complete",
+                   user: user,
+                   params: { missed_reason: { bad: "input" } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(overdue_task.reload.status).to eq("pending")
+      end
     end
   end
 
@@ -442,6 +453,15 @@ RSpec.describe "Tasks API", type: :request do
 
         expect(response).to have_http_status(:ok)
         expect(task.reload.assigned_to_id).to eq(assignee.id)
+      end
+
+      it "returns bad request for non-scalar assigned_to values" do
+        auth_patch "/api/v1/lists/#{list.id}/tasks/#{task.id}/assign",
+                   user: user,
+                   params: { assigned_to: { bad: "input" } }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(task.reload.assigned_to_id).to be_nil
       end
     end
   end
@@ -628,6 +648,14 @@ RSpec.describe "Tasks API", type: :request do
 
         expect(response).to have_http_status(:bad_request)
       end
+
+      it "returns 400 for non-scalar reschedule params" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: { bad: "input" }, reason: [ "blocked" ] }
+
+        expect(response).to have_http_status(:bad_request)
+      end
     end
 
     context "as viewer" do
@@ -711,6 +739,18 @@ RSpec.describe "Tasks API", type: :request do
 
         expect(response).to have_http_status(:bad_request)
         expect(json_response["error"]["message"]).to eq("id must be an integer")
+      end
+
+      it "returns bad request when positions are duplicated" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: user, params: {
+          tasks: [
+            { id: task1.id, position: 1 },
+            { id: task2.id, position: 1 }
+          ]
+        }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response.dig("error", "code")).to eq("duplicate_positions")
       end
     end
 

@@ -31,6 +31,16 @@ RSpec.describe TaskReminderJob, type: :job do
         }.to change { task.reload.reminder_sent_at }.from(nil)
       end
 
+      it "sends at most once when the same task is processed twice" do
+        task = create(:task, list: list, creator: user, due_at: 5.minutes.from_now)
+        job = described_class.new
+
+        job.send(:send_reminder, task)
+        job.send(:send_reminder, task)
+
+        expect(PushNotifications::Sender).to have_received(:send_task_reminder).once
+      end
+
       it "does not mark reminder as sent when delivery fails" do
         task = create(:task, list: list, creator: user, due_at: 5.minutes.from_now)
         allow(PushNotifications::Sender).to receive(:send_task_reminder).and_return(false)

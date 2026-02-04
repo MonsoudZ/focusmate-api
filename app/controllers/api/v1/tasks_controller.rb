@@ -73,7 +73,7 @@ module Api
         TaskCompletionService.complete!(
           task: @task,
           user: current_user,
-          missed_reason: params[:missed_reason]
+          missed_reason: completion_params[:missed_reason]
         )
         @task.reload
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
@@ -89,7 +89,7 @@ module Api
       # PATCH /api/v1/lists/:list_id/tasks/:id/assign
       def assign
         authorize @task, :update?
-        TaskAssignmentService.assign!(task: @task, user: current_user, assigned_to_id: params[:assigned_to])
+        TaskAssignmentService.assign!(task: @task, user: current_user, assigned_to_id: assignment_params[:assigned_to])
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
@@ -113,8 +113,8 @@ module Api
         TaskRescheduleService.call!(
           task: @task,
           user: current_user,
-          new_due_at: params[:new_due_at],
-          reason: params[:reason]
+          new_due_at: reschedule_params[:new_due_at],
+          reason: reschedule_params[:reason]
         )
         @task.reload
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
@@ -220,6 +220,18 @@ module Api
         raise ApplicationError::BadRequest, "#{field} must be an integer" if parsed.nil?
 
         parsed
+      end
+
+      def completion_params
+        params.permit(:missed_reason)
+      end
+
+      def assignment_params
+        params.permit(:assigned_to)
+      end
+
+      def reschedule_params
+        params.permit(:new_due_at, :reason)
       end
 
       def permitted_task_attributes

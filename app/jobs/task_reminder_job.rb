@@ -2,6 +2,8 @@
 
 class TaskReminderJob < ApplicationJob
   queue_as :default
+  ELIGIBLE_STATUSES = %w[pending in_progress].freeze
+  DEFAULT_NOTIFICATION_INTERVAL_MINUTES = 10
 
   # Run every minute via sidekiq-cron
   # Finds tasks due soon and sends reminder notifications
@@ -42,28 +44,45 @@ class TaskReminderJob < ApplicationJob
   end
 
   def send_reminder(task)
-    # Determine who to notify: assignee if assigned, otherwise creator
     recipient = task.assigned_to || task.creator
 
-    return unless recipient
+    # Lock per task to avoid duplicate sends when concurrent workers pick up the same row.
+    task.with_lock do
+      return unless recipient
+      return unless reminder_due_now?(task)
 
-    # Check if it's time to send based on task's notification interval
-    interval = task.notification_interval_minutes || 10
-    return unless task.due_at <= interval.minutes.from_now
+      delivered = PushNotifications::Sender.send_task_reminder(
+        to_user: recipient,
+        task: task
+      )
 
-    delivered = PushNotifications::Sender.send_task_reminder(
-      to_user: recipient,
-      task: task
-    )
-
-    if delivered
-      task.update_column(:reminder_sent_at, Time.current)
-      Rails.logger.info("Sent reminder for task #{task.id} to user #{recipient.id}")
-    else
-      Rails.logger.warn("Reminder for task #{task.id} was not delivered to any device")
+      if delivered
+        timestamp = Time.current
+        task.update_columns(reminder_sent_at: timestamp, updated_at: timestamp)
+        Rails.logger.info("Sent reminder for task #{task.id} to user #{recipient.id}")
+      else
+        Rails.logger.warn("Reminder for task #{task.id} was not delivered to any device")
+      end
     end
-  rescue => e
+  rescue StandardError => e
     Rails.logger.error("Failed to send reminder for task #{task.id}: #{e.message}")
     Sentry.capture_exception(e) if defined?(Sentry)
+  end
+
+  def reminder_due_now?(task)
+    reference_time = Time.current
+
+    return false unless task.due_at.present?
+    return false unless task.due_at > reference_time
+    return false unless ELIGIBLE_STATUSES.include?(task.status)
+    return false if task.deleted_at.present?
+    return false if task.is_template?
+
+    interval_minutes = task.notification_interval_minutes || DEFAULT_NOTIFICATION_INTERVAL_MINUTES
+    interval_seconds = interval_minutes * 60
+    return false unless task.due_at <= reference_time + interval_seconds
+
+    threshold = task.due_at - interval_seconds
+    task.reminder_sent_at.nil? || task.reminder_sent_at < threshold
   end
 end

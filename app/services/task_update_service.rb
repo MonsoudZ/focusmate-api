@@ -25,7 +25,9 @@ class TaskUpdateService < ApplicationService
   def track_changes
     @old_priority = @task.priority
     @old_starred = @task.starred
-    @changes = @attributes.keys.select { |k| @task.send(k) != @attributes[k] }
+    @changes = @attributes.keys.select do |key|
+      @task.respond_to?(key) && @task.public_send(key) != @attributes[key]
+    end
   end
 
   def perform_update

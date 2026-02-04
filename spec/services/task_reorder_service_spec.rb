@@ -75,5 +75,45 @@ RSpec.describe TaskReorderService do
 
       expect(task.reload.position).to eq(0)
     end
+
+    it "raises BadRequest for duplicate task ids" do
+      task = create(:task, list: list, creator: user, position: 0)
+
+      expect {
+        described_class.call!(
+          list: list,
+          task_positions: [
+            { id: task.id, position: 1 },
+            { id: task.id, position: 2 }
+          ]
+        )
+      }.to raise_error(ApplicationError::BadRequest, /Duplicate task ids/)
+    end
+
+    it "raises BadRequest for duplicate positions" do
+      task1 = create(:task, list: list, creator: user, position: 0)
+      task2 = create(:task, list: list, creator: user, position: 1)
+
+      expect {
+        described_class.call!(
+          list: list,
+          task_positions: [
+            { id: task1.id, position: 2 },
+            { id: task2.id, position: 2 }
+          ]
+        )
+      }.to raise_error(ApplicationError::BadRequest, /Duplicate positions/)
+    end
+
+    it "updates updated_at when reordering" do
+      task = create(:task, list: list, creator: user, position: 0)
+      old_updated_at = task.updated_at
+
+      travel 2.seconds do
+        described_class.call!(list: list, task_positions: [ { id: task.id, position: 1 } ])
+      end
+
+      expect(task.reload.updated_at).to be > old_updated_at
+    end
   end
 end
