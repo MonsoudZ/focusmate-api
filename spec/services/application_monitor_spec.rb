@@ -63,8 +63,8 @@ RSpec.describe ApplicationMonitor do
       described_class.alert("High error rate", severity: :warning)
     end
 
-    it "logs warning for critical severity" do
-      expect(Rails.logger).to receive(:warn).with(hash_including(
+    it "logs error for critical severity" do
+      expect(Rails.logger).to receive(:error).with(hash_including(
                                                     event: "alert",
                                                     message: "Critical failure",
                                                     severity: :critical
@@ -73,8 +73,8 @@ RSpec.describe ApplicationMonitor do
       described_class.alert("Critical failure", severity: :critical)
     end
 
-    it "logs warning for error severity" do
-      expect(Rails.logger).to receive(:warn).with(hash_including(
+    it "logs error for error severity" do
+      expect(Rails.logger).to receive(:error).with(hash_including(
                                                     event: "alert",
                                                     message: "Error occurred",
                                                     severity: :error

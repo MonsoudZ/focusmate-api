@@ -8,19 +8,19 @@ module Health
       private
 
       def run
-        client = redis_client
-        resp = client.ping
+        resp = ping_response
         raise "Unexpected response: #{resp}" unless resp == "PONG"
         nil
       end
 
-      def redis_client
-        return Redis.current if defined?(Redis.current)
+      def ping_response
+        current = Redis.current if Redis.respond_to?(:current)
+        return current.ping if current
 
         if defined?(Sidekiq)
-          Sidekiq.redis { |c| c }
+          Sidekiq.redis { |connection| connection.ping }
         else
-          Redis.new
+          Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0")).ping
         end
       end
     end

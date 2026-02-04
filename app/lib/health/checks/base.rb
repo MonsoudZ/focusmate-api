@@ -14,7 +14,7 @@ module Health
           message: message,
           details: details
         }.compact
-      rescue => e
+      rescue StandardError => e
         {
           name: name,
           status: "unhealthy",

@@ -58,11 +58,18 @@ class ApplicationMonitor
       else :info
       end
 
-      Rails.logger.send(level == :info ? :info : :warn,
-                        event: "alert",
-                        message: message,
-                        severity: severity,
-                        context: context
+      logger_method = case level
+      when :error then :error
+      when :warning then :warn
+      else :info
+      end
+
+      Rails.logger.public_send(
+        logger_method,
+        event: "alert",
+        message: message,
+        severity: severity,
+        context: context
       )
 
       send_to_sentry("Alert: #{message}", context, level: level)
