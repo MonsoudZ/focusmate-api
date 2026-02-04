@@ -58,9 +58,11 @@ class Rack::Attack
     req.ip if req.post? && AUTH_PATHS.include?(req.path)
   end
 
-  # Password reset — 3 req/hour per IP
+  PASSWORD_RESET_PATH = "/api/v1/auth/password"
+
+  # Password reset — 3 req/hour per IP (covers reset email + token submit)
   Rack::Attack.throttle("password_reset/ip", limit: 3, period: 1.hour) do |req|
-    req.ip if req.path.start_with?("/users/password")
+    req.ip if PASSWORD_RESET_PATH == req.path && (req.post? || req.put? || req.patch?)
   end
 
   # Token refresh — 10 req/min per IP

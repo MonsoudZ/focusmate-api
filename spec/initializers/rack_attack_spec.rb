@@ -65,6 +65,32 @@ RSpec.describe "Rack::Attack", type: :request do
 
       expect(response.status).to eq(429)
     end
+
+    it "throttles password reset request endpoint after 3 requests" do
+      4.times do
+        post "/api/v1/auth/password",
+             params: { user: { email: "test@test.com" } }.to_json,
+             headers: { "CONTENT_TYPE" => "application/json" }
+      end
+
+      expect(response.status).to eq(429)
+    end
+
+    it "throttles password reset token submit endpoint after 3 requests" do
+      4.times do
+        put "/api/v1/auth/password",
+            params: {
+              user: {
+                reset_password_token: "fake",
+                password: "new-password-123",
+                password_confirmation: "new-password-123"
+              }
+            }.to_json,
+            headers: { "CONTENT_TYPE" => "application/json" }
+      end
+
+      expect(response.status).to eq(429)
+    end
   end
 
   describe "throttled response format" do
