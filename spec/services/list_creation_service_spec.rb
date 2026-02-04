@@ -45,6 +45,21 @@ RSpec.describe ListCreationService do
         expect(list.name).to eq('Minimal List')
         expect(list.description).to be_nil
       end
+
+      it "normalizes ActionController::Parameters input safely" do
+        params = ActionController::Parameters.new(
+          name: "  My List  ",
+          description: "  My Description  ",
+          admin: true
+        )
+        service = described_class.new(user: user, params: params)
+
+        list = service.call!
+
+        expect(list).to be_persisted
+        expect(list.name).to eq("My List")
+        expect(list.description).to eq("My Description")
+      end
     end
 
     context 'with invalid params' do
@@ -96,6 +111,12 @@ RSpec.describe ListCreationService do
         expect {
           service.call!
         }.to raise_error(ApplicationError::Validation)
+      end
+
+      it "raises ValidationError for non-hash param payloads" do
+        service = described_class.new(user: user, params: "invalid")
+
+        expect { service.call! }.to raise_error(ApplicationError::Validation)
       end
     end
 
