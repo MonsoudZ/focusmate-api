@@ -150,6 +150,59 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
       expect { described_class.new.perform }.not_to raise_error
     end
 
+    it "reports generation failures to Sentry with context" do
+      service = RecurringTaskService.new(user)
+      recurring = service.create_recurring_task(
+        list: list,
+        params: { title: "Failing task", due_at: 1.day.ago },
+        recurrence_params: { pattern: "daily", interval: 1 }
+      )
+      recurring[:instance].update!(status: "done", completed_at: Time.current)
+
+      allow_any_instance_of(RecurringTaskService).to receive(:generate_next_instance)
+        .and_raise(StandardError.new("generation failed"))
+      allow(Rails.cache).to receive(:read).and_return(nil)
+      allow(Rails.cache).to receive(:write)
+
+      stub_const("Sentry", Class.new) unless defined?(Sentry)
+      allow(Sentry).to receive(:capture_exception)
+
+      described_class.new.perform
+
+      expect(Sentry).to have_received(:capture_exception).with(
+        instance_of(StandardError),
+        hash_including(extra: hash_including(template_id: recurring[:template].id))
+      )
+    end
+
+    it "throttles repeated Sentry reports for the same generation error" do
+      service = RecurringTaskService.new(user)
+      recurring_one = service.create_recurring_task(
+        list: list,
+        params: { title: "Failing task one", due_at: 1.day.ago },
+        recurrence_params: { pattern: "daily", interval: 1 }
+      )
+      recurring_two = service.create_recurring_task(
+        list: list,
+        params: { title: "Failing task two", due_at: 1.day.ago },
+        recurrence_params: { pattern: "daily", interval: 1 }
+      )
+      recurring_one[:instance].update!(status: "done", completed_at: Time.current)
+      recurring_two[:instance].update!(status: "done", completed_at: Time.current)
+
+      allow_any_instance_of(RecurringTaskService).to receive(:generate_next_instance)
+        .and_raise(StandardError.new("generation failed"))
+      allow(Rails.cache).to receive(:read).and_return(nil, true)
+      allow(Rails.cache).to receive(:write)
+
+      stub_const("Sentry", Class.new) unless defined?(Sentry)
+      allow(Sentry).to receive(:capture_exception)
+
+      described_class.new.perform
+
+      expect(Sentry).to have_received(:capture_exception).once
+    end
+
     it "keeps latest-instance lookup queries near-constant as template count grows" do
       create_templates_with_pending_instances(3)
 

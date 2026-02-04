@@ -141,6 +141,38 @@ RSpec.describe TaskReminderJob, type: :job do
 
         expect(PushNotifications::Sender).to have_received(:send_task_reminder).twice
       end
+
+      it "reports reminder failures to Sentry with context" do
+        task = create(:task, list: list, creator: user, due_at: 5.minutes.from_now)
+        allow(PushNotifications::Sender).to receive(:send_task_reminder).and_raise(StandardError.new("push down"))
+        allow(Rails.cache).to receive(:read).and_return(nil)
+        allow(Rails.cache).to receive(:write)
+
+        stub_const("Sentry", Class.new) unless defined?(Sentry)
+        allow(Sentry).to receive(:capture_exception)
+
+        described_class.new.perform
+
+        expect(Sentry).to have_received(:capture_exception).with(
+          instance_of(StandardError),
+          hash_including(extra: hash_including(task_id: task.id, list_id: list.id, recipient_id: user.id))
+        )
+      end
+
+      it "throttles repeated Sentry reports for the same reminder error" do
+        create(:task, list: list, creator: user, due_at: 5.minutes.from_now)
+        create(:task, list: list, creator: user, due_at: 6.minutes.from_now)
+        allow(PushNotifications::Sender).to receive(:send_task_reminder).and_raise(StandardError.new("push down"))
+        allow(Rails.cache).to receive(:read).and_return(nil, true)
+        allow(Rails.cache).to receive(:write)
+
+        stub_const("Sentry", Class.new) unless defined?(Sentry)
+        allow(Sentry).to receive(:capture_exception)
+
+        described_class.new.perform
+
+        expect(Sentry).to have_received(:capture_exception).once
+      end
     end
   end
 end

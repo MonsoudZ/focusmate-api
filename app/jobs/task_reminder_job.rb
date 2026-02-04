@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 class TaskReminderJob < ApplicationJob
+  include RateLimitedSentryReporting
+
   queue_as :default
   ELIGIBLE_STATUSES = %w[pending in_progress].freeze
   DEFAULT_NOTIFICATION_INTERVAL_MINUTES = 10
+  SENTRY_ERROR_TTL = 5.minutes
 
   # Run every minute via sidekiq-cron
   # Finds tasks due soon and sends reminder notifications
@@ -59,14 +62,29 @@ class TaskReminderJob < ApplicationJob
       if delivered
         timestamp = Time.current
         task.update_columns(reminder_sent_at: timestamp, updated_at: timestamp)
-        Rails.logger.info("Sent reminder for task #{task.id} to user #{recipient.id}")
+        Rails.logger.info(
+          event: "task_reminder_sent",
+          task_id: task.id,
+          recipient_id: recipient.id
+        )
       else
-        Rails.logger.warn("Reminder for task #{task.id} was not delivered to any device")
+        Rails.logger.warn(
+          event: "task_reminder_not_delivered",
+          task_id: task.id,
+          recipient_id: recipient.id
+        )
       end
     end
   rescue StandardError => e
-    Rails.logger.error("Failed to send reminder for task #{task.id}: #{e.message}")
-    Sentry.capture_exception(e) if defined?(Sentry)
+    Rails.logger.error(
+      event: "task_reminder_failed",
+      task_id: task.id,
+      list_id: task.list_id,
+      recipient_id: recipient&.id,
+      error_class: e.class.name,
+      error_message: e.message
+    )
+    report_reminder_error(e, task: task, recipient: recipient)
   end
 
   def reminder_due_now?(task)
@@ -84,5 +102,20 @@ class TaskReminderJob < ApplicationJob
 
     threshold = task.due_at - interval_seconds
     task.reminder_sent_at.nil? || task.reminder_sent_at < threshold
+  end
+
+  def report_reminder_error(error, task:, recipient:)
+    cache_key = "task_reminder_job:error:#{error.class.name}:#{error.message}"
+
+    report_error_once(
+      error,
+      cache_key: cache_key,
+      ttl: SENTRY_ERROR_TTL,
+      extra: {
+        task_id: task.id,
+        list_id: task.list_id,
+        recipient_id: recipient&.id
+      }
+    )
   end
 end

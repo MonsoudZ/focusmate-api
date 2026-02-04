@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 class RecurringTaskGenerationJob < ApplicationJob
+  include RateLimitedSentryReporting
+
   queue_as :default
+  SENTRY_ERROR_TTL = 5.minutes
 
   # Run every hour to generate upcoming recurring task instances
   # This ensures users see their recurring tasks even if they don't
@@ -59,7 +62,8 @@ class RecurringTaskGenerationJob < ApplicationJob
           Rails.logger.error(
             event: "recurring_task_generation_failed",
             template_id: template.id,
-            error: e.message
+            error_class: e.class.name,
+            error_message: e.message
           )
           report_generation_error(e, template_id: template.id)
         end
@@ -98,10 +102,13 @@ class RecurringTaskGenerationJob < ApplicationJob
   end
 
   def report_generation_error(error, template_id:)
-    return unless defined?(Sentry)
+    cache_key = "recurring_task_generation_job:error:#{error.class.name}:#{error.message}"
 
-    Sentry.capture_exception(error, extra: { template_id: template_id })
-  rescue StandardError => e
-    Rails.logger.error("RecurringTaskGenerationJob Sentry report failed: #{e.message}")
+    report_error_once(
+      error,
+      cache_key: cache_key,
+      ttl: SENTRY_ERROR_TTL,
+      extra: { template_id: template_id }
+    )
   end
 end
