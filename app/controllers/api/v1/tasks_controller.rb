@@ -22,11 +22,18 @@ module Api
         tasks = tasks.where(parent_task_id: nil).where(is_template: [ false, nil ])
         tasks = apply_filters(tasks)
         tasks = apply_ordering(tasks)
-        tasks = tasks.includes(:tags, :creator, :subtasks, list: :user)
+        tasks = tasks.includes(:tags, :creator, :subtasks, :list)
         result = paginate(tasks, page: params[:page], per_page: params[:per_page])
 
         render json: {
-          tasks: result[:records].map { |t| TaskSerializer.new(t, current_user: current_user, include_reschedule_events: false).as_json },
+          tasks: result[:records].map do |t|
+            TaskSerializer.new(
+              t,
+              current_user: current_user,
+              include_reschedule_events: false,
+              editable_list_ids: editable_list_ids
+            ).as_json
+          end,
           tombstones: [],
           pagination: result[:pagination]
         }, status: :ok
@@ -147,11 +154,18 @@ module Api
         tasks = policy_scope(Task)
                   .where("title ILIKE :q OR note ILIKE :q", q: "%#{escaped_query}%")
                   .where(parent_task_id: nil)
-                  .includes(:tags, :creator, :subtasks, list: :user)
+                  .includes(:tags, :creator, :subtasks, :list)
                   .limit(50)
 
         render json: {
-          tasks: tasks.map { |t| TaskSerializer.new(t, current_user: current_user, include_reschedule_events: false).as_json }
+          tasks: tasks.map do |t|
+            TaskSerializer.new(
+              t,
+              current_user: current_user,
+              include_reschedule_events: false,
+              editable_list_ids: editable_list_ids
+            ).as_json
+          end
         }, status: :ok
       end
 
@@ -169,7 +183,7 @@ module Api
       end
 
       def set_task
-        @task = policy_scope(Task).includes(:tags, :creator, :subtasks, list: :user).find(params[:id])
+        @task = policy_scope(Task).includes(:tags, :creator, :subtasks, :list).find(params[:id])
       end
 
       def empty_json_body?
@@ -258,6 +272,10 @@ module Api
         dir = %w[asc desc].include?(params[:sort_order].to_s.downcase) ? params[:sort_order].to_s.downcase.to_sym : :desc
 
         query.sorted_with_priority(col, dir)
+      end
+
+      def editable_list_ids
+        @editable_list_ids ||= Membership.where(user_id: current_user.id, role: "editor").pluck(:list_id)
       end
     end
   end

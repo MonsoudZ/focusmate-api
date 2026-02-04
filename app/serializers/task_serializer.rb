@@ -110,11 +110,11 @@ class TaskSerializer
   end
 
   def can_edit?
-    @can_edit ||= Permissions::TaskPermissions.can_edit?(task, current_user)
+    @can_edit ||= use_fast_permission_path? ? fast_can_edit? : Permissions::TaskPermissions.can_edit?(task, current_user)
   end
 
   def can_delete?
-    @can_delete ||= Permissions::TaskPermissions.can_delete?(task, current_user)
+    @can_delete ||= use_fast_permission_path? ? can_edit? : Permissions::TaskPermissions.can_delete?(task, current_user)
   end
 
   # Use memoized subtasks collection to avoid N+1 queries
@@ -191,5 +191,19 @@ class TaskSerializer
         created_at: event.created_at
       }
     end
+  end
+
+  def use_fast_permission_path?
+    options[:editable_list_ids].present?
+  end
+
+  def fast_can_edit?
+    return false if current_user.nil? || task.nil?
+    return false if task.deleted? || task.list.nil?
+    return false if task.private_task? && task.creator_id != current_user.id
+
+    task.list.user_id == current_user.id ||
+      task.creator_id == current_user.id ||
+      options[:editable_list_ids].include?(task.list_id)
   end
 end
