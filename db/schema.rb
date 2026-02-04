@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_03_021907) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_04_200500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -106,6 +106,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_03_021907) do
     t.datetime "updated_at", null: false
     t.index ["code"], name: "index_list_invites_on_code", unique: true
     t.index ["inviter_id"], name: "index_list_invites_on_inviter_id"
+    t.index ["list_id", "created_at"], name: "index_list_invites_on_list_id_and_created_at"
     t.index ["list_id", "expires_at"], name: "index_list_invites_on_list_id_and_expires_at"
     t.index ["list_id"], name: "index_list_invites_on_list_id"
     t.check_constraint "role::text = ANY (ARRAY['editor'::text, 'viewer'::text])", name: "list_invites_role_check"
@@ -293,7 +294,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_03_021907) do
     t.index ["is_template", "template_type"], name: "index_tasks_recurring_templates", where: "(deleted_at IS NULL)"
     t.index ["is_template"], name: "index_tasks_on_is_template"
     t.index ["list_id", "deleted_at", "parent_task_id"], name: "index_tasks_on_list_deleted_parent"
-    t.index ["list_id", "deleted_at", "parent_task_id"], name: "index_tasks_on_list_deleted_parent_v2"
     t.index ["list_id", "deleted_at"], name: "index_tasks_on_list_and_deleted"
     t.index ["list_id", "parent_task_id"], name: "index_tasks_on_list_and_parent"
     t.index ["list_id", "position"], name: "index_tasks_on_list_id_and_position"

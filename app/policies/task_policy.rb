@@ -26,14 +26,11 @@ class TaskPolicy < ApplicationPolicy
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      list_ids = List
-                   .left_outer_joins(:memberships)
-                   .where("lists.user_id = :uid OR memberships.user_id = :uid", uid: user.id)
-                   .where(deleted_at: nil)
-                   .select(:id)
+      member_list_ids = Membership.where(user_id: user.id).select(:list_id)
+      accessible_list_ids = List.where(user_id: user.id).or(List.where(id: member_list_ids)).select(:id)
 
       scope.where(deleted_at: nil)
-           .where(list_id: list_ids)
+           .where(list_id: accessible_list_ids)
            .visible_to_user(user)
     end
   end
