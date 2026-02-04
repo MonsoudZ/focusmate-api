@@ -75,6 +75,11 @@ class Rack::Attack
     req.ip if req.get? && req.path.match?(%r{^/api/v1/invites/[A-Za-z0-9]+$})
   end
 
+  # Invite accept — 20 req/min per IP to limit brute-force attempts on invite codes.
+  Rack::Attack.throttle("invite_accept/ip", limit: 20, period: 1.minute) do |req|
+    req.ip if req.post? && req.path.match?(%r{^/api/v1/invites/[A-Za-z0-9]+/accept$})
+  end
+
   # ---------------------------------------------------------------------------
   # Per-user throttles (authenticated requests)
   # ---------------------------------------------------------------------------

@@ -66,6 +66,15 @@ RSpec.describe "Rack::Attack", type: :request do
       expect(response.status).to eq(429)
     end
 
+    it "throttles invite accept endpoint after 20 requests" do
+      21.times do
+        post "/api/v1/invites/ABCDEFGH/accept",
+             headers: { "CONTENT_TYPE" => "application/json" }
+      end
+
+      expect(response.status).to eq(429)
+    end
+
     it "throttles password reset request endpoint after 3 requests" do
       4.times do
         post "/api/v1/auth/password",
