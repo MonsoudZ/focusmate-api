@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_04_200500) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_04_223000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -91,6 +91,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_04_200500) do
     t.datetime "exp"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["exp"], name: "index_jwt_denylists_on_exp"
     t.index ["jti"], name: "index_jwt_denylists_on_jti", unique: true
   end
 
@@ -171,7 +172,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_04_200500) do
     t.string "replaced_by_jti"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["expires_at", "family"], name: "idx_refresh_tokens_expires_family_active", where: "(revoked_at IS NULL)"
     t.index ["expires_at"], name: "index_refresh_tokens_on_expires_at"
+    t.index ["family", "revoked_at"], name: "idx_refresh_tokens_family_revoked_not_null", where: "(revoked_at IS NOT NULL)"
     t.index ["family"], name: "index_refresh_tokens_on_family"
     t.index ["jti"], name: "index_refresh_tokens_on_jti", unique: true
     t.index ["token_digest"], name: "index_refresh_tokens_on_token_digest", unique: true

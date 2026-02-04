@@ -45,6 +45,26 @@ RSpec.describe "Maintenance Jobs Query Performance", type: :job do
 
       expect(large_jwt_queries).to be <= (small_jwt_queries + 1)
     end
+
+    it "keeps refresh-token cleanup query count near-constant as inactive families grow" do
+      user = create(:user)
+      create_inactive_refresh_families(user: user, family_count: 3)
+
+      small_queries = collect_queries do
+        described_class.new.perform
+      end
+
+      create_inactive_refresh_families(user: user, family_count: 30)
+
+      large_queries = collect_queries do
+        described_class.new.perform
+      end
+
+      small_refresh_queries = table_query_count(small_queries, "refresh_tokens")
+      large_refresh_queries = table_query_count(large_queries, "refresh_tokens")
+
+      expect(large_refresh_queries).to be <= (small_refresh_queries + 1)
+    end
   end
 
   private
@@ -52,6 +72,14 @@ RSpec.describe "Maintenance Jobs Query Performance", type: :job do
   def create_expired_tokens(count)
     count.times do |index|
       JwtDenylist.create!(jti: "expired-#{SecureRandom.uuid}-#{index}", exp: 1.day.ago)
+    end
+  end
+
+  def create_inactive_refresh_families(user:, family_count:)
+    family_count.times do
+      family = SecureRandom.uuid
+      create(:refresh_token, user: user, family: family, revoked_at: 5.days.ago)
+      create(:refresh_token, user: user, family: family, revoked_at: 4.days.ago)
     end
   end
 
