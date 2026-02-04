@@ -40,6 +40,42 @@ RSpec.describe "Analytics API", type: :request do
         expect(response).to have_http_status(:ok)
       end
 
+      it "normalizes platform casing and trims version whitespace" do
+        perform_enqueued_jobs do
+          auth_post "/api/v1/analytics/app_opened",
+                    user: user,
+                    params: { platform: "  ANDROID  ", version: " 2.3.4 " }
+        end
+
+        event = AnalyticsEvent.last
+        expect(event.metadata["platform"]).to eq("android")
+        expect(event.metadata["version"]).to eq("2.3.4")
+      end
+
+      it "falls back to ios for unsupported platform values" do
+        perform_enqueued_jobs do
+          auth_post "/api/v1/analytics/app_opened",
+                    user: user,
+                    params: { platform: "blackberry" }
+        end
+
+        event = AnalyticsEvent.last
+        expect(event.metadata["platform"]).to eq("ios")
+      end
+
+      it "truncates version to a bounded length" do
+        long_version = "1." + ("0" * 100)
+
+        perform_enqueued_jobs do
+          auth_post "/api/v1/analytics/app_opened",
+                    user: user,
+                    params: { platform: "ios", version: long_version }
+        end
+
+        event = AnalyticsEvent.last
+        expect(event.metadata["version"]).to eq(long_version[0...64])
+      end
+
       it "ignores non-scalar platform and version params" do
         perform_enqueued_jobs do
           auth_post "/api/v1/analytics/app_opened",

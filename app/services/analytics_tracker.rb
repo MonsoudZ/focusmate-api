@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class AnalyticsTracker
+  SENTRY_ERROR_TTL = 5.minutes
+
   class << self
     # Task events
     def task_created(task, user)
@@ -184,7 +186,30 @@ class AnalyticsTracker
       )
     rescue StandardError => e
       Rails.logger.error("AnalyticsTracker failed to enqueue: #{e.message}")
+      report_enqueue_failure_once(e, user_id: user.id, event_type: event_type)
       # Don't raise - analytics should never break the app
+    end
+
+    def report_enqueue_failure_once(error, **context)
+      return unless defined?(Sentry)
+      return if recently_reported?(error)
+
+      mark_reported(error)
+      Sentry.capture_exception(error, extra: context)
+    rescue StandardError => sentry_error
+      Rails.logger.error("AnalyticsTracker Sentry report failed: #{sentry_error.message}")
+    end
+
+    def recently_reported?(error)
+      Rails.cache.read(sentry_cache_key(error)).present?
+    end
+
+    def mark_reported(error)
+      Rails.cache.write(sentry_cache_key(error), true, expires_in: SENTRY_ERROR_TTL)
+    end
+
+    def sentry_cache_key(error)
+      "analytics_tracker:enqueue_error:#{error.class.name}:#{error.message}"
     end
   end
 end
