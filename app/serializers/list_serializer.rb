@@ -26,8 +26,12 @@ class ListSerializer
       updated_at: list.updated_at
     }.tap do |hash|
       if options[:include_tasks]
-        hash[:tasks] = list.tasks.includes(:tags, :creator, :subtasks, list: :user).map do |task|
-          TaskSerializer.new(task, current_user: current_user).as_json
+        hash[:tasks] = list.tasks.includes(:tags, :creator, :subtasks, :list).map do |task|
+          TaskSerializer.new(
+            task,
+            current_user: current_user,
+            editable_list_ids: options[:editable_list_ids]
+          ).as_json
         end
       end
     end
@@ -55,6 +59,10 @@ class ListSerializer
 
   # Memoized task counts - single query for both completed and overdue
   def task_counts
+    if options[:task_counts_by_list]&.key?(list.id)
+      return options[:task_counts_by_list][list.id]
+    end
+
     @task_counts ||= if list.tasks.loaded?
                        compute_counts_from_loaded_tasks
     else
