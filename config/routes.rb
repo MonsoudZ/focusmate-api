@@ -16,7 +16,7 @@ Rails.application.routes.draw do
   # ----------------------------
   # Sidekiq Web (ops only)
   # ----------------------------
-  if Rails.env.production?
+  unless Rails.env.local?
     expected_sidekiq_username = ENV["SIDEKIQ_USERNAME"].to_s
     expected_sidekiq_password = ENV["SIDEKIQ_PASSWORD"].to_s
 
