@@ -7,19 +7,18 @@ RSpec.describe Memberships::Destroy do
     let(:owner) { create(:user) }
     let(:list) { create(:list, user: owner) }
     let(:member) { create(:user) }
-    let(:actor) { owner }
 
     context "when destroying a non-owner membership" do
       let!(:membership) { create(:membership, list: list, user: member, role: "editor") }
 
       it "destroys the membership" do
         expect {
-          described_class.call!(membership: membership, actor: actor)
+          described_class.call!(membership: membership)
         }.to change(Membership, :count).by(-1)
       end
 
       it "returns the destroyed membership" do
-        result = described_class.call!(membership: membership, actor: actor)
+        result = described_class.call!(membership: membership)
 
         expect(result).to eq(membership)
         expect(result).to be_destroyed
@@ -31,14 +30,14 @@ RSpec.describe Memberships::Destroy do
 
       it "raises Conflict" do
         expect {
-          described_class.call!(membership: owner_membership, actor: actor)
+          described_class.call!(membership: owner_membership)
         }.to raise_error(ApplicationError::Conflict, "Cannot remove the list owner")
       end
 
       it "does not destroy the membership" do
         expect {
           begin
-            described_class.call!(membership: owner_membership, actor: actor)
+            described_class.call!(membership: owner_membership)
           rescue ApplicationError::Conflict
             # expected
           end

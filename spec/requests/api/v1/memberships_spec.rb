@@ -184,6 +184,24 @@ RSpec.describe "Api::V1::Memberships", type: :request do
         expect(response).to have_http_status(:bad_request)
         expect(json_response["error"]["message"]).to eq("membership must be an object")
       end
+
+      it "returns 400 for non-scalar user_identifier values" do
+        auth_post "/api/v1/lists/#{list.id}/memberships",
+                  user: owner,
+                  params: { membership: { user_identifier: { bad: "input" }, role: "viewer" } }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("user_identifier must be a string")
+      end
+
+      it "returns 400 for non-integer friend_id values" do
+        auth_post "/api/v1/lists/#{list.id}/memberships",
+                  user: owner,
+                  params: { membership: { friend_id: "abc", role: "viewer" } }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("friend_id must be a positive integer")
+      end
     end
 
     context "as list member (non-owner)" do

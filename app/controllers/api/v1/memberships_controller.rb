@@ -64,7 +64,7 @@ module Api
       def destroy
         authorize @list, :manage_memberships?
 
-        Memberships::Destroy.call!(membership: @membership, actor: current_user)
+        Memberships::Destroy.call!(membership: @membership)
 
         head :no_content
       end

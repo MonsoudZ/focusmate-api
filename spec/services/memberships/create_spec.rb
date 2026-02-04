@@ -111,6 +111,19 @@ RSpec.describe Memberships::Create do
       end
     end
 
+    context "when user_identifier has an invalid type" do
+      it "raises BadRequest for non-string values" do
+        expect {
+          described_class.call!(
+            list: list,
+            inviter: inviter,
+            user_identifier: { bad: "input" },
+            role: "viewer"
+          )
+        }.to raise_error(ApplicationError::BadRequest, "user_identifier must be a string")
+      end
+    end
+
     context "when role is invalid" do
       it "raises BadRequest for unrecognized role" do
         expect {
@@ -235,6 +248,17 @@ RSpec.describe Memberships::Create do
             role: "viewer"
           )
         }.to raise_error(ApplicationError::Forbidden, "You can only add friends to lists")
+      end
+
+      it "raises BadRequest for non-integer friend_id" do
+        expect {
+          described_class.call!(
+            list: list,
+            inviter: inviter,
+            friend_id: "abc",
+            role: "viewer"
+          )
+        }.to raise_error(ApplicationError::BadRequest, "friend_id must be a positive integer")
       end
     end
   end

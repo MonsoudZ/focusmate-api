@@ -11,8 +11,8 @@ module Memberships
     def initialize(list:, inviter:, user_identifier: nil, friend_id: nil, role:)
       @list = list
       @inviter = inviter
-      @user_identifier = user_identifier.to_s.strip.presence
-      @friend_id = friend_id
+      @user_identifier = normalize_user_identifier(user_identifier)
+      @friend_id = normalize_friend_id(friend_id)
       @role = role.to_s.downcase.strip.presence || "viewer"
     end
 
@@ -65,6 +65,22 @@ module Memberships
         raise ApplicationError::Conflict, "User is already a member of this list"
       end
       raise
+    end
+
+    def normalize_user_identifier(value)
+      return nil if value.nil?
+      return value.strip.presence if value.is_a?(String)
+
+      raise ApplicationError::BadRequest, "user_identifier must be a string"
+    end
+
+    def normalize_friend_id(value)
+      return nil if value.nil? || (value.respond_to?(:blank?) && value.blank?)
+
+      parsed = Integer(value, exception: false)
+      return parsed if parsed && parsed.positive?
+
+      raise ApplicationError::BadRequest, "friend_id must be a positive integer"
     end
   end
 end
