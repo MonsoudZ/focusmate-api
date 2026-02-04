@@ -106,7 +106,7 @@ module PushNotifications
       # Reset connection (useful for testing or after errors)
       def reset_connection!
         CONNECTION_MUTEX.synchronize do
-          @connection&.close rescue nil
+          close_connection!
           @connection = nil
           cleanup_temp_file!
         end
@@ -155,8 +155,22 @@ module PushNotifications
       def cleanup_temp_file!
         return unless @temp_key_file
 
-        @temp_key_file.unlink rescue nil
+        @temp_key_file.close unless @temp_key_file.closed?
+        @temp_key_file.unlink
+      rescue Errno::ENOENT
+        nil
+      rescue StandardError => e
+        Rails.logger.warn("APNS temp key cleanup failed: #{e.message}")
+      ensure
         @temp_key_file = nil
+      end
+
+      def close_connection!
+        return unless @connection
+
+        @connection.close
+      rescue StandardError => e
+        Rails.logger.warn("APNS connection close failed: #{e.message}")
       end
 
       def connection_error?(error)

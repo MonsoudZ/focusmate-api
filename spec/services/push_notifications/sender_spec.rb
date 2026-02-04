@@ -11,6 +11,48 @@ RSpec.describe PushNotifications::Sender do
     described_class.instance_variable_set(:@temp_key_file, nil)
   end
 
+  describe ".reset_connection!" do
+    it "closes memoized resources and clears references" do
+      connection = instance_double("Apnotic::Connection", close: true)
+      temp_key_file = Tempfile.new("apns-test")
+      described_class.instance_variable_set(:@connection, connection)
+      described_class.instance_variable_set(:@temp_key_file, temp_key_file)
+
+      described_class.reset_connection!
+
+      expect(connection).to have_received(:close)
+      expect(described_class.instance_variable_get(:@connection)).to be_nil
+      expect(described_class.instance_variable_get(:@temp_key_file)).to be_nil
+    end
+
+    it "continues cleanup when connection close fails" do
+      connection = instance_double("Apnotic::Connection")
+      allow(connection).to receive(:close).and_raise(StandardError.new("close failed"))
+      temp_key_file = Tempfile.new("apns-test")
+      allow(Rails.logger).to receive(:warn)
+
+      described_class.instance_variable_set(:@connection, connection)
+      described_class.instance_variable_set(:@temp_key_file, temp_key_file)
+
+      expect { described_class.reset_connection! }.not_to raise_error
+      expect(Rails.logger).to have_received(:warn).with(/APNS connection close failed: close failed/)
+      expect(described_class.instance_variable_get(:@connection)).to be_nil
+      expect(described_class.instance_variable_get(:@temp_key_file)).to be_nil
+    end
+
+    it "logs temp-key cleanup failures and still clears memoized file" do
+      temp_key_file = instance_double(Tempfile, closed?: true)
+      allow(temp_key_file).to receive(:unlink).and_raise(StandardError.new("unlink failed"))
+      allow(Rails.logger).to receive(:warn)
+
+      described_class.instance_variable_set(:@temp_key_file, temp_key_file)
+
+      expect { described_class.reset_connection! }.not_to raise_error
+      expect(Rails.logger).to have_received(:warn).with(/APNS temp key cleanup failed: unlink failed/)
+      expect(described_class.instance_variable_get(:@temp_key_file)).to be_nil
+    end
+  end
+
   describe ".send_to_user" do
     it "does nothing when user has no iOS devices" do
       expect(described_class).not_to receive(:send_to_device)
