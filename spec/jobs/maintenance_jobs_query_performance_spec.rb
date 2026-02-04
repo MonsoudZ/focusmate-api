@@ -26,6 +26,35 @@ RSpec.describe "Maintenance Jobs Query Performance", type: :job do
     end
   end
 
+  describe OrphanedAssignmentCleanupJob do
+    it "keeps orphaned-assignment cleanup query count near-constant as row volume grows" do
+      list_owner = create(:user)
+      list = create(:list, user: list_owner)
+      assignee = create(:user)
+      membership = create(:membership, list: list, user: assignee, role: "editor")
+
+      create_list(:task, 3, list: list, creator: list_owner, assigned_to: assignee)
+      membership.destroy!
+
+      small_queries = collect_queries do
+        described_class.new.perform
+      end
+
+      membership = create(:membership, list: list, user: assignee, role: "editor")
+      create_list(:task, 30, list: list, creator: list_owner, assigned_to: assignee)
+      membership.destroy!
+
+      large_queries = collect_queries do
+        described_class.new.perform
+      end
+
+      small_task_queries = table_query_count(small_queries, "tasks")
+      large_task_queries = table_query_count(large_queries, "tasks")
+
+      expect(large_task_queries).to be <= (small_task_queries + 1)
+    end
+  end
+
   describe JwtCleanupJob do
     it "keeps jwt denylist query count near-constant as expired-row volume grows" do
       create_expired_tokens(3)

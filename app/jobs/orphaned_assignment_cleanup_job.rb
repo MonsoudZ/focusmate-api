@@ -8,44 +8,26 @@ class OrphanedAssignmentCleanupJob < ApplicationJob
   # between task assignment validation and save.
   def perform
     orphaned_count = 0
+    timestamp = Time.current
 
-    # Preload associations to avoid N+1 queries
-    # - assigned_to: the user assigned to the task
-    # - list: the task's list (for owner check)
-    # - list.memberships: for membership-based access check
-    tasks_scope = Task
-      .where.not(assigned_to_id: nil)
-      .where(deleted_at: nil)
-      .includes(:assigned_to, list: :memberships)
-
-    tasks_scope.find_each do |task|
-      next if user_has_access?(task)
-
-      old_assigned_to_id = task.assigned_to_id
-      task.update_column(:assigned_to_id, nil)
-      orphaned_count += 1
-
-      Rails.logger.info(
-        "OrphanedAssignmentCleanupJob: Unassigned task #{task.id} " \
-        "(user #{old_assigned_to_id} no longer has access to list #{task.list_id})"
-      )
+    orphaned_tasks.in_batches(of: 1000) do |batch|
+      orphaned_count += batch.update_all(assigned_to_id: nil, updated_at: timestamp)
     end
+
+    Rails.logger.info(event: "orphaned_assignment_cleanup_completed", cleaned_up: orphaned_count)
 
     { cleaned_up: orphaned_count }
   end
 
   private
 
-  def user_has_access?(task)
-    assignee = task.assigned_to
-    return false unless assignee
-    return false unless task.list
-
-    # Check access using preloaded data
-    # Owner always has access
-    return true if task.list.user_id == assignee.id
-
-    # Check membership (uses preloaded memberships)
-    task.list.memberships.any? { |m| m.user_id == assignee.id }
+  def orphaned_tasks
+    Task
+      .joins(:list)
+      .joins("LEFT JOIN memberships ON memberships.list_id = tasks.list_id AND memberships.user_id = tasks.assigned_to_id")
+      .where(tasks: { deleted_at: nil })
+      .where.not(assigned_to_id: nil)
+      .where("tasks.assigned_to_id <> lists.user_id")
+      .where("memberships.id IS NULL")
   end
 end
