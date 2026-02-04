@@ -6,7 +6,18 @@ module Auth
     REFRESH_TOKEN_BYTE_LENGTH = 32
     MAX_REFRESH_TOKEN_LENGTH = 512
     MAX_REFRESH_TOKEN_CREATE_ATTEMPTS = 3
-    TokenReuseDetected = Class.new(StandardError)
+    REFRESH_REUSE_GRACE_PERIOD = 10.seconds
+    REFRESH_REUSE_METRIC = "auth.refresh_token_reuse".freeze
+
+    class TokenReuseDetected < StandardError
+      attr_reader :family, :user_id
+
+      def initialize(family:, user_id:)
+        @family = family
+        @user_id = user_id
+        super(family)
+      end
+    end
 
     class << self
       # Issue a new access + refresh token pair for the user.
@@ -15,7 +26,8 @@ module Auth
       # @return [Hash] { access_token:, refresh_token: }
       def issue_pair(user)
         access_token = encode_access_token(user)
-        raw_refresh, _record = create_refresh_token(user)
+        raw_refresh, record = create_refresh_token(user)
+        observe_refresh_issue(user_id: user.id, family: record.family)
 
         { access_token: access_token, refresh_token: raw_refresh }
       end
@@ -45,13 +57,14 @@ module Auth
               # Grace period: if token was rotated within last 10 seconds, this is likely
               # a race condition (parallel 401s triggering multiple refreshes), not an attack.
               # Don't revoke the family - the first refresh's tokens should remain valid.
-              if record.revoked_at > 10.seconds.ago
+              if record.revoked_at > REFRESH_REUSE_GRACE_PERIOD.ago
+                observe_refresh_reuse_within_grace(user_id: record.user_id, family: record.family)
                 raise ApplicationError::TokenAlreadyRefreshed, "Token was already refreshed"
               end
 
               # Token was revoked more than 10 seconds ago - this is a real reuse attack.
               # Revoke the family after we release the lock/transaction.
-              raise TokenReuseDetected, record.family
+              raise TokenReuseDetected.new(family: record.family, user_id: record.user_id)
             end
 
             raise ApplicationError::TokenExpired, "Refresh token has expired" if record.expired?
@@ -59,6 +72,7 @@ module Auth
             user = record.user
             raw_refresh, new_record = create_refresh_token(user, family: record.family)
             record.update!(revoked_at: Time.current, replaced_by_jti: new_record.jti)
+            observe_refresh_rotation(user_id: user.id, family: record.family, previous_jti: record.jti, new_jti: new_record.jti)
 
             {
               access_token: encode_access_token(user),
@@ -67,7 +81,8 @@ module Auth
             }
           end
         rescue TokenReuseDetected => e
-          revoke_family(e.message)
+          revoked_count = revoke_family(e.family)
+          observe_refresh_reuse_attack(user_id: e.user_id, family: e.family, revoked_tokens: revoked_count)
           raise ApplicationError::TokenReused, "Refresh token reuse detected"
         end
       end
@@ -148,6 +163,66 @@ module Auth
 
       def revoke_family(family)
         RefreshToken.for_family(family).active.update_all(revoked_at: Time.current)
+      end
+
+      def observe_refresh_issue(user_id:, family:)
+        Rails.logger.info(
+          event: "auth_refresh_token_issued",
+          user_id: user_id,
+          family: family
+        )
+      end
+
+      def observe_refresh_rotation(user_id:, family:, previous_jti:, new_jti:)
+        Rails.logger.info(
+          event: "auth_refresh_token_rotated",
+          user_id: user_id,
+          family: family,
+          previous_jti: previous_jti,
+          new_jti: new_jti
+        )
+      end
+
+      def observe_refresh_reuse_within_grace(user_id:, family:)
+        Rails.logger.warn(
+          event: "auth_refresh_token_reuse_within_grace",
+          user_id: user_id,
+          family: family
+        )
+
+        with_observability do
+          ApplicationMonitor.track_metric(REFRESH_REUSE_METRIC, 1, tags: { outcome: "grace" })
+        end
+      end
+
+      def observe_refresh_reuse_attack(user_id:, family:, revoked_tokens:)
+        Rails.logger.error(
+          event: "auth_refresh_token_reuse_detected",
+          user_id: user_id,
+          family: family,
+          revoked_tokens: revoked_tokens
+        )
+
+        with_observability do
+          ApplicationMonitor.track_metric(REFRESH_REUSE_METRIC, 1, tags: { outcome: "attack" })
+          ApplicationMonitor.alert(
+            "Refresh token reuse detected",
+            severity: :warning,
+            user_id: user_id,
+            family: family,
+            revoked_tokens: revoked_tokens
+          )
+        end
+      end
+
+      def with_observability
+        yield
+      rescue StandardError => e
+        Rails.logger.error(
+          event: "auth_token_observability_failed",
+          error_class: e.class.name,
+          error_message: e.message
+        )
       end
     end
   end

@@ -109,6 +109,19 @@ RSpec.describe Auth::TokenService do
           expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenAlreadyRefreshed)
         end
 
+        it "tracks a grace-period reuse metric" do
+          allow(ApplicationMonitor).to receive(:track_metric)
+
+          described_class.refresh(raw_refresh)
+          expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenAlreadyRefreshed)
+
+          expect(ApplicationMonitor).to have_received(:track_metric).with(
+            "auth.refresh_token_reuse",
+            1,
+            tags: { outcome: "grace" }
+          )
+        end
+
         it "does NOT revoke the family during grace period" do
           # Rotate the token
           result = described_class.refresh(raw_refresh)
@@ -134,6 +147,30 @@ RSpec.describe Auth::TokenService do
           end
         end
 
+        it "emits anomaly telemetry for reuse detection" do
+          allow(ApplicationMonitor).to receive(:track_metric)
+          allow(ApplicationMonitor).to receive(:alert)
+
+          described_class.refresh(raw_refresh)
+
+          travel 15.seconds do
+            expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenReused)
+          end
+
+          expect(ApplicationMonitor).to have_received(:track_metric).with(
+            "auth.refresh_token_reuse",
+            1,
+            tags: { outcome: "attack" }
+          )
+          expect(ApplicationMonitor).to have_received(:alert).with(
+            "Refresh token reuse detected",
+            severity: :warning,
+            user_id: user.id,
+            family: kind_of(String),
+            revoked_tokens: kind_of(Integer)
+          )
+        end
+
         it "revokes the entire family when reuse is detected after grace period" do
           # Rotate the token
           result = described_class.refresh(raw_refresh)
@@ -146,6 +183,17 @@ RSpec.describe Auth::TokenService do
           new_digest = Digest::SHA256.hexdigest(result[:refresh_token])
           new_record = RefreshToken.find_by(token_digest: new_digest)
           expect(new_record).to be_revoked
+        end
+
+        it "continues security response when observability hooks fail" do
+          allow(ApplicationMonitor).to receive(:track_metric).and_raise(StandardError.new("metrics down"))
+          allow(ApplicationMonitor).to receive(:alert).and_raise(StandardError.new("alerts down"))
+
+          described_class.refresh(raw_refresh)
+
+          travel 15.seconds do
+            expect { described_class.refresh(raw_refresh) }.to raise_error(ApplicationError::TokenReused)
+          end
         end
       end
     end
