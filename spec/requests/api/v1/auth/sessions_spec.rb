@@ -88,6 +88,26 @@ RSpec.describe "Auth Sessions", type: :request do
 
         expect(response).to have_http_status(:no_content)
       end
+
+      it "ignores non-string scalar refresh_token param" do
+        expect(Auth::TokenService).not_to receive(:revoke)
+
+        delete "/api/v1/auth/sign_out",
+               params: { refresh_token: 12345 }.to_json,
+               headers: auth_headers_for(user)
+
+        expect(response).to have_http_status(:no_content)
+      end
+
+      it "ignores excessively long refresh_token values" do
+        expect(Auth::TokenService).not_to receive(:revoke)
+
+        delete "/api/v1/auth/sign_out",
+               params: { refresh_token: "a" * 513 }.to_json,
+               headers: auth_headers_for(user)
+
+        expect(response).to have_http_status(:no_content)
+      end
     end
 
     context "when not authenticated" do
