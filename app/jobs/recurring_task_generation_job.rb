@@ -24,46 +24,45 @@ class RecurringTaskGenerationJob < ApplicationJob
                   .where(deleted_at: nil)
                   .includes(:list, :creator)
 
-    templates.find_each do |template|
-      templates_checked += 1
+    templates.find_in_batches do |batch|
+      latest_instances_by_template = latest_instances_for_templates(batch.map(&:id))
 
-      # Skip if template's list is deleted or missing (soft-deleted)
-      if template.list.nil? || template.list.deleted?
-        skipped_deleted_list += 1
-        next
-      end
+      batch.each do |template|
+        templates_checked += 1
 
-      # Single query: get most recent instance (any status)
-      # This replaces two separate queries (pending + completed)
-      latest_instance = template.instances
-                                .where(deleted_at: nil)
-                                .order(due_at: :desc)
-                                .first
+        # Skip if template's list is deleted or missing (soft-deleted)
+        if template.list.nil? || template.list.deleted?
+          skipped_deleted_list += 1
+          next
+        end
 
-      # Skip if there's a pending instance (not yet completed)
-      if latest_instance && latest_instance.status != "done"
-        skipped_pending_instance += 1
-        next
-      end
+        latest_instance = latest_instances_by_template[template.id]
 
-      # Skip templates with no instances yet
-      unless latest_instance
-        skipped_no_instances += 1
-        next
-      end
+        # Skip if there's a pending instance (not yet completed)
+        if latest_instance && latest_instance.status != "done"
+          skipped_pending_instance += 1
+          next
+        end
 
-      begin
-        service = RecurringTaskService.new(template.creator)
-        generated_instance = service.generate_next_instance(latest_instance)
-        generated_count += 1 if generated_instance
-      rescue StandardError => e
-        error_count += 1
-        Rails.logger.error(
-          event: "recurring_task_generation_failed",
-          template_id: template.id,
-          error: e.message
-        )
-        report_generation_error(e, template_id: template.id)
+        # Skip templates with no instances yet
+        unless latest_instance
+          skipped_no_instances += 1
+          next
+        end
+
+        begin
+          service = RecurringTaskService.new(template.creator)
+          generated_instance = service.generate_next_instance(latest_instance)
+          generated_count += 1 if generated_instance
+        rescue StandardError => e
+          error_count += 1
+          Rails.logger.error(
+            event: "recurring_task_generation_failed",
+            template_id: template.id,
+            error: e.message
+          )
+          report_generation_error(e, template_id: template.id)
+        end
       end
     end
 
@@ -87,6 +86,16 @@ class RecurringTaskGenerationJob < ApplicationJob
   end
 
   private
+
+  def latest_instances_for_templates(template_ids)
+    return {} if template_ids.empty?
+
+    Task
+      .where(template_id: template_ids, deleted_at: nil)
+      .select("DISTINCT ON (template_id) tasks.*")
+      .order("template_id ASC, due_at DESC, id DESC")
+      .index_by(&:template_id)
+  end
 
   def report_generation_error(error, template_id:)
     return unless defined?(Sentry)

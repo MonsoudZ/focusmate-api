@@ -150,6 +150,25 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
       expect { described_class.new.perform }.not_to raise_error
     end
 
+    it "keeps latest-instance lookup queries near-constant as template count grows" do
+      create_templates_with_pending_instances(3)
+
+      small_queries = collect_queries do
+        described_class.new.perform
+      end
+
+      create_templates_with_pending_instances(17)
+
+      large_queries = collect_queries do
+        described_class.new.perform
+      end
+
+      small_instance_selects = latest_instance_select_count(small_queries)
+      large_instance_selects = latest_instance_select_count(large_queries)
+
+      expect(large_instance_selects).to be <= (small_instance_selects + 1)
+    end
+
     it "logs completion with counts" do
       expect(Rails.logger).to receive(:info).with(hash_including(
         event: "recurring_task_generation_completed"
@@ -161,5 +180,57 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
     it "is enqueued to the default queue" do
       expect(described_class.new.queue_name).to eq("default")
     end
+  end
+
+  def create_templates_with_pending_instances(count)
+    count.times do |i|
+      template = create(
+        :task,
+        list: list,
+        creator: user,
+        title: "Recurring Template #{i}",
+        is_template: true,
+        template_type: "recurring",
+        is_recurring: true,
+        recurrence_pattern: "daily",
+        recurrence_interval: 1,
+        due_at: 1.day.ago
+      )
+
+      create(
+        :task,
+        list: list,
+        creator: user,
+        title: "Instance #{i}",
+        template: template,
+        due_at: 1.day.from_now,
+        status: "pending"
+      )
+    end
+  end
+
+  def latest_instance_select_count(queries)
+    queries.count do |sql|
+      sql.start_with?("SELECT") &&
+        sql.include?("FROM \"tasks\"") &&
+        sql.include?("\"tasks\".\"template_id\"")
+    end
+  end
+
+  def collect_queries
+    queries = []
+    callback = lambda do |_name, _start, _finish, _id, payload|
+      sql = payload[:sql].to_s
+      next if sql.include?("SCHEMA")
+      next if sql.start_with?("BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE SAVEPOINT")
+
+      queries << sql
+    end
+
+    ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
+      yield
+    end
+
+    queries
   end
 end
