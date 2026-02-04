@@ -81,11 +81,21 @@ module Api
 
       def invite_payload
         raw = params[:invite]
-        return ActionController::Parameters.new if raw.blank?
+        return {} if raw.blank?
 
         raise ApplicationError::BadRequest, "invite must be an object" unless raw.is_a?(ActionController::Parameters)
 
-        raw.permit(:role, :expires_at, :max_uses)
+        {
+          role: scalar_param(raw[:role]),
+          expires_at: scalar_param(raw[:expires_at]),
+          max_uses: scalar_param(raw[:max_uses])
+        }.compact
+      end
+
+      def scalar_param(value)
+        return value if value.is_a?(String) || value.is_a?(Numeric) || value == true || value == false
+
+        nil
       end
     end
   end
