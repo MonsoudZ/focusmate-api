@@ -19,7 +19,7 @@ module Api
           tasks = tasks.where(list_id: @list.id)
         end
 
-        tasks = tasks.where(parent_task_id: nil).where(is_template: [ false, nil ]).not_deleted
+        tasks = tasks.where(parent_task_id: nil).where(is_template: [ false, nil ])
         tasks = apply_filters(tasks)
         tasks = apply_ordering(tasks)
         tasks = tasks.includes(:tags, :creator, :subtasks, list: :user)
@@ -147,7 +147,6 @@ module Api
         tasks = policy_scope(Task)
                   .where("title ILIKE :q OR note ILIKE :q", q: "%#{escaped_query}%")
                   .where(parent_task_id: nil)
-                  .not_deleted
                   .includes(:tags, :creator, :subtasks, list: :user)
                   .limit(50)
 

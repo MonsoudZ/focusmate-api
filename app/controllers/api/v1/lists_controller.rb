@@ -11,7 +11,6 @@ module Api
       def index
         lists = policy_scope(List)
                   .includes(:user, memberships: :user)
-                  .where(deleted_at: nil)
 
         if params[:since].present?
           since_time = safe_parse_time(params[:since])

@@ -3,8 +3,10 @@
 class ListPolicy < ApplicationPolicy
   class Scope < ApplicationPolicy::Scope
     def resolve
+      owned_list_ids = List.where(user_id: user.id).select(:id)
       member_list_ids = Membership.where(user_id: user.id).select(:list_id)
-      scope.where(user_id: user.id).or(scope.where(id: member_list_ids))
+
+      scope.where(id: owned_list_ids).or(scope.where(id: member_list_ids))
     end
   end
 

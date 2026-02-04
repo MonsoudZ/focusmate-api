@@ -29,8 +29,7 @@ class TaskPolicy < ApplicationPolicy
       member_list_ids = Membership.where(user_id: user.id).select(:list_id)
       accessible_list_ids = List.where(user_id: user.id).or(List.where(id: member_list_ids)).select(:id)
 
-      scope.where(deleted_at: nil)
-           .where(list_id: accessible_list_ids)
+      scope.where(list_id: accessible_list_ids)
            .visible_to_user(user)
     end
   end

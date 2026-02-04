@@ -16,9 +16,8 @@ module Api
           list_id = parse_positive_integer(query[:exclude_list_id])
           list = List.find_by(id: list_id) if list_id
           if list && list.accessible_by?(current_user)
-            # Get all member IDs (including owner)
-            existing_member_ids = list.memberships.pluck(:user_id) + [ list.user_id ]
-            friends = friends.where.not(id: existing_member_ids)
+            member_ids = list.memberships.select(:user_id)
+            friends = friends.where.not(id: member_ids).where.not(id: list.user_id)
           end
         end
 
