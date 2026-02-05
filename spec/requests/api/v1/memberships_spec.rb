@@ -78,6 +78,14 @@ RSpec.describe "Api::V1::Memberships", type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      auth_get "/api/v1/lists/#{list.id}/memberships", user: owner
+
+      expect(response).to have_http_status(:not_found)
+    end
   end
 
   describe "POST /api/v1/lists/:list_id/memberships" do
@@ -225,6 +233,16 @@ RSpec.describe "Api::V1::Memberships", type: :request do
         expect(response).to have_http_status(:not_found)
       end
     end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      auth_post "/api/v1/lists/#{list.id}/memberships",
+                user: owner,
+                params: { membership: { user_identifier: new_member.email, role: "editor" } }
+
+      expect(response).to have_http_status(:not_found)
+    end
   end
 
   describe "PATCH /api/v1/lists/:list_id/memberships/:id" do
@@ -314,6 +332,16 @@ RSpec.describe "Api::V1::Memberships", type: :request do
         expect(response).to have_http_status(:not_found)
       end
     end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      auth_patch "/api/v1/lists/#{list.id}/memberships/#{membership.id}",
+                 user: owner,
+                 params: { membership: { role: "editor" } }
+
+      expect(response).to have_http_status(:not_found)
+    end
   end
 
   describe "DELETE /api/v1/lists/:list_id/memberships/:id" do
@@ -337,6 +365,15 @@ RSpec.describe "Api::V1::Memberships", type: :request do
 
       it "returns 404 for non-existent membership" do
         auth_delete "/api/v1/lists/#{list.id}/memberships/999999", user: owner
+
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it "returns 404 for membership in different list" do
+        other_list = create(:list, user: owner)
+        other_membership = create(:membership, list: other_list, user: other_user)
+
+        auth_delete "/api/v1/lists/#{list.id}/memberships/#{other_membership.id}", user: owner
 
         expect(response).to have_http_status(:not_found)
       end
@@ -370,6 +407,14 @@ RSpec.describe "Api::V1::Memberships", type: :request do
 
         expect(response).to have_http_status(:not_found)
       end
+    end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      auth_delete "/api/v1/lists/#{list.id}/memberships/#{membership.id}", user: owner
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 

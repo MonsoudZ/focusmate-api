@@ -24,6 +24,14 @@ RSpec.describe "Api::V1::ListInvites", type: :request do
 
       expect(response).to have_http_status(:not_found)
     end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      get "/api/v1/lists/#{list.id}/invites", headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
   end
 
   describe "POST /api/v1/lists/:list_id/invites" do
@@ -85,6 +93,16 @@ RSpec.describe "Api::V1::ListInvites", type: :request do
       expect(json_response["invite"]["role"]).to eq("viewer")
       expect(json_response["invite"]["max_uses"]).to be_nil
     end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      post "/api/v1/lists/#{list.id}/invites",
+           params: { invite: {} }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
   end
 
   describe "DELETE /api/v1/lists/:list_id/invites/:id" do
@@ -96,6 +114,23 @@ RSpec.describe "Api::V1::ListInvites", type: :request do
       }.to change(ListInvite, :count).by(-1)
 
       expect(response).to have_http_status(:no_content)
+    end
+
+    it "returns 404 for invite in different list" do
+      other_list = create(:list, user: user)
+      other_invite = create(:list_invite, list: other_list, inviter: user)
+
+      delete "/api/v1/lists/#{list.id}/invites/#{other_invite.id}", headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      delete "/api/v1/lists/#{list.id}/invites/#{invite.id}", headers: headers
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 

@@ -56,7 +56,7 @@ module Api
       private
 
       def set_list
-        @list = policy_scope(List).find(params[:list_id])
+        @list = policy_scope(List).merge(List.not_deleted).find(params[:list_id])
       end
 
       def set_invite
