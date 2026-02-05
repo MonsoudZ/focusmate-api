@@ -100,6 +100,18 @@ RSpec.describe "Rack::Attack", type: :request do
 
       expect(response.status).to eq(429)
     end
+
+    it "throttles app_opened analytics endpoint after 30 requests per user" do
+      headers = auth_headers_for(user).merge("CONTENT_TYPE" => "application/json")
+
+      31.times do
+        post "/api/v1/analytics/app_opened",
+             params: { platform: "ios" }.to_json,
+             headers: headers
+      end
+
+      expect(response.status).to eq(429)
+    end
   end
 
   describe "throttled response format" do

@@ -104,6 +104,15 @@ class Rack::Attack
     authenticated_user_id(req)
   end
 
+  # Analytics app_opened is low-priority telemetry; tighter cap prevents event spam.
+  Rack::Attack.throttle("analytics_app_opened/user",
+    limit: ENV.fetch("RATE_LIMIT_ANALYTICS_APP_OPENED_PER_USER", 30).to_i,
+    period: 1.minute
+  ) do |req|
+    next unless req.post? && req.path == "/api/v1/analytics/app_opened"
+    authenticated_user_id(req)
+  end
+
   # ---------------------------------------------------------------------------
   # Custom 429 response
   # ---------------------------------------------------------------------------
