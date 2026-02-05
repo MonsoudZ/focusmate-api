@@ -8,10 +8,25 @@ Rails.application.routes.draw do
   # Devise (JWT auth)
   # ----------------------------
   devise_for :users,
+             skip: [ :sessions, :registrations, :passwords ],
              path: "api/v1/auth",
              path_names: { sign_in: "sign_in", sign_out: "sign_out", registration: "sign_up" },
              controllers: { sessions: "api/v1/sessions", registrations: "api/v1/registrations", passwords: "api/v1/passwords" },
              defaults: { format: :json }
+
+  devise_scope :user do
+    post "api/v1/auth/sign_in", to: "api/v1/sessions#create"
+    delete "api/v1/auth/sign_out", to: "api/v1/sessions#destroy"
+
+    post "api/v1/auth/sign_up", to: "api/v1/registrations#create"
+    put "api/v1/auth/sign_up", to: "api/v1/registrations#update"
+    patch "api/v1/auth/sign_up", to: "api/v1/registrations#update"
+    delete "api/v1/auth/sign_up", to: "api/v1/registrations#destroy"
+
+    post "api/v1/auth/password", to: "api/v1/passwords#create"
+    put "api/v1/auth/password", to: "api/v1/passwords#update"
+    patch "api/v1/auth/password", to: "api/v1/passwords#update"
+  end
 
   # ----------------------------
   # Sidekiq Web (ops only)
