@@ -7,7 +7,7 @@ module Api
         skip_before_action :authenticate_user!
 
         def create
-          token = refresh_params[:refresh_token]
+          token = request.headers["X-Refresh-Token"].presence || refresh_params[:refresh_token]
           raise ApplicationError::TokenInvalid, "Refresh token is required" if token.blank?
 
           result = ::Auth::TokenService.refresh(token)
@@ -22,7 +22,7 @@ module Api
         private
 
         def refresh_params
-          params.permit(:refresh_token)
+          ActionController::Parameters.new(request.request_parameters).permit(:refresh_token)
         end
       end
     end

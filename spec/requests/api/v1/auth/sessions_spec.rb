@@ -108,6 +108,24 @@ RSpec.describe "Auth Sessions", type: :request do
 
         expect(response).to have_http_status(:no_content)
       end
+
+      it "accepts refresh token from X-Refresh-Token header" do
+        expect(Auth::TokenService).to receive(:revoke).with("header-token")
+
+        delete "/api/v1/auth/sign_out",
+               headers: auth_headers_for(user).merge("X-Refresh-Token" => "header-token")
+
+        expect(response).to have_http_status(:no_content)
+      end
+
+      it "ignores refresh token provided only in query string" do
+        expect(Auth::TokenService).not_to receive(:revoke)
+
+        delete "/api/v1/auth/sign_out?refresh_token=query-token",
+               headers: auth_headers_for(user)
+
+        expect(response).to have_http_status(:no_content)
+      end
     end
 
     context "when not authenticated" do

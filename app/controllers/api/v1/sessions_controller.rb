@@ -24,7 +24,7 @@ module Api
       end
 
       def sign_out_params
-        params.permit(:refresh_token)
+        ActionController::Parameters.new(request.request_parameters).permit(:refresh_token)
       end
 
       def normalize_refresh_token(value)

@@ -37,6 +37,18 @@ RSpec.describe "Auth Refresh", type: :request do
         digest = Digest::SHA256.hexdigest(refresh_token)
         expect(RefreshToken.find_by(token_digest: digest)).to be_revoked
       end
+
+      it "accepts the refresh token from X-Refresh-Token header" do
+        post "/api/v1/auth/refresh",
+             params: {}.to_json,
+             headers: {
+               "Content-Type" => "application/json",
+               "X-Refresh-Token" => refresh_token
+             }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["refresh_token"]).to be_present
+      end
     end
 
     context "with a reused (already-rotated) refresh token" do
@@ -115,6 +127,17 @@ RSpec.describe "Auth Refresh", type: :request do
              headers: { "Content-Type" => "application/json" }
 
         expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context "with refresh token only in query string" do
+      it "returns 401 and ignores query token transport" do
+        post "/api/v1/auth/refresh?refresh_token=#{refresh_token}",
+             params: {}.to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(json_response["error"]["code"]).to eq("token_invalid")
       end
     end
 
