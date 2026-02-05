@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_04_223000) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_05_000500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -312,6 +312,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_04_223000) do
     t.index ["starred"], name: "index_tasks_on_starred"
     t.index ["status", "completed_at"], name: "index_tasks_on_status_and_completed"
     t.index ["status", "due_at"], name: "index_tasks_on_status_and_due_at"
+    t.index ["template_id", "due_at", "id"], name: "index_tasks_on_template_due_id_not_deleted", order: { due_at: :desc, id: :desc }, where: "((deleted_at IS NULL) AND (template_id IS NOT NULL))"
     t.index ["template_id", "due_at"], name: "index_tasks_template_instances", where: "(deleted_at IS NULL)"
     t.index ["template_id"], name: "index_tasks_on_template_id"
     t.index ["template_type"], name: "index_tasks_on_template_type"

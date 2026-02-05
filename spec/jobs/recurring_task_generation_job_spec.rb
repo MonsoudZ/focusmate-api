@@ -233,6 +233,11 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
     it "is enqueued to the default queue" do
       expect(described_class.new.queue_name).to eq("default")
     end
+
+    it "keeps a dedicated latest-instance index for scale" do
+      index_names = ActiveRecord::Base.connection.indexes(:tasks).map(&:name)
+      expect(index_names).to include("index_tasks_on_template_due_id_not_deleted")
+    end
   end
 
   def create_templates_with_pending_instances(count)
