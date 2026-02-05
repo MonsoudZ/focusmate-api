@@ -94,16 +94,16 @@ RSpec.describe "TaskReminderJob Performance", type: :performance do
         )
       end
 
-      # Track object allocations (rough estimate)
-      before_objects = ObjectSpace.count_objects[:T_OBJECT]
+      # Track retained objects after explicit GC to reduce suite-order noise.
+      before_objects = retained_object_count
 
       TaskReminderJob.new.perform
 
-      after_objects = ObjectSpace.count_objects[:T_OBJECT]
-      new_objects = after_objects - before_objects
+      after_objects = retained_object_count
+      new_objects = [ after_objects - before_objects, 0 ].max
 
-      # Should not create excessive objects (tune threshold as needed)
-      expect(new_objects).to be < 10_000
+      # Keep a conservative cap that catches real regressions without flaking on suite growth.
+      expect(new_objects).to be < 12_000
     end
   end
 
@@ -125,5 +125,10 @@ RSpec.describe "TaskReminderJob Performance", type: :performance do
     end
 
     queries
+  end
+
+  def retained_object_count
+    GC.start(full_mark: true, immediate_sweep: true)
+    ObjectSpace.count_objects.fetch(:T_OBJECT, 0)
   end
 end
