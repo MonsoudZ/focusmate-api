@@ -7,6 +7,7 @@ return unless Rails.env.production?
 required = %w[
   DATABASE_URL
   SECRET_KEY_BASE
+  REDIS_URL
   APNS_KEY_ID
   APNS_TEAM_ID
   APNS_BUNDLE_ID

@@ -8,6 +8,7 @@ RSpec.describe "production_required_env initializer" do
     %w[
       DATABASE_URL
       SECRET_KEY_BASE
+      REDIS_URL
       APNS_KEY_ID
       APNS_TEAM_ID
       APNS_BUNDLE_ID
@@ -34,6 +35,16 @@ RSpec.describe "production_required_env initializer" do
     expect { load initializer_path }.to raise_error(
       RuntimeError,
       /SIDEKIQ_USERNAME, SIDEKIQ_PASSWORD/
+    )
+  end
+
+  it "raises in production when redis url is missing" do
+    allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("production"))
+    allow(ENV).to receive(:[]).with("REDIS_URL").and_return(nil)
+
+    expect { load initializer_path }.to raise_error(
+      RuntimeError,
+      /REDIS_URL/
     )
   end
 

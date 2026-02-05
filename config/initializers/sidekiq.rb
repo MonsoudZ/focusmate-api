@@ -25,9 +25,20 @@ if ENV["REDIS_URL"].present?
       schedule_file = Rails.root.join("config", "sidekiq_schedule.yml")
 
       if File.exist?(schedule_file) && defined?(Sidekiq::Cron)
-        schedule = YAML.load_file(schedule_file)
-        Sidekiq::Cron::Job.load_from_hash(schedule)
-        Rails.logger.info("Sidekiq-Cron: Loaded #{schedule.keys.count} scheduled jobs")
+        begin
+          schedule = YAML.safe_load(File.read(schedule_file), aliases: false) || {}
+          raise "Sidekiq schedule must be a hash" unless schedule.is_a?(Hash)
+
+          Sidekiq::Cron::Job.load_from_hash(schedule)
+          Rails.logger.info("Sidekiq-Cron: Loaded #{schedule.keys.count} scheduled jobs")
+        rescue StandardError => e
+          Rails.logger.error(
+            event: "sidekiq_cron_schedule_load_failed",
+            error_class: e.class.name,
+            error_message: e.message
+          )
+          Sentry.capture_exception(e, extra: { schedule_file: schedule_file.to_s }) if defined?(Sentry)
+        end
       end
     end
 
