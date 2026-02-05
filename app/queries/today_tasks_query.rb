@@ -19,7 +19,7 @@ class TodayTasksQuery
 
   def initialize(user, timezone: nil)
     @user = user
-    @timezone = timezone || user.timezone || "UTC"
+    @timezone = normalize_timezone(timezone || user.timezone)
     @cached_data = nil
   end
 
@@ -161,5 +161,19 @@ class TodayTasksQuery
 
   def today_range
     beginning_of_today..end_of_today
+  end
+
+  def normalize_timezone(value)
+    return "UTC" if value.blank?
+
+    zone_name = value.to_s
+    return zone_name if ActiveSupport::TimeZone[zone_name]
+
+    Rails.logger.warn(
+      event: "today_tasks_invalid_timezone_fallback",
+      user_id: user&.id,
+      timezone: zone_name
+    )
+    "UTC"
   end
 end

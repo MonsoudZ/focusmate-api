@@ -182,4 +182,16 @@ RSpec.describe TodayTasksQuery do
       expect(query.due_today).not_to include(deleted_task)
     end
   end
+
+  describe "timezone safety" do
+    it "falls back to UTC when user timezone is invalid" do
+      user.update_column(:timezone, "Invalid/Zone")
+      task = create(:task, list: list, creator: user, due_at: Time.current, status: :pending)
+
+      query = described_class.new(user)
+
+      expect { query.due_today.to_a }.not_to raise_error
+      expect(query.due_today).to include(task)
+    end
+  end
 end

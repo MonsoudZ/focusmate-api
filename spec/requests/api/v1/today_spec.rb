@@ -76,6 +76,15 @@ RSpec.describe "Today API", type: :request do
         overdue_ids = json_response["overdue"].map { |t| t["id"] }
         expect(overdue_ids).not_to include(overdue_task.id)
       end
+
+      it "falls back safely when user timezone is invalid" do
+        user.update_column(:timezone, "Invalid/Zone")
+
+        auth_get "/api/v1/today", user: user
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["stats"]).to be_present
+      end
     end
 
     context "when not authenticated" do
