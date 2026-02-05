@@ -38,6 +38,16 @@ RSpec.describe "Subtasks API", type: :request do
         expect(response).to have_http_status(:not_found)
       end
     end
+
+    context "with mismatched list_id" do
+      let(:other_list) { create(:list, user: user) }
+
+      it "returns not found even when user can access both lists" do
+        auth_get "/api/v1/lists/#{other_list.id}/tasks/#{parent_task.id}/subtasks", user: user
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
   end
 
   describe "POST /api/v1/lists/:list_id/tasks/:task_id/subtasks" do
@@ -105,6 +115,19 @@ RSpec.describe "Subtasks API", type: :request do
                    params: { subtask: { title: "Hacked" } }
 
         expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context "with mismatched list_id" do
+      let(:other_list) { create(:list, user: user) }
+
+      it "returns not found and does not update the subtask" do
+        auth_patch "/api/v1/lists/#{other_list.id}/tasks/#{parent_task.id}/subtasks/#{subtask1.id}",
+                   user: user,
+                   params: { subtask: { title: "Wrong List" } }
+
+        expect(response).to have_http_status(:not_found)
+        expect(subtask1.reload.title).to eq("Subtask 1")
       end
     end
   end

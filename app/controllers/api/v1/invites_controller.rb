@@ -8,7 +8,7 @@ module Api
       # GET /api/v1/invites/:code
       # Public endpoint to preview an invite before accepting
       def show
-        invite = ListInvite.includes(:list, :inviter).find_by!(code: params[:code].upcase)
+        invite = find_active_invite!
 
         render json: {
           invite: ListInviteSerializer.new(invite).as_preview_json
@@ -17,7 +17,7 @@ module Api
 
       # POST /api/v1/invites/:code/accept
       def accept
-        invite = ListInvite.includes(:list, :inviter).find_by!(code: params[:code].upcase)
+        invite = find_active_invite!
 
         # Quick pre-checks for better error messages
         unless invite.usable?
@@ -79,6 +79,20 @@ module Api
           message: "Successfully joined list",
           list: ListSerializer.new(invite.list, current_user: current_user).as_json
         }, status: :ok
+      end
+
+      private
+
+      def find_active_invite!
+        ListInvite
+          .includes(:list, :inviter)
+          .joins(:list)
+          .merge(List.not_deleted)
+          .find_by!(code: normalized_invite_code)
+      end
+
+      def normalized_invite_code
+        params[:code].to_s.upcase
       end
     end
   end

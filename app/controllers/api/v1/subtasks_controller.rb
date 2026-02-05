@@ -69,7 +69,7 @@ module Api
       private
 
       def set_parent_task
-        @parent_task = policy_scope(Task).find(params[:task_id])
+        @parent_task = policy_scope(Task).where(list_id: params[:list_id]).find(params[:task_id])
       end
 
       def set_subtask

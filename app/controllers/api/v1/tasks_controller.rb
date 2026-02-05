@@ -183,7 +183,9 @@ module Api
       end
 
       def set_task
-        @task = policy_scope(Task).includes(:tags, :creator, :subtasks, :list).find(params[:id])
+        scope = policy_scope(Task).includes(:tags, :creator, :subtasks, :list)
+        scope = scope.where(list_id: params[:list_id]) if params[:list_id].present?
+        @task = scope.find(params[:id])
       end
 
       def empty_json_body?

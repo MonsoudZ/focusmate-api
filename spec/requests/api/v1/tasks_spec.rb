@@ -184,6 +184,16 @@ RSpec.describe "Tasks API", type: :request do
         expect(response).to have_http_status(:not_found)
       end
     end
+
+    context "with mismatched list_id" do
+      let(:other_list) { create(:list, user: user) }
+
+      it "returns not found even when user can access both lists" do
+        auth_get "/api/v1/lists/#{other_list.id}/tasks/#{task.id}", user: user
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
   end
 
   describe "GET /api/v1/tasks/:id (global task fetch)" do
@@ -345,6 +355,17 @@ RSpec.describe "Tasks API", type: :request do
         auth_patch "/api/v1/lists/#{list.id}/tasks/#{task.id}", user: other_user, params: { task: { title: "Viewer Update" } }
 
         expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "with mismatched list_id" do
+      let(:other_list) { create(:list, user: user) }
+
+      it "returns not found and does not update the task" do
+        auth_patch "/api/v1/lists/#{other_list.id}/tasks/#{task.id}", user: user, params: { task: { title: "Wrong List" } }
+
+        expect(response).to have_http_status(:not_found)
+        expect(task.reload.title).to eq("Original Title")
       end
     end
 

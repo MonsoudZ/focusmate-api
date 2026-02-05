@@ -29,6 +29,14 @@ RSpec.describe "Api::V1::Invites", type: :request do
 
       expect(response).to have_http_status(:not_found)
     end
+
+    it "returns 404 when invite list has been deleted" do
+      list.soft_delete!
+
+      get "/api/v1/invites/#{invite.code}"
+
+      expect(response).to have_http_status(:not_found)
+    end
   end
 
   describe "POST /api/v1/invites/:code/accept" do
@@ -136,6 +144,14 @@ RSpec.describe "Api::V1::Invites", type: :request do
       post "/api/v1/invites/#{invite.code}/accept"
 
       expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "returns 404 when invite list has been deleted" do
+      list.soft_delete!
+
+      post "/api/v1/invites/#{invite.code}/accept", headers: headers
+
+      expect(response).to have_http_status(:not_found)
     end
 
     it "atomically increments uses_count when invite is usable" do
