@@ -76,6 +76,12 @@ RSpec.describe DatabaseHealthCheckJob, type: :job do
           hash_including(level: :warning)
         )
       end
+
+      it "does not fail the job when Sentry reporting fails" do
+        allow(Sentry).to receive(:capture_message).and_raise(StandardError.new("sentry down"))
+
+        expect { described_class.new.perform }.not_to raise_error
+      end
     end
 
     context "when analytics events exceed threshold" do
