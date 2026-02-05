@@ -19,9 +19,6 @@ Rails.application.routes.draw do
     delete "api/v1/auth/sign_out", to: "api/v1/sessions#destroy"
 
     post "api/v1/auth/sign_up", to: "api/v1/registrations#create"
-    put "api/v1/auth/sign_up", to: "api/v1/registrations#update"
-    patch "api/v1/auth/sign_up", to: "api/v1/registrations#update"
-    delete "api/v1/auth/sign_up", to: "api/v1/registrations#destroy"
 
     post "api/v1/auth/password", to: "api/v1/passwords#create"
     put "api/v1/auth/password", to: "api/v1/passwords#update"

@@ -38,6 +38,17 @@ RSpec.describe "API surface", type: :request do
       expect(response.status).to be_between(404, 410).inclusive
     end
 
+    it "does not expose unsupported sign_up verbs" do
+      patch "/api/v1/auth/sign_up"
+      expect(response.status).to be_between(404, 410).inclusive
+
+      put "/api/v1/auth/sign_up"
+      expect(response.status).to be_between(404, 410).inclusive
+
+      delete "/api/v1/auth/sign_up"
+      expect(response.status).to be_between(404, 410).inclusive
+    end
+
     it "does not expose unused framework routes" do
       get "/rails/action_mailbox/relay/inbound_emails"
       expect(response.status).to be_between(404, 410).inclusive
