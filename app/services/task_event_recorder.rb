@@ -15,18 +15,16 @@ class TaskEventRecorder
   end
 
   def record_status_change
-    kind = case @task.status
-    when "done" then :completed
-    when "pending" then :created
-    else :created
-    end
+    kind = @task.status == "done" ? :completed : :created
     record_creation(kind: kind)
   end
 
   def check_parent_completion
-    return unless @task.parent_task && @task.parent_task.subtasks.pending.empty?
-    if @task.parent_task.status == "pending"
-      @task.parent_task.update!(status: :done)
+    return unless @task.parent_task
+    return if @task.parent_task.subtasks.where.not(status: :done).exists?
+
+    if @task.parent_task.status != "done"
+      @task.parent_task.update!(status: :done, completed_at: Time.current)
     end
   end
 
