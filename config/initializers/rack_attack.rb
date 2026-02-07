@@ -13,7 +13,7 @@ class Rack::Attack
   # Extract authenticated user ID from the JWT in the Authorization header.
   # Returns nil for unauthenticated requests (they fall through to IP throttles).
   def self.authenticated_user_id(req)
-    token = req.get_header("HTTP_AUTHORIZATION").to_s.remove("Bearer ")
+    token = req.get_header("HTTP_AUTHORIZATION").to_s.delete_prefix("Bearer ")
     return nil if token.blank?
 
     payload = JWT.decode(

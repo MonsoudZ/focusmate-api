@@ -47,9 +47,6 @@ module FocusmateApi
     # Configure Active Job to use Sidekiq
     config.active_job.queue_adapter = :sidekiq
 
-    # Ensure custom middleware autoloads
-    config.eager_load_paths << Rails.root.join("lib")
-
     # Add Rack::Attack middleware
     config.middleware.use Rack::Attack
 

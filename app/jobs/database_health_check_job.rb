@@ -2,13 +2,12 @@
 
 class DatabaseHealthCheckJob < ApplicationJob
   queue_as :critical
-  SENTRY_FAILURE_TTL = 5.minutes
+  SENTRY_FAILURE_TTL = ApplicationMonitor::SENTRY_FAILURE_TTL
 
   # Thresholds for alerting
   THRESHOLDS = {
     jwt_denylist_max: 50_000,
     analytics_events_max: 10_000_000,
-    dead_tuples_ratio_max: 0.1,  # 10% dead tuples
     connection_usage_max: 0.8    # 80% of pool
   }.freeze
 

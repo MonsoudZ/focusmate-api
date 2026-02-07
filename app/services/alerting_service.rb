@@ -9,7 +9,7 @@
 #   AlertingService.check(:high_error_rate, current_value: 0.15)
 #
 class AlertingService
-  SENTRY_FAILURE_TTL = 5.minutes
+  SENTRY_FAILURE_TTL = ApplicationMonitor::SENTRY_FAILURE_TTL
 
   # Define alert thresholds and conditions
   ALERTS = {

@@ -31,19 +31,19 @@ class TodayTasksQuery
     # Execute queries once and cache results
     overdue_tasks = overdue.to_a
     due_today_tasks = due_today.to_a
-    completed_today_tasks = completed_today.to_a
+    all_completed_today = completed_today(limit: nil).to_a
 
-    # Compute stats from already-loaded data (no additional queries)
+    # Compute stats from the full set (no limit) for accuracy
     stats = compute_stats(
       overdue_tasks: overdue_tasks,
       due_today_tasks: due_today_tasks,
-      completed_today_tasks: completed_today_tasks
+      completed_today_tasks: all_completed_today
     )
 
     @cached_data = {
       overdue: overdue_tasks,
       due_today: due_today_tasks,
-      completed_today: completed_today_tasks,
+      completed_today: all_completed_today.first(10),
       stats: stats
     }
   end

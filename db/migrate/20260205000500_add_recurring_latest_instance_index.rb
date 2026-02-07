@@ -11,7 +11,8 @@ class AddRecurringLatestInstanceIndex < ActiveRecord::Migration[8.0]
               order: { due_at: :desc, id: :desc },
               where: "deleted_at IS NULL AND template_id IS NOT NULL",
               name: INDEX_NAME,
-              algorithm: :concurrently
+              algorithm: :concurrently,
+              if_not_exists: true
   end
 
   def down

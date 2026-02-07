@@ -175,10 +175,7 @@ module Api
         list_id = params[:list_id] || params[:listId]
 
         if list_id.present?
-          @list = List.not_deleted.find(list_id)
-          unless @list.accessible_by?(current_user)
-            render_error("Forbidden", status: :forbidden, code: "not_authorized")
-          end
+          @list = policy_scope(List).not_deleted.find(list_id)
         end
       end
 

@@ -110,6 +110,16 @@ module Auth
         user.refresh_tokens.active.update_all(revoked_at: Time.current)
       end
 
+      def normalize_refresh_token(raw_token)
+        return nil unless raw_token.is_a?(String)
+
+        token = raw_token.strip
+        return nil if token.blank?
+        return nil if token.length > MAX_REFRESH_TOKEN_LENGTH
+
+        token
+      end
+
       private
 
       def encode_access_token(user)
@@ -143,16 +153,6 @@ module Auth
 
       def token_digest(raw_token)
         Digest::SHA256.hexdigest(raw_token)
-      end
-
-      def normalize_refresh_token(raw_token)
-        return nil unless raw_token.is_a?(String)
-
-        token = raw_token.strip
-        return nil if token.blank?
-        return nil if token.length > MAX_REFRESH_TOKEN_LENGTH
-
-        token
       end
 
       def retryable_token_collision?(error)

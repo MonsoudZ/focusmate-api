@@ -22,10 +22,10 @@ RSpec.describe "Tasks API", type: :request do
     end
 
     context "as stranger" do
-      it "returns forbidden" do
+      it "returns not found" do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: other_user
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
 
@@ -280,10 +280,10 @@ RSpec.describe "Tasks API", type: :request do
     end
 
     context "as stranger" do
-      it "returns forbidden" do
+      it "returns not found" do
         auth_post "/api/v1/lists/#{list.id}/tasks", user: other_user, params: valid_params
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
 

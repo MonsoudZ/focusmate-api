@@ -28,13 +28,7 @@ module Api
       end
 
       def normalize_refresh_token(value)
-        return nil unless value.is_a?(String)
-
-        token = value.strip
-        return nil if token.blank?
-        return nil if token.length > ::Auth::TokenService::MAX_REFRESH_TOKEN_LENGTH
-
-        token
+        ::Auth::TokenService.normalize_refresh_token(value)
       end
     end
   end
