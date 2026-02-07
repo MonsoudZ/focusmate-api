@@ -190,7 +190,8 @@ module Api
       end
 
       def task_params
-        p = params.require(:task).permit(permitted_task_attributes)
+        permitted = action_name == "create" ? permitted_create_attributes : permitted_update_attributes
+        p = params.require(:task).permit(permitted)
         if p.key?(:hidden)
           hidden = ActiveModel::Type::Boolean.new.cast(p.delete(:hidden))
           p[:visibility] = hidden ? :private_task : :visible_to_all
@@ -246,13 +247,20 @@ module Api
         params.permit(:new_due_at, :reason)
       end
 
-      def permitted_task_attributes
+      def permitted_base_attributes
         %i[
           title note due_at priority strict_mode hidden
-          notification_interval_minutes list_id visibility color starred position
+          notification_interval_minutes visibility color starred position
           is_recurring recurrence_pattern recurrence_interval recurrence_end_date recurrence_count recurrence_time
-          parent_task_id
         ] + [ tag_ids: [], recurrence_days: [] ]
+      end
+
+      def permitted_create_attributes
+        permitted_base_attributes + %i[list_id parent_task_id]
+      end
+
+      def permitted_update_attributes
+        permitted_base_attributes
       end
 
       def apply_filters(query)
