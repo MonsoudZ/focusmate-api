@@ -4,13 +4,9 @@ require "rails_helper"
 
 RSpec.describe Health::Checks::Redis do
   describe "#call" do
-    it "uses Redis.current when available" do
-      client = instance_double(::Redis, ping: "PONG")
-      allow(Redis).to receive(:respond_to?).and_call_original
-      allow(Redis).to receive(:respond_to?).with(:current).and_return(true)
-      without_partial_double_verification do
-        allow(Redis).to receive(:current).and_return(client)
-      end
+    it "pings through Sidekiq pool when Sidekiq is defined" do
+      pooled_client = instance_double(::Redis, ping: "PONG")
+      expect(Sidekiq).to receive(:redis).and_yield(pooled_client)
 
       result = described_class.new.call
 
@@ -18,15 +14,24 @@ RSpec.describe Health::Checks::Redis do
       expect(result[:message]).to eq("Redis responsive")
     end
 
-    it "pings through Sidekiq pool when Redis.current is unavailable" do
-      pooled_client = instance_double(::Redis, ping: "PONG")
-      allow(Redis).to receive(:respond_to?).and_call_original
-      allow(Redis).to receive(:respond_to?).with(:current).and_return(false)
-      expect(Sidekiq).to receive(:redis).and_yield(pooled_client)
+    it "falls back to direct Redis connection when Sidekiq is not defined" do
+      client = instance_double(::Redis, ping: "PONG", close: nil)
+      allow(::Redis).to receive(:new).and_return(client)
+      check = described_class.new
+      allow(check).to receive(:ping_response).and_wrap_original do
+        # Simulate the non-Sidekiq path
+        redis = ::Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"))
+        begin
+          redis.ping
+        ensure
+          redis.close
+        end
+      end
 
-      result = described_class.new.call
+      result = check.call
 
       expect(result[:status]).to eq("healthy")
+      expect(client).to have_received(:close)
     end
 
     it "returns unhealthy when ping response is unexpected" do

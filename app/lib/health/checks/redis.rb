@@ -14,13 +14,15 @@ module Health
       end
 
       def ping_response
-        current = ::Redis.current if ::Redis.respond_to?(:current)
-        return current.ping if current
-
         if defined?(Sidekiq)
           Sidekiq.redis { |connection| connection.ping }
         else
-          ::Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0")).ping
+          redis = ::Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"))
+          begin
+            redis.ping
+          ensure
+            redis.close
+          end
         end
       end
     end
