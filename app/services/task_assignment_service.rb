@@ -16,6 +16,7 @@ class TaskAssignmentService < ApplicationService
   end
 
   def assign!(assigned_to_id:)
+    validate_edit_permission!
     raise ApplicationError::BadRequest, "assigned_to is required" if assigned_to_id.blank?
 
     assignee = User.find_by(id: assigned_to_id)
@@ -45,7 +46,16 @@ class TaskAssignmentService < ApplicationService
   end
 
   def unassign!
+    validate_edit_permission!
     @task.update!(assigned_to_id: nil)
     @task
+  end
+
+  private
+
+  def validate_edit_permission!
+    unless Permissions::TaskPermissions.can_edit?(@task, @user)
+      raise ApplicationError::Forbidden.new("You do not have permission to modify this task", code: "task_update_forbidden")
+    end
   end
 end
