@@ -199,7 +199,7 @@ RSpec.describe "Api::V1::Memberships", type: :request do
                   params: { membership: { user_identifier: { bad: "input" }, role: "viewer" } }
 
         expect(response).to have_http_status(:bad_request)
-        expect(json_response["error"]["message"]).to eq("user_identifier must be a string")
+        expect(json_response["error"]["message"]).to eq("user_identifier or friend_id is required")
       end
 
       it "returns 400 for non-integer friend_id values" do

@@ -99,7 +99,7 @@ module Api
         raw = params.require(:membership)
         raise ApplicationError::BadRequest, "membership must be an object" unless raw.is_a?(ActionController::Parameters)
 
-        raw
+        raw.permit(:user_identifier, :friend_id, :role)
       end
     end
   end

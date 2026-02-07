@@ -16,6 +16,8 @@ required = %w[
   HEALTH_DIAGNOSTICS_TOKEN
   SIDEKIQ_USERNAME
   SIDEKIQ_PASSWORD
+  DEVISE_PEPPER
+  DEVISE_MAILER_SENDER
 ]
 missing = required.select { |k| ENV[k].blank? }
 
