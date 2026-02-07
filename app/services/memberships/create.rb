@@ -17,6 +17,7 @@ module Memberships
     end
 
     def call!
+      validate_authorization!
       validate_inputs!
       target_user = find_target_user!
       validate_membership!(target_user)
@@ -24,6 +25,12 @@ module Memberships
     end
 
     private
+
+    def validate_authorization!
+      unless Permissions::ListPermissions.new(@list, @inviter).can_manage_memberships?
+        raise ApplicationError::Forbidden.new("You do not have permission to manage memberships", code: "membership_forbidden")
+      end
+    end
 
     def validate_inputs!
       raise ApplicationError::BadRequest, "user_identifier or friend_id is required" if @user_identifier.blank? && @friend_id.blank?

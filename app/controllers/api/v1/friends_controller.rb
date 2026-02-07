@@ -43,10 +43,10 @@ module Api
 
       # DELETE /api/v1/friends/:id
       def destroy
-        friend = User.find(params[:id])
+        friend = current_user.friends.find_by(id: params[:id])
 
-        unless Friendship.friends?(current_user, friend)
-          return render_error("Not friends with this user", status: :not_found, code: "not_friends")
+        unless friend
+          return render_error("Not friends with this user", status: :not_found, code: "not_found")
         end
 
         Friendship.destroy_mutual!(current_user, friend)

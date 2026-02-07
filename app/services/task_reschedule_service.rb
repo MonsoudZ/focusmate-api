@@ -9,6 +9,7 @@ class TaskRescheduleService < ApplicationService
   end
 
   def call!
+    validate_authorization!
     validate_inputs!
 
     ActiveRecord::Base.transaction do
@@ -20,6 +21,12 @@ class TaskRescheduleService < ApplicationService
   end
 
   private
+
+  def validate_authorization!
+    unless Permissions::TaskPermissions.can_edit?(@task, @user)
+      raise ApplicationError::Forbidden.new("You do not have permission to reschedule this task", code: "task_reschedule_forbidden")
+    end
+  end
 
   def validate_inputs!
     if @new_due_at.blank?

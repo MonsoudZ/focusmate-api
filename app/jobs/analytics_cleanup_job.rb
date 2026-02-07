@@ -15,16 +15,18 @@ class AnalyticsCleanupJob < ApplicationJob
   def perform
     cutoff_date = RETENTION_DAYS.days.ago
 
-    deleted_count = AnalyticsEvent
-                      .where("occurred_at < ?", cutoff_date)
-                      .delete_all
+    deleted_count = 0
+    AnalyticsEvent
+      .where("occurred_at < ?", cutoff_date)
+      .in_batches(of: 10_000) do |batch|
+        deleted_count += batch.delete_all
+      end
 
     Rails.logger.info(
       event: "analytics_cleanup_completed",
       retention_days: RETENTION_DAYS,
       cutoff_date: cutoff_date.iso8601,
-      events_deleted: deleted_count,
-      remaining_events: AnalyticsEvent.count
+      events_deleted: deleted_count
     )
 
     # Alert if we're deleting a lot - might indicate a problem

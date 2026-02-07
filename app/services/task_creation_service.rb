@@ -103,9 +103,21 @@ class TaskCreationService < ApplicationService
       recurrence_end_date: @params[:recurrence_end_date],
       recurrence_count: @params[:recurrence_count],
 
-      # Tags
-      tag_ids: @params[:tag_ids]
+      # Tags (validated for ownership)
+      tag_ids: validated_tag_ids
     }.compact
+  end
+
+  def validated_tag_ids
+    ids = @params[:tag_ids]
+    return nil if ids.blank?
+
+    owned_ids = @user.tags.where(id: ids).pluck(:id)
+    invalid_ids = ids.map(&:to_i) - owned_ids
+    if invalid_ids.any?
+      raise ApplicationError::Forbidden.new("Cannot use tags that don't belong to you", code: "invalid_tag_ids")
+    end
+    owned_ids
   end
 
   def subtask_titles

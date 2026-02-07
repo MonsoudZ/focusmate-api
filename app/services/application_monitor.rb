@@ -159,7 +159,7 @@ class ApplicationMonitor
     end
 
     def redis_health
-      redis = Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"))
+      redis = ::Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"))
       info = redis.info
       {
         connected: true,
@@ -169,6 +169,8 @@ class ApplicationMonitor
       }
     rescue StandardError => e
       { connected: false, error: e.message }
+    ensure
+      redis&.close
     end
 
     def sidekiq_health

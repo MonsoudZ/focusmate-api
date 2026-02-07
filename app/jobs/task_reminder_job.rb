@@ -105,7 +105,8 @@ class TaskReminderJob < ApplicationJob
   end
 
   def report_reminder_error(error, task:, recipient:)
-    cache_key = "task_reminder_job:error:#{error.class.name}:#{error.message}"
+    digest = Digest::SHA256.hexdigest(error.message.to_s)[0, 16]
+    cache_key = "task_reminder_job:error:#{error.class.name}:#{digest}"
 
     report_error_once(
       error,
