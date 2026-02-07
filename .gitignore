@@ -43,3 +43,6 @@ config/apns/*.p8
 
 # IDE
 .idea/
+
+# Generated output
+/output/
