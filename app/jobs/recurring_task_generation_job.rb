@@ -102,7 +102,8 @@ class RecurringTaskGenerationJob < ApplicationJob
   end
 
   def report_generation_error(error, template_id:)
-    cache_key = "recurring_task_generation_job:error:#{error.class.name}:#{error.message}"
+    digest = Digest::SHA256.hexdigest(error.message.to_s)[0, 16]
+    cache_key = "recurring_task_generation_job:error:#{error.class.name}:#{digest}"
 
     report_error_once(
       error,
