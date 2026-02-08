@@ -11,7 +11,12 @@ Sentry.init do |config|
   config.before_send = lambda do |event, hint|
     # Remove sensitive data from request parameters
     if event.request&.data
-      event.request.data = event.request.data.except("password", "password_confirmation", "token", "secret")
+      event.request.data = event.request.data.except(
+        "password", "password_confirmation",
+        "token", "secret",
+        "access_token", "refresh_token",
+        "api_key", "private_key"
+      )
     end
 
     # Remove sensitive headers

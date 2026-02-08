@@ -98,9 +98,6 @@ class Task < ApplicationRecord
     pending? && due_at.present? && due_at < Time.current
   end
 
-  def done?
-    status == "done"
-  end
 
   def editable_by?(user)
     user.present? && list.can_edit?(user)
