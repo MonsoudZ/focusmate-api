@@ -128,31 +128,19 @@ class TaskCreationService < ApplicationService
     valid_titles = subtask_titles.reject(&:blank?)
     return if valid_titles.empty?
 
-    now = Time.current
-
-    subtask_records = valid_titles.map do |title|
-      {
+    valid_titles.each do |title|
+      @list.tasks.create!(
         title: title,
-        list_id: @list.id,
-        creator_id: @user.id,
-        parent_task_id: parent_task.id,
+        creator: @user,
+        parent_task: parent_task,
         due_at: parent_task.due_at,
         strict_mode: parent_task.strict_mode,
-        status: Task.statuses[:pending],
-        visibility: Task.visibilities[:visible_to_all],
-        priority: Task.priorities[:no_priority],
-        starred: false,
-        subtasks_count: 0,
-        created_at: now,
-        updated_at: now
-      }
+        status: :pending,
+        visibility: :visible_to_all,
+        priority: :no_priority,
+        starred: false
+      )
     end
-
-    # Bulk insert all subtasks in a single query
-    Task.insert_all(subtask_records)
-
-    # Manually update counter cache since insert_all skips callbacks
-    Task.update_counters(parent_task.id, subtasks_count: valid_titles.size)
   end
 
   def track_analytics(task)

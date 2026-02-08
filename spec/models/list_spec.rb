@@ -189,5 +189,88 @@ RSpec.describe List, type: :model do
       task.reload
       expect(task.deleted?).to be true
     end
+
+    it 'decrements tasks_count and parent_tasks_count on soft_delete!' do
+      create(:task, list: list, creator: user)
+      create(:task, list: list, creator: user)
+      list.reload
+      expect(list.tasks_count).to eq(2)
+      expect(list.parent_tasks_count).to eq(2)
+
+      list.soft_delete!
+      list.reload
+      expect(list.tasks_count).to eq(0)
+      expect(list.parent_tasks_count).to eq(0)
+    end
+
+    it 'decrements subtasks_count on parent tasks on soft_delete!' do
+      parent_task = create(:task, list: list, creator: user)
+      create(:task, list: list, creator: user, parent_task: parent_task)
+      create(:task, list: list, creator: user, parent_task: parent_task)
+      parent_task.reload
+      expect(parent_task.subtasks_count).to eq(2)
+
+      list.soft_delete!
+      parent_task.reload
+      expect(parent_task.subtasks_count).to eq(0)
+    end
+
+    it 'handles soft_delete! on list with no tasks' do
+      expect { list.soft_delete! }.not_to raise_error
+      list.reload
+      expect(list.tasks_count).to eq(0)
+      expect(list.parent_tasks_count).to eq(0)
+    end
+
+    it 'restores cascade-deleted tasks and re-increments counters' do
+      task1 = create(:task, list: list, creator: user)
+      task2 = create(:task, list: list, creator: user)
+      list.reload
+      expect(list.tasks_count).to eq(2)
+
+      list.soft_delete!
+      list.reload
+      expect(list.tasks_count).to eq(0)
+
+      list.restore!
+      list.reload
+      expect(list.deleted?).to be false
+      expect(list.tasks_count).to eq(2)
+      expect(list.parent_tasks_count).to eq(2)
+      expect(task1.reload.deleted?).to be false
+      expect(task2.reload.deleted?).to be false
+    end
+
+    it 'restores subtasks_count on parent tasks after restore!' do
+      parent_task = create(:task, list: list, creator: user)
+      create(:task, list: list, creator: user, parent_task: parent_task)
+      parent_task.reload
+      expect(parent_task.subtasks_count).to eq(1)
+
+      list.soft_delete!
+      parent_task.reload
+      expect(parent_task.subtasks_count).to eq(0)
+
+      list.restore!
+      parent_task.reload
+      expect(parent_task.subtasks_count).to eq(1)
+    end
+
+    it 'does NOT restore individually-deleted tasks on restore!' do
+      task1 = create(:task, list: list, creator: user)
+      task2 = create(:task, list: list, creator: user)
+
+      # Individually delete task1 before list deletion
+      task1.soft_delete!
+      list.reload
+
+      list.soft_delete!
+      list.restore!
+
+      # task2 was cascade-deleted so it should be restored
+      expect(task2.reload.deleted?).to be false
+      # task1 was individually deleted before, should remain deleted
+      expect(task1.reload.deleted?).to be true
+    end
   end
 end

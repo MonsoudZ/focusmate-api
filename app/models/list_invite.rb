@@ -26,10 +26,6 @@ class ListInvite < ApplicationRecord
     !expired? && !exhausted?
   end
 
-  def increment_uses!
-    increment!(:uses_count)
-  end
-
   def invite_url
     "#{base_url}/invite/#{code}"
   end

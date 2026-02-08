@@ -84,13 +84,6 @@ RSpec.describe ListInvite, type: :model do
     end
   end
 
-  describe "#increment_uses!" do
-    it "increments the uses_count" do
-      invite = create(:list_invite, uses_count: 0)
-      expect { invite.increment_uses! }.to change { invite.reload.uses_count }.from(0).to(1)
-    end
-  end
-
   describe "#invite_url" do
     it "returns the full invite URL" do
       invite = create(:list_invite)

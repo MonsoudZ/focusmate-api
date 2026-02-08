@@ -286,6 +286,40 @@ RSpec.describe TaskCreationService, type: :service do
       expect(task.subtasks.first.title).to eq(long_subtask_title)
     end
 
+    it "raises RecordInvalid for subtask title exceeding 255 characters" do
+      params_with_invalid_subtask = params.merge(
+        subtasks: [ "a" * 256 ]
+      )
+
+      service = TaskCreationService.new(list: list, user: user, params: params_with_invalid_subtask)
+      expect { service.call! }.to raise_error(ActiveRecord::RecordInvalid, /Title/)
+    end
+
+    it "increments list.tasks_count for subtasks" do
+      params_with_subtasks = params.merge(
+        subtasks: [ "Subtask 1", "Subtask 2" ]
+      )
+
+      service = TaskCreationService.new(list: list, user: user, params: params_with_subtasks)
+      service.call!
+
+      list.reload
+      # 1 parent + 2 subtasks = 3
+      expect(list.tasks_count).to eq(3)
+    end
+
+    it "creates TaskEvent records for subtasks" do
+      params_with_subtasks = params.merge(
+        subtasks: [ "Subtask 1" ]
+      )
+
+      service = TaskCreationService.new(list: list, user: user, params: params_with_subtasks)
+      task = service.call!
+
+      subtask = task.subtasks.first
+      expect(subtask.task_events).to be_present
+    end
+
     it "should handle special characters in parameters" do
       special_params = {
         name: "Task with émojis 🚀 and spëcial chars",
