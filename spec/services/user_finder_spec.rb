@@ -140,5 +140,49 @@ RSpec.describe UserFinder do
         expect(result.email).to eq("#{apple_user_id}@privaterelay.appleid.com")
       end
     end
+
+    context "when a concurrent request wins the race (RecordNotUnique)" do
+      it "retries the find by apple_user_id after uniqueness violation" do
+        call_count = 0
+        allow(User).to receive(:create!).and_wrap_original do |method, **args|
+          call_count += 1
+          if call_count == 1
+            # Simulate concurrent insert that won the race
+            create(:user, email: email, apple_user_id: apple_user_id, name: name)
+            raise ActiveRecord::RecordNotUnique, "duplicate key value violates unique constraint"
+          end
+          method.call(**args)
+        end
+
+        result = described_class.find_or_create_by_apple(
+          apple_user_id: apple_user_id,
+          email: email,
+          name: name
+        )
+        expect(result).to be_persisted
+        expect(result.apple_user_id).to eq(apple_user_id)
+      end
+
+      it "retries the find by email after uniqueness violation" do
+        call_count = 0
+        allow(User).to receive(:create!).and_wrap_original do |method, **args|
+          call_count += 1
+          if call_count == 1
+            # Concurrent request created user with same email but different apple_user_id
+            create(:user, email: email, apple_user_id: "other_apple_id")
+            raise ActiveRecord::RecordNotUnique, "duplicate key value violates unique constraint"
+          end
+          method.call(**args)
+        end
+
+        result = described_class.find_or_create_by_apple(
+          apple_user_id: apple_user_id,
+          email: email,
+          name: name
+        )
+        expect(result).to be_persisted
+        expect(result.email).to eq(email)
+      end
+    end
   end
 end

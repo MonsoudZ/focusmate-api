@@ -48,11 +48,16 @@ class UserFinder
     # @param name [String, nil] User's name (only provided on first auth)
     # @return [User] The found or created user
     #
+    # Find or create a user from Apple Sign In.
+    #
+    # Uses rescue on RecordNotUnique to handle the TOCTOU race where two
+    # concurrent requests both fail the find_by and both attempt create!/update!.
+    # The DB unique indexes on email and apple_user_id are the source of truth;
+    # on conflict we simply retry the find.
     def find_or_create_by_apple(apple_user_id:, email: nil, name: nil)
       # First try to find by Apple ID
       user = User.find_by(apple_user_id: apple_user_id)
       if user
-        # Update name if provided and user doesn't have one
         user.update!(name: name) if name.present? && user.name.blank?
         return user
       end
@@ -74,6 +79,12 @@ class UserFinder
         password: SecureRandom.hex(16),
         timezone: "UTC"
       )
+    rescue ActiveRecord::RecordNotUnique
+      # A concurrent request won the race — retry the find to return
+      # the user they created/linked.
+      User.find_by(apple_user_id: apple_user_id) ||
+        (email.present? && User.find_by(email: email.downcase)) ||
+        raise # re-raise if we still can't find them (shouldn't happen)
     end
 
     private

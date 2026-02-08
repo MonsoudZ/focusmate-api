@@ -52,6 +52,9 @@ module Api
         end
 
         @list ||= current_user.owned_lists.first
+        unless @list
+          return render_error("No list available. Create a list first.", status: :unprocessable_content, code: "no_list")
+        end
         authorize @list, :create_task?
 
         task = TaskCreationService.call!(list: @list, user: current_user, params: task_params)
