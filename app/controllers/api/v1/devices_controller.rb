@@ -4,8 +4,10 @@ module Api
   module V1
     class DevicesController < BaseController
       before_action :set_device, only: %i[destroy]
+      after_action :verify_authorized
 
       def create
+        skip_authorization # Implicitly scoped to current_user via service
         device = Devices::Upsert.call!(
           user: current_user,
           apns_token: device_params[:apns_token],
@@ -20,6 +22,7 @@ module Api
       end
 
       def destroy
+        skip_authorization # Implicitly scoped to current_user.devices via set_device
         @device.destroy!
         head :no_content
       end

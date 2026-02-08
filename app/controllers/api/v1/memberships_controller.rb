@@ -3,6 +3,8 @@
 module Api
   module V1
     class MembershipsController < BaseController
+      include Paginatable
+
       before_action :set_list
       before_action :set_membership, only: %i[update destroy]
 
@@ -17,7 +19,14 @@ module Api
         memberships = policy_scope(@list.memberships)
                         .includes(:user)
                         .order(created_at: :asc)
-                        .limit(100)
+
+        result = paginate(
+          memberships,
+          page: params[:page],
+          per_page: params[:per_page],
+          default_per_page: 50,
+          max_per_page: 100
+        )
 
         owner = @list.user
 
@@ -27,7 +36,8 @@ module Api
             email: owner.email,
             name: owner.name
           },
-          memberships: memberships.map { |m| MembershipSerializer.new(m).as_json }
+          memberships: result[:records].map { |m| MembershipSerializer.new(m).as_json },
+          pagination: result[:pagination]
         }, status: :ok
       end
 

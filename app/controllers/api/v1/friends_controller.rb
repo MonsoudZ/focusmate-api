@@ -5,9 +5,12 @@ module Api
     class FriendsController < BaseController
       include Paginatable
 
+      after_action :verify_authorized
+
       # GET /api/v1/friends
       # Optional param: exclude_list_id - filters out friends who are already members of that list
       def index
+        skip_authorization # Implicitly scoped to current_user.friends
         friends = current_user.friends.order(:name)
         query = friends_query_params
 
@@ -43,6 +46,7 @@ module Api
 
       # DELETE /api/v1/friends/:id
       def destroy
+        skip_authorization # Implicitly scoped to current_user.friends
         friend = current_user.friends.find_by(id: params[:id])
 
         unless friend

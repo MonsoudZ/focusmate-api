@@ -31,7 +31,10 @@ module Api
               refresh_token: pair[:refresh_token]
             }, status: :ok
           else
-            render_error(user.errors.full_messages.join(", "), status: :unprocessable_content)
+            # Return generic message to prevent user enumeration via validation
+            # errors (e.g. "Email has already been taken" leaks account existence).
+            Rails.logger.error("[AppleAuth] User creation failed: #{user.errors.full_messages.join(', ')}")
+            render_error("Authentication failed", status: :unprocessable_content)
           end
 
         rescue StandardError => e
