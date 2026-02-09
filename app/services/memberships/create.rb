@@ -55,6 +55,7 @@ module Memberships
     def find_by_identifier!
       user = UserFinder.find_by_identifier(@user_identifier)
       raise ApplicationError::NotFound, "User not found" unless user
+      raise ApplicationError::Forbidden, "You can only add friends to lists" unless Friendship.friends?(@inviter, user)
       user
     end
 

@@ -11,10 +11,7 @@ class RecurringTaskService
       # Advisory lock prevents duplicate templates from concurrent requests.
       # The lock is automatically released when the transaction ends.
       lock_key = Digest::MD5.hexdigest("recurring_task:#{@user.id}:#{list.id}:#{params[:title]}").to_i(16) & 0x7FFFFFFFFFFFFFFF
-      ActiveRecord::Base.connection.raw_connection.exec_params(
-        "SELECT pg_advisory_xact_lock($1)",
-        [ lock_key ]
-      )
+      ActiveRecord::Base.connection.execute("SELECT pg_advisory_xact_lock(#{lock_key.to_i})")
       due_at = params[:due_at]
 
       # Create the template (hidden from normal queries)
