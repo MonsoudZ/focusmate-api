@@ -73,7 +73,7 @@ module Api
       private
 
       def set_list
-        @list = policy_scope(List).find(params[:id])
+        @list = policy_scope(List).includes(:user, memberships: :user).find(params[:id])
       end
 
       def list_params

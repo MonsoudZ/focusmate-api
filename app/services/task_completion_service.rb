@@ -11,10 +11,6 @@ class TaskCompletionService < ApplicationService
     new(task:, user:).uncomplete!
   end
 
-  def self.toggle!(task:, user:, completed:, missed_reason: nil)
-    new(task:, user:, missed_reason:).toggle_completion!(completed:)
-  end
-
   def initialize(task:, user:, missed_reason: nil)
     @task = task
     @user = user
@@ -61,14 +57,6 @@ class TaskCompletionService < ApplicationService
     @task
   end
 
-  def toggle_completion!(completed:)
-    if completed == false || completed == "false"
-      uncomplete!
-    else
-      complete!
-    end
-  end
-
   private
 
   def validate_access!
@@ -98,10 +86,7 @@ class TaskCompletionService < ApplicationService
   end
 
   def can_access_task?
-    return true if @task.list.user_id == @user.id
-    return true if @task.creator_id == @user.id
-    return true if @task.list.memberships.exists?(user_id: @user.id)
-    false
+    Permissions::TaskPermissions.can_edit?(@task, @user)
   end
 
   def track_completion_analytics

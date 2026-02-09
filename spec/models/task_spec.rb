@@ -156,12 +156,6 @@ RSpec.describe Task, type: :model do
 
 
 
-    it 'has recurring scope' do
-      recurring_task = create(:task, list: list, creator: user, is_recurring: true)
-      regular_task = create(:task, list: list, creator: user, is_recurring: false)
-      expect(Task.recurring).to include(recurring_task)
-      expect(Task.recurring).not_to include(regular_task)
-    end
   end
 
   describe 'methods' do

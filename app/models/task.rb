@@ -54,13 +54,8 @@ class Task < ApplicationRecord
   # Scopes (SoftDeletable provides: with_deleted, only_deleted, not_deleted)
   scope :completed, -> { where(status: :done) }
   scope :pending, -> { where(status: :pending) }
-  scope :in_progress, -> { where(status: :in_progress) }
   scope :overdue, -> { pending.where("due_at < ?", Time.current) }
-  scope :due_soon, -> { where("due_at <= ?", 1.day.from_now) }
   scope :incomplete, -> { where.not(status: :done) }
-  scope :recurring, -> { where(is_recurring: true) }
-  scope :by_list, ->(list_id) { where(list_id: list_id) }
-  scope :by_creator, ->(creator_id) { where(creator_id: creator_id) }
 
   # Primary sorting scope - urgent tasks first, then starred, then by position/column
   scope :sorted_with_priority, ->(column = :created_at, direction = :desc) {
@@ -82,9 +77,6 @@ class Task < ApplicationRecord
       where(visible_to_all)
     end
   }
-  scope :templates, -> { where(is_template: true) }
-  scope :recurring_templates, -> { where(is_template: true, template_type: "recurring") }
-
   # Business logic
   def complete!
     update!(status: :done, completed_at: Time.current)

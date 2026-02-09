@@ -180,7 +180,7 @@ module Api
       end
 
       def set_task
-        scope = policy_scope(Task).includes(:tags, :creator, :subtasks, :list)
+        scope = policy_scope(Task).includes(:tags, :creator, :subtasks, :list, reschedule_events: :user)
         scope = scope.where(list_id: params[:list_id]) if params[:list_id].present?
         @task = scope.find(params[:id])
       end
