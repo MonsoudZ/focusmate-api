@@ -3,13 +3,17 @@
 module Api
   module V1
     class UsersController < BaseController
+      after_action :verify_authorized
+
       # GET /api/v1/users/me
       def show
+        authorize current_user
         render json: { user: UserSerializer.one(current_user) }, status: :ok
       end
 
       # PATCH /api/v1/users/me
       def update
+        authorize current_user
         user = Users::ProfileUpdateService.call!(
           user: current_user,
           name: profile_params[:name],
@@ -21,6 +25,7 @@ module Api
 
       # PATCH /api/v1/users/me/password
       def update_password
+        authorize current_user, :update?
         Users::PasswordChangeService.call!(
           user: current_user,
           current_password: password_change_params[:current_password],
@@ -33,6 +38,7 @@ module Api
 
       # DELETE /api/v1/users/me
       def destroy
+        authorize current_user
         Users::AccountDeleteService.call!(
           user: current_user,
           password: account_delete_params[:password]
