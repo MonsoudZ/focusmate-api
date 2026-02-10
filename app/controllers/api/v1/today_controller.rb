@@ -29,7 +29,6 @@ module Api
           TaskSerializer.new(task, current_user: current_user, editable_list_ids: editable_list_ids).as_json
         end
       end
-
     end
   end
 end

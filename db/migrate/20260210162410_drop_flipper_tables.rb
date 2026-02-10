@@ -16,7 +16,7 @@ class DropFlipperTables < ActiveRecord::Migration[8.0]
       t.string :key, null: false
       t.text :value
       t.timestamps null: false
-      t.index [:feature_key, :key, :value], unique: true, name: "index_flipper_gates_on_feature_key_and_key_and_value"
+      t.index [ :feature_key, :key, :value ], unique: true, name: "index_flipper_gates_on_feature_key_and_key_and_value"
     end
   end
 end

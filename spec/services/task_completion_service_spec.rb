@@ -193,7 +193,6 @@ RSpec.describe TaskCompletionService do
 
       expect(result.status).to eq('pending')
     end
-
   end
 
   describe 'analytics tracking' do

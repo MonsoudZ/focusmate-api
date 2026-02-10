@@ -281,7 +281,6 @@ module Api
 
         query.sorted_with_priority(col, dir)
       end
-
     end
   end
 end

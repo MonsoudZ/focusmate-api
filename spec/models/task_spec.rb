@@ -153,9 +153,6 @@ RSpec.describe Task, type: :model do
       expect(Task.overdue).to include(overdue_task)
       expect(Task.overdue).not_to include(future_task)
     end
-
-
-
   end
 
   describe 'methods' do
