@@ -135,7 +135,8 @@ class ApplicationMonitor
     end
 
     def log_sentry_failure_once(error, operation:, payload:)
-      cache_key = "application_monitor:sentry_failure:#{operation}:#{error.class.name}:#{error.message}"
+      digest = Digest::SHA256.hexdigest(error.message.to_s)[0, 16]
+      cache_key = "application_monitor:sentry_failure:#{operation}:#{error.class.name}:#{digest}"
       return if Rails.cache.read(cache_key).present?
 
       Rails.cache.write(cache_key, true, expires_in: SENTRY_FAILURE_TTL)

@@ -185,7 +185,8 @@ class AlertingService
     def capture_sentry_message(*args, **kwargs)
       Sentry.capture_message(*args, **kwargs)
     rescue StandardError => e
-      cache_key = "alerting_service:sentry_failure:#{e.class.name}:#{e.message}"
+      digest = Digest::SHA256.hexdigest(e.message.to_s)[0, 16]
+      cache_key = "alerting_service:sentry_failure:#{e.class.name}:#{digest}"
       return if Rails.cache.read(cache_key).present?
 
       Rails.cache.write(cache_key, true, expires_in: SENTRY_FAILURE_TTL)
@@ -197,7 +198,8 @@ class AlertingService
     end
 
     def log_metric_collection_error_once(error, metric:)
-      cache_key = "alerting_service:metric_failure:#{metric}:#{error.class.name}:#{error.message}"
+      digest = Digest::SHA256.hexdigest(error.message.to_s)[0, 16]
+      cache_key = "alerting_service:metric_failure:#{metric}:#{error.class.name}:#{digest}"
       return if Rails.cache.read(cache_key).present?
 
       Rails.cache.write(cache_key, true, expires_in: SENTRY_FAILURE_TTL)

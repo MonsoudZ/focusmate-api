@@ -118,7 +118,8 @@ class DatabaseHealthCheckJob < ApplicationJob
       }
     )
   rescue StandardError => e
-    cache_key = "database_health_check:sentry_failure:#{alert[:metric]}:#{e.class.name}:#{e.message}"
+    digest = Digest::SHA256.hexdigest(e.message.to_s)[0, 16]
+    cache_key = "database_health_check:sentry_failure:#{alert[:metric]}:#{e.class.name}:#{digest}"
     return if Rails.cache.read(cache_key).present?
 
     Rails.cache.write(cache_key, true, expires_in: SENTRY_FAILURE_TTL)

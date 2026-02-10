@@ -209,7 +209,8 @@ class AnalyticsTracker
     end
 
     def sentry_cache_key(error)
-      "analytics_tracker:enqueue_error:#{error.class.name}:#{error.message}"
+      digest = Digest::SHA256.hexdigest(error.message.to_s)[0, 16]
+      "analytics_tracker:enqueue_error:#{error.class.name}:#{digest}"
     end
   end
 end
