@@ -151,8 +151,9 @@ class TaskCreationService < ApplicationService
     # Bulk insert all subtasks in a single query
     Task.insert_all(subtask_records)
 
-    # Manually update counter cache since insert_all skips callbacks
+    # Manually update counter caches since insert_all skips callbacks
     Task.update_counters(parent_task.id, subtasks_count: valid_titles.size)
+    List.update_counters(@list.id, tasks_count: valid_titles.size)
   end
 
   def track_analytics(task)

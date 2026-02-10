@@ -25,10 +25,6 @@ gem "rack-attack"
 # CORS
 gem "rack-cors"
 
-# Feature flags
-gem "flipper"
-gem "flipper-active_record"
-
 # Error tracking
 gem "sentry-ruby"
 gem "sentry-rails"

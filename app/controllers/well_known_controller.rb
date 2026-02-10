@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class WellKnownController < ActionController::Base
+class WellKnownController < ActionController::API
   # Apple App Site Association for universal links
   # GET /.well-known/apple-app-site-association
   def apple_app_site_association
