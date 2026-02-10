@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_10_162410) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_10_164228) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -124,8 +124,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_10_162410) do
     t.string "role", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "can_add_items", default: true
-    t.boolean "receive_overdue_alerts", default: true
     t.index ["list_id", "role"], name: "index_memberships_on_list_and_role"
     t.index ["list_id", "user_id", "role"], name: "index_memberships_on_list_user_role"
     t.index ["list_id"], name: "index_memberships_on_list_id"
@@ -317,18 +315,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_10_162410) do
     t.string "encrypted_password", default: "", null: false
     t.string "reset_password_token"
     t.datetime "reset_password_sent_at"
-    t.datetime "remember_created_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "name"
     t.string "role", default: "client", null: false
     t.string "timezone", default: "UTC"
-    t.float "latitude"
-    t.float "longitude"
-    t.jsonb "preferences"
-    t.datetime "location_updated_at"
-    t.float "current_latitude"
-    t.float "current_longitude"
     t.string "apple_user_id"
     t.integer "current_streak", default: 0, null: false
     t.integer "longest_streak", default: 0, null: false
