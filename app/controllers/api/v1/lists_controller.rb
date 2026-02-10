@@ -3,6 +3,7 @@
 module Api
   module V1
     class ListsController < BaseController
+      include EditableLists
       before_action :set_list, only: %i[show update destroy]
       after_action :verify_authorized
       after_action :verify_policy_scoped, only: :index
@@ -84,10 +85,6 @@ module Api
         Time.zone.parse(value.to_s)
       rescue ArgumentError, TypeError
         nil
-      end
-
-      def editable_list_ids
-        @editable_list_ids ||= Membership.where(user_id: current_user.id, role: "editor").pluck(:list_id)
       end
 
       def grouped_task_counts(list_ids)

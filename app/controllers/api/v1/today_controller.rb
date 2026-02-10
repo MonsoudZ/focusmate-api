@@ -3,6 +3,7 @@
 module Api
   module V1
     class TodayController < BaseController
+      include EditableLists
       # Today endpoint doesn't use Pundit - it's inherently user-scoped
       skip_after_action :verify_authorized, raise: false
       skip_after_action :verify_policy_scoped, raise: false
@@ -29,9 +30,6 @@ module Api
         end
       end
 
-      def editable_list_ids
-        @editable_list_ids ||= Membership.where(user_id: current_user.id, role: "editor").pluck(:list_id)
-      end
     end
   end
 end

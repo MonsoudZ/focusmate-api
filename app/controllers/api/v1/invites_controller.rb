@@ -92,7 +92,7 @@ module Api
       end
 
       def normalized_invite_code
-        params[:code].to_s.upcase
+        params[:code].to_s.strip.upcase
       end
     end
   end
