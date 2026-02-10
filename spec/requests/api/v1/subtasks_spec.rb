@@ -50,6 +50,36 @@ RSpec.describe "Subtasks API", type: :request do
     end
   end
 
+  describe "GET /api/v1/lists/:list_id/tasks/:task_id/subtasks/:id" do
+    context "as list owner" do
+      it "returns the subtask" do
+        auth_get "/api/v1/lists/#{list.id}/tasks/#{parent_task.id}/subtasks/#{subtask1.id}", user: user
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["subtask"]["id"]).to eq(subtask1.id)
+        expect(json_response["subtask"]["title"]).to eq("Subtask 1")
+      end
+    end
+
+    context "as stranger" do
+      it "returns not found" do
+        auth_get "/api/v1/lists/#{list.id}/tasks/#{parent_task.id}/subtasks/#{subtask1.id}", user: other_user
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context "when subtask is soft-deleted" do
+      it "returns not found" do
+        subtask1.soft_delete!
+
+        auth_get "/api/v1/lists/#{list.id}/tasks/#{parent_task.id}/subtasks/#{subtask1.id}", user: user
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+  end
+
   describe "POST /api/v1/lists/:list_id/tasks/:task_id/subtasks" do
     context "as list owner" do
       it "creates a subtask" do
