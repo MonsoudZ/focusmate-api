@@ -126,16 +126,17 @@ module PushNotifications
         Apnotic::Connection.new(
           auth_method: :token,
           cert_path: cert_path,
-          key_id: ENV.fetch("APNS_KEY_ID"),
-          team_id: ENV.fetch("APNS_TEAM_ID"),
-          topic: ENV.fetch("APNS_BUNDLE_ID")
+          key_id: Rails.application.credentials.dig(:apns, :key_id) || ENV.fetch("APNS_KEY_ID"),
+          team_id: Rails.application.credentials.dig(:apns, :team_id) || ENV.fetch("APNS_TEAM_ID"),
+          topic: Rails.application.credentials.dig(:apns, :bundle_id) || ENV.fetch("APNS_BUNDLE_ID")
         )
       end
 
       def resolve_cert_path
-        if ENV["APNS_KEY_CONTENT"].present?
-          # Production: key content is base64-encoded in env var
-          key_content = Base64.decode64(ENV["APNS_KEY_CONTENT"])
+        apns_key_content = Rails.application.credentials.dig(:apns, :key_content) || ENV["APNS_KEY_CONTENT"]
+        if apns_key_content.present?
+          # Production: key content is base64-encoded in credentials or env var
+          key_content = Base64.decode64(apns_key_content)
 
           # Clean up any existing temp file before creating new one
           cleanup_temp_file!
@@ -190,7 +191,7 @@ module PushNotifications
         notification.alert = { title: title, body: body }
         notification.sound = "default"
         notification.custom_payload = data if data.present?
-        notification.topic = ENV.fetch("APNS_BUNDLE_ID")
+        notification.topic = Rails.application.credentials.dig(:apns, :bundle_id) || ENV.fetch("APNS_BUNDLE_ID")
         notification
       end
     end

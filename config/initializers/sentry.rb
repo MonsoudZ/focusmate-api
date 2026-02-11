@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 Sentry.init do |config|
-  config.dsn = ENV.fetch("SENTRY_DSN", nil)
+  config.dsn = Rails.application.credentials.dig(:sentry, :dsn) || ENV["SENTRY_DSN"]
   config.breadcrumbs_logger = [ :active_support_logger, :http_logger ]
   config.environment = Rails.env
   config.traces_sample_rate = ENV.fetch("SENTRY_TRACES_SAMPLE_RATE", 0.05).to_f

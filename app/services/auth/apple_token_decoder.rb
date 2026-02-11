@@ -42,7 +42,7 @@ module Auth
           algorithm: "RS256",
           iss: APPLE_ISSUER,
           verify_iss: true,
-          aud: ENV["APPLE_BUNDLE_ID"],
+          aud: Rails.application.credentials.dig(:apple, :bundle_id) || ENV["APPLE_BUNDLE_ID"],
           verify_aud: true
         }
       )

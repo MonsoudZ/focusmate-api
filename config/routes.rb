@@ -29,8 +29,8 @@ Rails.application.routes.draw do
   # Sidekiq Web (ops only)
   # ----------------------------
   unless Rails.env.local?
-    expected_sidekiq_username = ENV["SIDEKIQ_USERNAME"].to_s
-    expected_sidekiq_password = ENV["SIDEKIQ_PASSWORD"].to_s
+    expected_sidekiq_username = (Rails.application.credentials.dig(:sidekiq, :username) || ENV["SIDEKIQ_USERNAME"]).to_s
+    expected_sidekiq_password = (Rails.application.credentials.dig(:sidekiq, :password) || ENV["SIDEKIQ_PASSWORD"]).to_s
 
     Sidekiq::Web.use Rack::Auth::Basic do |username, password|
       next false if expected_sidekiq_username.blank? || expected_sidekiq_password.blank?

@@ -26,7 +26,7 @@ class HealthController < ActionController::API
   def authenticate_diagnostics!
     return unless Rails.env.production?
 
-    expected_token = ENV["HEALTH_DIAGNOSTICS_TOKEN"].to_s
+    expected_token = (Rails.application.credentials.dig(:health, :diagnostics_token) || ENV["HEALTH_DIAGNOSTICS_TOKEN"]).to_s
     return head :not_found if expected_token.blank?
 
     provided_token = request.headers["X-Health-Token"].to_s

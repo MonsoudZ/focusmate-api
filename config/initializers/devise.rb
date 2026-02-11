@@ -32,7 +32,8 @@ Devise.setup do |config|
 
   # ==> Password settings
   config.stretches = Rails.env.test? ? 1 : 12
-  config.pepper = ENV["DEVISE_PEPPER"] if ENV["DEVISE_PEPPER"].present?
+  pepper = Rails.application.credentials.dig(:devise, :pepper) || ENV["DEVISE_PEPPER"]
+  config.pepper = pepper if pepper.present?
 
   # ==> JWT configuration (Devise-JWT)
   config.jwt do |jwt|
