@@ -88,7 +88,7 @@ RSpec.describe Tag, type: :model do
     it "orders alphabetically" do
       z_tag = create(:tag, name: "Zzz", user: user)
       a_tag = create(:tag, name: "Aaa", user: user)
-      expect(Tag.alphabetical).to eq([a_tag, z_tag])
+      expect(Tag.alphabetical).to eq([ a_tag, z_tag ])
     end
   end
 end
