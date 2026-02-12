@@ -10,6 +10,7 @@ FactoryBot.define do
     creator { association :user }
 
     trait :overdue do
+      skip_due_at_validation { true }
       due_at { 1.day.ago }
       status { "pending" }
     end
@@ -20,6 +21,7 @@ FactoryBot.define do
     end
 
     trait :requires_explanation do
+      skip_due_at_validation { true }
       requires_explanation_if_missed { true }
       due_at { 1.day.ago }
       status { "pending" }

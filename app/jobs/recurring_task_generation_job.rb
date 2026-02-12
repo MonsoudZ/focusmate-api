@@ -98,6 +98,7 @@ class RecurringTaskGenerationJob < ApplicationJob
       .where(template_id: template_ids, deleted_at: nil)
       .select("DISTINCT ON (template_id) tasks.*")
       .order("template_id ASC, due_at DESC, id DESC")
+      .includes(:template)
       .index_by(&:template_id)
   end
 

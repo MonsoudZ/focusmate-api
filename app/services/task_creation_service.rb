@@ -128,6 +128,16 @@ class TaskCreationService < ApplicationService
     valid_titles = subtask_titles.reject(&:blank?)
     return if valid_titles.empty?
 
+    # Validate titles upfront — insert_all bypasses model validations,
+    # and the DB column is TEXT (no length constraint), so this is the only guard.
+    valid_titles.each do |title|
+      if title.length > 255
+        raise ActiveRecord::RecordInvalid.new(
+          Task.new.tap { |t| t.errors.add(:title, "is too long (maximum is 255 characters)") }
+        )
+      end
+    end
+
     now = Time.current
 
     subtask_records = valid_titles.map do |title|
@@ -148,7 +158,6 @@ class TaskCreationService < ApplicationService
       }
     end
 
-    # Bulk insert all subtasks in a single query
     Task.insert_all(subtask_records)
 
     # Manually update counter caches since insert_all skips callbacks

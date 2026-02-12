@@ -33,7 +33,11 @@ module PushNotifications
           data: data
         )
 
-        connection.push_async(notification)
+        push = connection.push_async(notification)
+        push.on(:response) do |response|
+          handle_apns_response(response, device)
+        end
+
         Rails.logger.info("Push sent to device #{device.id}: #{title}")
         true
       rescue StandardError => e
@@ -184,6 +188,25 @@ module PushNotifications
           error.is_a?(IOError) ||
           error.is_a?(Errno::ECONNRESET) ||
           error.is_a?(Errno::EPIPE)
+      end
+
+      def handle_apns_response(response, device)
+        return if response.ok?
+
+        status = response.status
+        body = response.body
+
+        Rails.logger.warn(
+          "APNS response error for device #{device.id}: status=#{status} reason=#{body}"
+        )
+
+        # Deactivate device on unrecoverable token errors
+        if %w[BadDeviceToken Unregistered ExpiredProviderToken].include?(body.to_s)
+          device.update_columns(active: false, updated_at: Time.current)
+          Rails.logger.info("Deactivated stale device #{device.id} (reason: #{body})")
+        end
+      rescue StandardError => e
+        Rails.logger.error("Error handling APNS response for device #{device.id}: #{e.message}")
       end
 
       def build_notification(token:, title:, body:, data: {})

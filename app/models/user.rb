@@ -33,10 +33,6 @@ class User < ApplicationRecord
     role == "client"
   end
 
-  def push_devices
-    devices.where.not(apns_token: nil)
-  end
-
   private
 
   def set_default_name

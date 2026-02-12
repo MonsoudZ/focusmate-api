@@ -14,9 +14,9 @@ RSpec.describe TodayTasksQuery do
   end
 
   describe "#overdue" do
-    let!(:overdue_task) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending) }
+    let!(:overdue_task) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending, skip_due_at_validation: true) }
     let!(:today_task) { create(:task, list: list, creator: user, due_at: Time.current, status: :pending) }
-    let!(:completed_overdue) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :done) }
+    let!(:completed_overdue) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :done, skip_due_at_validation: true) }
 
     it "includes tasks past due" do
       query = described_class.new(user)
@@ -37,7 +37,7 @@ RSpec.describe TodayTasksQuery do
   describe "#due_today" do
     let!(:today_morning) { create(:task, list: list, creator: user, due_at: Time.current.beginning_of_day + 1.hour, status: :pending) }
     let!(:today_evening) { create(:task, list: list, creator: user, due_at: Time.current.end_of_day - 1.hour, status: :pending) }
-    let!(:yesterday) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending) }
+    let!(:yesterday) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending, skip_due_at_validation: true) }
     let!(:tomorrow) { create(:task, list: list, creator: user, due_at: 1.day.from_now, status: :pending) }
     let!(:completed_today) { create(:task, list: list, creator: user, due_at: Time.current, status: :done) }
 
@@ -113,7 +113,7 @@ RSpec.describe TodayTasksQuery do
     before do
       create(:task, list: list, creator: user, due_at: Time.current, status: :done, completed_at: Time.current)
       create(:task, list: list, creator: user, due_at: Time.current, status: :pending)
-      create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending)
+      create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending, skip_due_at_validation: true)
     end
 
     it "returns correct statistics" do

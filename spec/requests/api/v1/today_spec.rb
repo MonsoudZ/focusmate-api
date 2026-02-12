@@ -13,7 +13,7 @@ RSpec.describe "Today API", type: :request do
   end
 
   describe "GET /api/v1/today" do
-    let!(:overdue_task) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending, title: "Overdue") }
+    let!(:overdue_task) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending, title: "Overdue", skip_due_at_validation: true) }
     let!(:due_today) { create(:task, list: list, creator: user, due_at: Time.current, status: :pending, title: "Today") }
     let!(:completed_today) { create(:task, list: list, creator: user, due_at: Time.current, status: :done, completed_at: Time.current, title: "Done") }
     let!(:tomorrow_task) { create(:task, list: list, creator: user, due_at: 1.day.from_now, status: :pending, title: "Tomorrow") }

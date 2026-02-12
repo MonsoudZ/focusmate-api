@@ -32,7 +32,8 @@ class RecurringTaskService
         recurrence_end_date: recurrence_params[:end_date],
         recurrence_count: recurrence_params[:count],
         due_at: due_at,
-        status: :pending
+        status: :pending,
+        skip_due_at_validation: true
       )
 
       # Create the first instance with the exact due_at from params
@@ -79,7 +80,8 @@ class RecurringTaskService
       instance_number: instance_number,
       status: :pending,
       strict_mode: template.strict_mode,
-      requires_explanation_if_missed: template.requires_explanation_if_missed
+      requires_explanation_if_missed: template.requires_explanation_if_missed,
+      skip_due_at_validation: true
     )
   end
 

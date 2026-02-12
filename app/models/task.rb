@@ -4,6 +4,8 @@ class Task < ApplicationRecord
   include SoftDeletable
   include Colorable
 
+  attr_accessor :skip_due_at_validation
+
   belongs_to :list, counter_cache: true
   belongs_to :creator, class_name: "User", foreign_key: :creator_id
   belongs_to :assigned_to, class_name: "User", optional: true
@@ -151,7 +153,7 @@ class Task < ApplicationRecord
   def due_at_not_in_past_on_create
     return unless new_record?
     return unless due_at.present?
-    return if Rails.env.test?
+    return if skip_due_at_validation
 
     # Allow any time today, but not past days
     if due_at < Time.current.beginning_of_day

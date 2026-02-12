@@ -3,6 +3,7 @@
 class StreakService
   def initialize(user)
     @user = user
+    @user_zone = resolve_timezone(user.timezone)
   end
 
   # Call this when user opens the app or completes a task
@@ -16,8 +17,17 @@ class StreakService
 
   private
 
+  def user_today
+    Time.current.in_time_zone(@user_zone).to_date
+  end
+
+  def resolve_timezone(value)
+    return "UTC" if value.blank?
+    ActiveSupport::TimeZone[value.to_s] ? value.to_s : "UTC"
+  end
+
   def check_previous_days!
-    today = Date.current
+    today = user_today
     last_checked = @user.last_streak_date
 
     # First time user
@@ -46,7 +56,7 @@ class StreakService
   end
 
   def check_today!
-    today = Date.current
+    today = user_today
 
     return if @user.last_streak_date == today
 
@@ -77,8 +87,12 @@ class StreakService
   end
 
   def tasks_due_on(date)
+    zone = ActiveSupport::TimeZone[@user_zone]
+    day_start = zone.local(date.year, date.month, date.day).beginning_of_day
+    day_end = day_start.end_of_day
+
     @user.created_tasks
-         .where(due_at: date.beginning_of_day..date.end_of_day)
+         .where(due_at: day_start..day_end)
          .where(parent_task_id: nil)
          .where(deleted_at: nil)
   end

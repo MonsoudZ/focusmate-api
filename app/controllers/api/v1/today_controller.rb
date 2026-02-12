@@ -7,6 +7,8 @@ module Api
       # Today endpoint is inherently user-scoped (current_user only)
       skip_after_action :verify_authorized
 
+      MAX_OVERDUE = 50
+
       # GET /api/v1/today
       def index
         query = TodayTasksQuery.new(current_user, timezone: current_user.timezone)
@@ -14,7 +16,8 @@ module Api
         ids = editable_list_ids
 
         render json: {
-          overdue: serialize_tasks(data[:overdue], editable_list_ids: ids),
+          overdue: serialize_tasks(data[:overdue].first(MAX_OVERDUE), editable_list_ids: ids),
+          has_more_overdue: data[:overdue].size > MAX_OVERDUE,
           due_today: serialize_tasks(data[:due_today], editable_list_ids: ids),
           completed_today: serialize_tasks(data[:completed_today], editable_list_ids: ids),
           stats: data[:stats]
