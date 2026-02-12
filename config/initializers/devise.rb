@@ -1,11 +1,6 @@
 # frozen_string_literal: true
 
 Devise.setup do |config|
-  # The secret key used by Devise.
-  # Devise uses this key to generate random tokens.
-  # If you change this key, all old tokens will become invalid.
-  config.secret_key = Rails.application.secret_key_base
-
   # ==> Mailer Configuration
   # Configure the e-mail address which will be shown in Devise::Mailer.
   config.mailer_sender = ENV.fetch("DEVISE_MAILER_SENDER", "noreply@focusmate.app")
