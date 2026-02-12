@@ -1,5 +1,10 @@
 {
-  "ignored_warnings": [],
-  "updated": "2026-02-03",
+  "ignored_warnings": [
+    {
+      "fingerprint": "c4b02c8a07c83999e0aabd36ce4a750e04a7bbc3b15f8ea0bc02c853630cda17",
+      "note": "Role is whitelist-validated in service layer (viewer/editor only) and model inclusion validator. Only list owners can invoke."
+    }
+  ],
+  "updated": "2026-02-11",
   "brakeman_version": "7.1.1"
 }
