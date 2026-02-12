@@ -45,35 +45,8 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # ====================
-  # CACHE STORE
-  # ====================
-  # Use Redis for caching in production (shared across processes, survives restarts)
-  # Falls back to memory_store if REDIS_URL not configured
-  if ENV["REDIS_URL"].present?
-    config.cache_store = :redis_cache_store, {
-      url: ENV["REDIS_URL"],
-      expires_in: 1.day,
-      namespace: "intentia_cache",
-      error_handler: lambda { |method:, returning:, exception:|
-        Rails.logger.error("Redis cache error: #{method} - #{exception.message}")
-        Sentry.capture_exception(exception) if defined?(Sentry)
-      }
-    }
-  else
-    config.cache_store = :memory_store, { size: 64.megabytes }
-  end
-
-  # ====================
-  # BACKGROUND JOBS
-  # ====================
-  # Use Sidekiq for background jobs in production (requires Redis)
-  # Falls back to async (in-process) if REDIS_URL not configured
-  if ENV["REDIS_URL"].present?
-    config.active_job.queue_adapter = :sidekiq
-  else
-    config.active_job.queue_adapter = :async
-  end
+  # Background jobs run in-process for now (no Redis/Sidekiq yet)
+  config.active_job.queue_adapter = :async
 
   # ====================
   # EMAIL
