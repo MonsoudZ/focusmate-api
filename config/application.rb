@@ -8,7 +8,7 @@ require "active_storage/engine"
 require "action_controller/railtie"
 require "action_mailer/railtie"
 require "action_view/railtie"
-require "action_cable/engine"
+# require "action_cable/engine" # Not used — no channels defined
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -39,10 +39,6 @@ module FocusmateApi
 
     # We do not use Active Storage endpoints in this API.
     config.active_storage.draw_routes = false
-
-    # Enable ActionCable for real-time features
-    config.action_cable.mount_path = "/cable"
-    config.action_cable.allowed_request_origins = [ /http:\/\/localhost.*/ ]
 
     # Configure Active Job to use Sidekiq
     config.active_job.queue_adapter = :sidekiq

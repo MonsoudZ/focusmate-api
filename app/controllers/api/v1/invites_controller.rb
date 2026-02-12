@@ -4,6 +4,7 @@ module Api
   module V1
     class InvitesController < BaseController
       skip_before_action :authenticate_user!, only: [ :show ]
+      skip_after_action :verify_authorized
 
       # GET /api/v1/invites/:code
       # Public endpoint to preview an invite before accepting

@@ -6,8 +6,6 @@ module Api
       before_action :set_parent_task
       before_action :set_subtask, only: [ :show, :update, :destroy, :complete, :reopen ]
 
-      after_action :verify_authorized
-
       # GET /api/v1/lists/:list_id/tasks/:task_id/subtasks
       def index
         authorize @parent_task, :show?

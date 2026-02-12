@@ -6,8 +6,8 @@ module Api
       VALID_PLATFORMS = %w[ios android web].freeze
       MAX_VERSION_LENGTH = 64
 
-      skip_after_action :verify_authorized, raise: false
-      skip_after_action :verify_policy_scoped, raise: false
+      # Analytics actions are inherently user-scoped (current_user only)
+      skip_after_action :verify_authorized
 
       # POST /api/v1/analytics/app_opened
       def app_opened

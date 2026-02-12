@@ -4,7 +4,6 @@ module Api
   module V1
     class DevicesController < BaseController
       before_action :set_device, only: %i[destroy]
-      after_action :verify_authorized
 
       def create
         authorize Device

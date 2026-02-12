@@ -24,6 +24,7 @@ module Users
       validate_new_password!
 
       @user.update!(password: @password, password_confirmation: @password_confirmation)
+      Auth::TokenService.revoke_all_for_user(@user)
       @user
     end
 

@@ -6,8 +6,6 @@ module Api
       before_action :set_list
       before_action :set_invite, only: %i[show destroy]
 
-      after_action :verify_authorized
-
       # GET /api/v1/lists/:list_id/invites
       def index
         authorize @list, :manage_memberships?

@@ -4,9 +4,8 @@ module Api
   module V1
     class TodayController < BaseController
       include EditableLists
-      # Today endpoint doesn't use Pundit - it's inherently user-scoped
-      skip_after_action :verify_authorized, raise: false
-      skip_after_action :verify_policy_scoped, raise: false
+      # Today endpoint is inherently user-scoped (current_user only)
+      skip_after_action :verify_authorized
 
       # GET /api/v1/today
       def index

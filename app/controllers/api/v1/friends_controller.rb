@@ -5,8 +5,6 @@ module Api
     class FriendsController < BaseController
       include Paginatable
 
-      after_action :verify_authorized
-
       # GET /api/v1/friends
       # Optional param: exclude_list_id - filters out friends who are already members of that list
       def index

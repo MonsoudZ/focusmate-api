@@ -5,7 +5,6 @@ module Api
     class ListsController < BaseController
       include EditableLists
       before_action :set_list, only: %i[show update destroy]
-      after_action :verify_authorized
       after_action :verify_policy_scoped, only: :index
 
       # GET /api/v1/lists

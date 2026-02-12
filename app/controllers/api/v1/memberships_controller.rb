@@ -6,7 +6,6 @@ module Api
       before_action :set_list
       before_action :set_membership, only: %i[update destroy]
 
-      after_action :verify_authorized
       after_action :verify_policy_scoped, only: :index
 
       # GET /api/v1/lists/:list_id/memberships

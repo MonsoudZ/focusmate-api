@@ -5,7 +5,7 @@ module Api
     class TagsController < BaseController
       before_action :set_tag, only: [ :show, :update, :destroy ]
 
-      after_action :verify_authorized, except: [ :index ]
+      skip_after_action :verify_authorized, only: [ :index ]
       after_action :verify_policy_scoped, only: [ :index ]
 
       # GET /api/v1/tags

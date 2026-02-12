@@ -3,8 +3,6 @@
 module Api
   module V1
     class UsersController < BaseController
-      after_action :verify_authorized
-
       # GET /api/v1/users/me
       def show
         authorize current_user

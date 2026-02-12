@@ -9,7 +9,7 @@ module Api
       before_action :set_list, only: [ :index, :create, :reorder ]
       before_action :set_task, only: [ :show, :update, :destroy, :complete, :reopen, :assign, :unassign, :nudge, :reschedule ]
 
-      after_action :verify_authorized, except: [ :index, :search ]
+      skip_after_action :verify_authorized, only: [ :index, :search ]
       after_action :verify_policy_scoped, only: [ :index, :search ]
 
       # GET /api/v1/tasks
