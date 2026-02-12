@@ -12,7 +12,8 @@ RSpec.describe StreakService do
       creator: creator,
       due_at: date.to_date.noon,
       status: status,
-      parent_task_id: nil
+      parent_task_id: nil,
+      skip_due_at_validation: true
     )
   end
 

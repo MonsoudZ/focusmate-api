@@ -90,9 +90,11 @@ RSpec.describe PushNotifications::Sender do
     let(:device) { create(:device, user: user, platform: "ios") }
     let(:mock_connection) { instance_double("Apnotic::Connection") }
 
+    let(:mock_push) { double("Apnotic::Push", on: nil) }
+
     before do
       described_class.instance_variable_set(:@connection, mock_connection)
-      allow(mock_connection).to receive(:push_async)
+      allow(mock_connection).to receive(:push_async).and_return(mock_push)
       allow(ENV).to receive(:fetch).with("APNS_BUNDLE_ID").and_return("com.focusmate.app")
     end
 

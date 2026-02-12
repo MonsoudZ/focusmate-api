@@ -302,9 +302,10 @@ RSpec.describe TaskCreationService, type: :service do
 
     it "should handle timezone-aware dates" do
       # Use only due_date without due_at to test the parsing
+      future_time = 1.day.from_now.beginning_of_day.iso8601
       timezone_params = {
         title: "Timezone Task",
-        due_date: "2024-01-01T12:00:00Z" # UTC timezone
+        due_date: future_time # UTC timezone
       }
 
       service = TaskCreationService.new(list: list, user: user, params: timezone_params)
@@ -312,7 +313,7 @@ RSpec.describe TaskCreationService, type: :service do
 
       expect(task.due_at).not_to be_nil
       # Should parse the UTC time correctly
-      expect(task.due_at.utc.iso8601).to eq("2024-01-01T12:00:00Z")
+      expect(task.due_at.utc.iso8601).to eq(future_time)
     end
 
     it "should handle multiple date formats" do

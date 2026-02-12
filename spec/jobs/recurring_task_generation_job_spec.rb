@@ -89,7 +89,8 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
         recurrence_pattern: "daily",
         recurrence_interval: 1,
         status: :pending,
-        due_at: 1.day.ago
+        due_at: 1.day.ago,
+        skip_due_at_validation: true
       )
 
       # Delete all instances (non-template tasks)
@@ -199,7 +200,8 @@ RSpec.describe RecurringTaskGenerationJob, type: :job do
         is_recurring: true,
         recurrence_pattern: "daily",
         recurrence_interval: 1,
-        due_at: 1.day.ago
+        due_at: 1.day.ago,
+        skip_due_at_validation: true
       )
 
       create(
