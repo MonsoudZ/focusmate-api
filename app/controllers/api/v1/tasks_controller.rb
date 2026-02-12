@@ -52,7 +52,7 @@ module Api
           return render_error("Bad Request", status: :bad_request, code: "empty_body")
         end
 
-        @list ||= current_user.owned_lists.first
+        @list ||= current_user.owned_lists.order(:id).first
         authorize @list, :create_task?
 
         task = TaskCreationService.call!(list: @list, user: current_user, params: task_params)
