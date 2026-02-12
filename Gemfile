@@ -60,6 +60,7 @@ group :development, :test do
   gem "dotenv-rails"
   gem "bullet"  # N+1 query detection
   gem "benchmark-ips"  # Benchmarking
+  gem "benchmark", require: false  # Extracted from default gems in Ruby 4.0
 end
 
 gem "rack-timeout", "~> 0.7"
