@@ -21,12 +21,12 @@ module Api
         authorize List
 
         lists = lists.order(updated_at: :desc).to_a
-        task_counts_by_list = grouped_task_counts(lists.map(&:id))
+        task_counts_by_list = Task.grouped_counts_by_list(lists.map(&:id))
 
         render json: {
-          lists: lists.map do |l|
+          lists: lists.map do |list|
             ListSerializer.new(
-              l,
+              list,
               current_user: current_user,
               task_counts_by_list: task_counts_by_list
             ).as_json
@@ -85,28 +85,6 @@ module Api
         Time.zone.parse(value.to_s)
       rescue ArgumentError, TypeError
         nil
-      end
-
-      def grouped_task_counts(list_ids)
-        return {} if list_ids.empty?
-
-        counts = list_ids.each_with_object({}) { |list_id, acc| acc[list_id] = { completed: 0, overdue: 0 } }
-        base_scope = Task.unscoped.where(list_id: list_ids, deleted_at: nil, parent_task_id: nil)
-
-        completed_counts = base_scope.where(status: :done).group(:list_id).count
-        overdue_counts = base_scope.where("due_at IS NOT NULL AND due_at < ?", Time.current)
-                                   .where.not(status: :done)
-                                   .group(:list_id)
-                                   .count
-
-        completed_counts.each do |list_id, count|
-          counts[list_id][:completed] = count.to_i
-        end
-        overdue_counts.each do |list_id, count|
-          counts[list_id][:overdue] = count.to_i
-        end
-
-        counts
       end
     end
   end

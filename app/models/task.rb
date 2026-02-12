@@ -66,6 +66,27 @@ class Task < ApplicationRecord
     )
   }
 
+  def self.grouped_counts_by_list(list_ids)
+    return {} if list_ids.empty?
+
+    counts = list_ids.index_with { { completed: 0, overdue: 0 } }
+    base = unscoped.where(list_id: list_ids, deleted_at: nil, parent_task_id: nil)
+
+    base.where(status: :done).group(:list_id).count.each do |list_id, count|
+      counts[list_id][:completed] = count
+    end
+
+    base.where.not(status: :done)
+        .where("due_at IS NOT NULL AND due_at < ?", Time.current)
+        .group(:list_id)
+        .count
+        .each do |list_id, count|
+      counts[list_id][:overdue] = count
+    end
+
+    counts
+  end
+
   scope :visible, -> { where(is_template: [ false, nil ]) }
   scope :visible_to_user, lambda { |user|
     task_table = arel_table
