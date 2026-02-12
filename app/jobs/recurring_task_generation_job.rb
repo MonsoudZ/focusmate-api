@@ -10,8 +10,7 @@ class RecurringTaskGenerationJob < ApplicationJob
   # This ensures users see their recurring tasks even if they don't
   # complete the previous instance
   #
-  # Schedule with sidekiq-cron:
-  #   RecurringTaskGenerationJob.perform_later
+  # Scheduled via Solid Queue recurring tasks (config/recurring.yml)
   #
   def perform
     generated_count = 0

@@ -207,6 +207,7 @@ module PushNotifications
         end
       rescue StandardError => e
         Rails.logger.error("Error handling APNS response for device #{device.id}: #{e.message}")
+        Sentry.capture_exception(e) if defined?(Sentry)
       end
 
       def build_notification(token:, title:, body:, data: {})

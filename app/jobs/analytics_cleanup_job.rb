@@ -9,8 +9,7 @@ class AnalyticsCleanupJob < ApplicationJob
   # Run weekly to archive/delete old analytics events
   # This prevents the analytics_events table from growing unbounded
   #
-  # Schedule with sidekiq-cron or call from a cron job:
-  #   AnalyticsCleanupJob.perform_later
+  # Scheduled via Solid Queue recurring tasks (config/recurring.yml)
   #
   def perform
     cutoff_date = RETENTION_DAYS.days.ago

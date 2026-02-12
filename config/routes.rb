@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require "sidekiq/web"
-require "digest"
-
 Rails.application.routes.draw do
   # ----------------------------
   # Devise (JWT auth)
@@ -24,28 +21,6 @@ Rails.application.routes.draw do
     put "api/v1/auth/password", to: "api/v1/passwords#update"
     patch "api/v1/auth/password", to: "api/v1/passwords#update"
   end
-
-  # ----------------------------
-  # Sidekiq Web (ops only)
-  # ----------------------------
-  unless Rails.env.local?
-    expected_sidekiq_username = (Rails.application.credentials.dig(:sidekiq, :username) || ENV["SIDEKIQ_USERNAME"]).to_s
-    expected_sidekiq_password = (Rails.application.credentials.dig(:sidekiq, :password) || ENV["SIDEKIQ_PASSWORD"]).to_s
-
-    Sidekiq::Web.use Rack::Auth::Basic do |username, password|
-      next false if expected_sidekiq_username.blank? || expected_sidekiq_password.blank?
-
-      ActiveSupport::SecurityUtils.secure_compare(
-        Digest::SHA256.hexdigest(username.to_s),
-        Digest::SHA256.hexdigest(expected_sidekiq_username)
-      ) &&
-        ActiveSupport::SecurityUtils.secure_compare(
-          Digest::SHA256.hexdigest(password.to_s),
-          Digest::SHA256.hexdigest(expected_sidekiq_password)
-        )
-    end
-  end
-  mount Sidekiq::Web => "/sidekiq"
 
   # ----------------------------
   # API v1

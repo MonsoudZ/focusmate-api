@@ -5,7 +5,6 @@ module Health
     def self.ready
       [
         Checks::Database.new,
-        Checks::Redis.new,
         Checks::Queue.new
       ]
     end

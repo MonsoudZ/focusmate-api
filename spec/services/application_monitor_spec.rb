@@ -134,8 +134,7 @@ RSpec.describe ApplicationMonitor do
 
       expect(snapshot).to have_key(:timestamp)
       expect(snapshot).to have_key(:database)
-      expect(snapshot).to have_key(:redis)
-      expect(snapshot).to have_key(:sidekiq)
+      expect(snapshot).to have_key(:queue)
       expect(snapshot).to have_key(:memory)
     end
 
@@ -158,25 +157,14 @@ RSpec.describe ApplicationMonitor do
       end
     end
 
-    context "when redis check fails" do
+    context "when queue check fails" do
       it "returns error info" do
-        allow(Redis).to receive(:new).and_raise(StandardError, "Redis connection failed")
+        allow(SolidQueue::Job).to receive(:where).and_raise(StandardError, "Queue unavailable")
 
         snapshot = described_class.health_snapshot
 
-        expect(snapshot[:redis][:connected]).to be false
-        expect(snapshot[:redis][:error]).to eq("Redis connection failed")
-      end
-    end
-
-    context "when sidekiq check fails" do
-      it "returns error info" do
-        allow(Sidekiq::Stats).to receive(:new).and_raise(StandardError, "Sidekiq unavailable")
-
-        snapshot = described_class.health_snapshot
-
-        expect(snapshot[:sidekiq]).to have_key(:error)
-        expect(snapshot[:sidekiq][:error]).to eq("Sidekiq unavailable")
+        expect(snapshot[:queue]).to have_key(:error)
+        expect(snapshot[:queue][:error]).to eq("Queue unavailable")
       end
     end
 

@@ -197,7 +197,8 @@ RSpec.describe AlertingService do
     end
 
     it "throttles repeated metric collection error logs" do
-      allow(Sidekiq::Stats).to receive(:new).and_raise(StandardError, "Redis down")
+      allow(SolidQueue::ReadyExecution).to receive(:count).and_raise(StandardError, "DB down")
+      allow(SolidQueue::FailedExecution).to receive(:count).and_raise(StandardError, "DB down")
       allow(Rails.logger).to receive(:error)
 
       # First call logs, second call with same error is throttled
@@ -206,7 +207,7 @@ RSpec.describe AlertingService do
 
       metric_failure_count = 0
       expect(Rails.logger).to have_received(:error).at_least(:once) do |args|
-        metric_failure_count += 1 if args.is_a?(Hash) && args[:event] == "alerting_metric_collection_failed" && args[:metric] == "sidekiq_enqueued"
+        metric_failure_count += 1 if args.is_a?(Hash) && args[:event] == "alerting_metric_collection_failed" && args[:metric] == "queue_pending"
       end
     end
   end
@@ -222,15 +223,16 @@ RSpec.describe AlertingService do
   end
 
   describe "metric collection" do
-    it "handles sidekiq errors gracefully" do
-      allow(Sidekiq::Stats).to receive(:new).and_raise(StandardError, "Connection failed")
+    it "handles queue errors gracefully" do
+      allow(SolidQueue::ReadyExecution).to receive(:count).and_raise(StandardError, "Connection failed")
+      allow(SolidQueue::FailedExecution).to receive(:count).and_raise(StandardError, "Connection failed")
       expect(Rails.logger).to receive(:error).with(hash_including(
         event: "alerting_metric_collection_failed",
-        metric: "sidekiq_enqueued"
+        metric: "queue_pending"
       ))
       expect(Rails.logger).to receive(:error).with(hash_including(
         event: "alerting_metric_collection_failed",
-        metric: "sidekiq_dead"
+        metric: "queue_failed"
       ))
 
       results = described_class.check_all_thresholds

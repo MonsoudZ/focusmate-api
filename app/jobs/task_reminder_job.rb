@@ -8,7 +8,7 @@ class TaskReminderJob < ApplicationJob
   DEFAULT_NOTIFICATION_INTERVAL_MINUTES = 10
   SENTRY_ERROR_TTL = 5.minutes
 
-  # Run every minute via sidekiq-cron
+  # Run every minute via Solid Queue recurring tasks (config/recurring.yml)
   # Finds tasks due soon and sends reminder notifications
   def perform
     tasks_needing_reminder.find_each do |task|

@@ -94,8 +94,7 @@ class ApplicationMonitor
       {
         timestamp: Time.current.iso8601,
         database: database_health,
-        redis: redis_health,
-        sidekiq: sidekiq_health,
+        queue: queue_health,
         memory: memory_usage
       }
     end
@@ -159,30 +158,11 @@ class ApplicationMonitor
       { error: e.message }
     end
 
-    def redis_health
-      redis = ::Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"))
-      info = redis.info
+    def queue_health
       {
-        connected: true,
-        version: info["redis_version"],
-        memory_used: info["used_memory_human"],
-        connected_clients: info["connected_clients"]
-      }
-    rescue StandardError => e
-      { connected: false, error: e.message }
-    ensure
-      redis&.close
-    end
-
-    def sidekiq_health
-      stats = Sidekiq::Stats.new
-      {
-        processed: stats.processed,
-        failed: stats.failed,
-        queues: stats.queues,
-        enqueued: stats.enqueued,
-        retry_size: stats.retry_size,
-        dead_size: stats.dead_size
+        pending_jobs: SolidQueue::Job.where(finished_at: nil).count,
+        failed_jobs: SolidQueue::FailedExecution.count,
+        ready_jobs: SolidQueue::ReadyExecution.count
       }
     rescue StandardError => e
       { error: e.message }

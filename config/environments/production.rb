@@ -45,8 +45,8 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # Background jobs run in-process for now (no Redis/Sidekiq yet)
-  config.active_job.queue_adapter = :async
+  # Background jobs via Solid Queue (PostgreSQL-backed, no Redis required)
+  config.active_job.queue_adapter = :solid_queue
 
   # ====================
   # EMAIL

@@ -13,10 +13,7 @@ gem "devise-jwt"
 gem "pundit"
 
 # Background jobs
-gem "sidekiq"
-
-# Redis
-gem "redis", "~> 5.0"
+gem "solid_queue"
 
 # Rate limiting
 gem "rack-attack"
@@ -62,5 +59,4 @@ group :development, :test do
 end
 
 gem "rack-timeout", "~> 0.7"
-gem "sidekiq-cron", "~> 1.12"
 gem "apnotic"

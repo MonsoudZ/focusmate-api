@@ -8,15 +8,14 @@ RSpec.describe Health::CheckRegistry do
       checks = described_class.ready
 
       expect(checks).to be_an(Array)
-      expect(checks.length).to eq(3)
+      expect(checks.length).to eq(2)
     end
 
-    it "includes Database, Redis, and Queue checks" do
+    it "includes Database and Queue checks" do
       checks = described_class.ready
       class_names = checks.map { |c| c.class.name }
 
       expect(class_names).to include("Health::Checks::Database")
-      expect(class_names).to include("Health::Checks::Redis")
       expect(class_names).to include("Health::Checks::Queue")
     end
 
@@ -32,7 +31,7 @@ RSpec.describe Health::CheckRegistry do
       checks = described_class.detailed
       class_names = checks.map { |c| c.class.name }
 
-      expect(checks.length).to eq(5)
+      expect(checks.length).to eq(4)
       expect(class_names).to include("Health::Checks::Storage")
       expect(class_names).to include("Health::Checks::ExternalApis")
     end

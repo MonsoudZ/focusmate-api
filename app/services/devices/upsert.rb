@@ -20,7 +20,7 @@ module Devices
       device = @user.devices.find_or_initialize_by(apns_token: @token)
       device.assign_attributes(@attrs)
       device.platform ||= "ios"
-      device.last_seen_at = Time.current if device.respond_to?(:last_seen_at)
+      device.last_seen_at = Time.current
       device.save!
       device
     end

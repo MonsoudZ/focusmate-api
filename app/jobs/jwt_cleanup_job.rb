@@ -10,8 +10,7 @@ class JwtCleanupJob < ApplicationJob
   # Tokens are added when users sign out or when tokens are revoked
   # After expiration, they no longer need to be in the denylist
   #
-  # Schedule with sidekiq-cron or call from a cron job:
-  #   JwtCleanupJob.perform_later
+  # Scheduled via Solid Queue recurring tasks (config/recurring.yml)
   #
   def perform
     now = Time.current

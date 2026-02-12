@@ -4,13 +4,12 @@ class StaleDeviceCleanupJob < ApplicationJob
   queue_as :maintenance
 
   # Devices not seen in this many days are considered stale
-  STALE_THRESHOLD_DAYS = ENV.fetch("STALE_DEVICE_DAYS", 90).to_i
+  STALE_THRESHOLD_DAYS = Integer(ENV.fetch("STALE_DEVICE_DAYS", 90))
 
   # Run weekly to soft-delete devices that haven't been seen in a while
   # These are likely uninstalled apps or old devices
   #
-  # Schedule with sidekiq-cron or call from a cron job:
-  #   StaleDeviceCleanupJob.perform_later
+  # Scheduled via Solid Queue recurring tasks (config/recurring.yml)
   #
   def perform
     cutoff_date = STALE_THRESHOLD_DAYS.days.ago

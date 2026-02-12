@@ -28,7 +28,7 @@ class AlertingService
       cooldown_minutes: 10
     },
     queue_backlog: {
-      description: "Sidekiq queue backlog too large",
+      description: "Queue backlog too large",
       threshold: 1000,
       comparison: :greater_than,
       severity: :warning,
@@ -62,8 +62,8 @@ class AlertingService
     def check_all_thresholds
       results = {}
 
-      results[:queue_backlog] = check(:queue_backlog, current_value: sidekiq_enqueued)
-      results[:dead_jobs] = check(:dead_jobs, current_value: sidekiq_dead)
+      results[:queue_backlog] = check(:queue_backlog, current_value: queue_pending)
+      results[:dead_jobs] = check(:dead_jobs, current_value: queue_failed)
       results[:database_connections] = check(:database_connections, current_value: db_connection_ratio)
       results[:memory_usage] = check(:memory_usage, current_value: memory_mb)
 
@@ -152,17 +152,17 @@ class AlertingService
     end
 
     # Metric collection methods
-    def sidekiq_enqueued
-      Sidekiq::Stats.new.enqueued
+    def queue_pending
+      SolidQueue::ReadyExecution.count
     rescue StandardError => e
-      log_metric_collection_error_once(e, metric: "sidekiq_enqueued")
+      log_metric_collection_error_once(e, metric: "queue_pending")
       0
     end
 
-    def sidekiq_dead
-      Sidekiq::Stats.new.dead_size
+    def queue_failed
+      SolidQueue::FailedExecution.count
     rescue StandardError => e
-      log_metric_collection_error_once(e, metric: "sidekiq_dead")
+      log_metric_collection_error_once(e, metric: "queue_failed")
       0
     end
 

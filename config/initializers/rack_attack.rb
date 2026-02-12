@@ -1,14 +1,8 @@
 # frozen_string_literal: true
 
 class Rack::Attack
-  # Configure cache store — use Redis when available, fall back to Rails cache
-  if ENV["REDIS_URL"].present?
-    Rack::Attack.cache.store = Rack::Attack::StoreProxy::RedisProxy.new(
-      Redis.new(url: ENV["REDIS_URL"])
-    )
-  else
-    Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
-  end
+  # Configure cache store — use in-process memory store (no Redis dependency)
+  Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
 
   # ---------------------------------------------------------------------------
   # Helpers

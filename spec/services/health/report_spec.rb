@@ -67,7 +67,7 @@ RSpec.describe Health::Report do
       report = described_class.detailed
 
       expect(report[:checks]).to be_an(Array)
-      expect(report[:checks].length).to eq(5) # ready(3) + storage + external_apis
+      expect(report[:checks].length).to eq(4) # ready(2) + storage + external_apis
     end
   end
 
@@ -75,17 +75,14 @@ RSpec.describe Health::Report do
     it "returns numeric health indicators" do
       healthy_check = instance_double("Health::Checks::Base",
         call: { name: "database", status: "healthy" })
-      redis_check = instance_double("Health::Checks::Base",
-        call: { name: "redis", status: "healthy" })
       queue_check = instance_double("Health::Checks::Base",
         call: { name: "queue", status: "healthy" })
-      allow(Health::CheckRegistry).to receive(:ready).and_return([ healthy_check, redis_check, queue_check ])
+      allow(Health::CheckRegistry).to receive(:ready).and_return([ healthy_check, queue_check ])
 
       metrics = described_class.metrics
 
       expect(metrics[:health]).to eq(1)
       expect(metrics[:database]).to eq(1)
-      expect(metrics[:redis]).to eq(1)
       expect(metrics[:queue]).to eq(1)
       expect(metrics[:timestamp]).to be_a(Integer)
     end
@@ -93,17 +90,15 @@ RSpec.describe Health::Report do
     it "returns 0 for unhealthy checks" do
       db_check = instance_double("Health::Checks::Base",
         call: { name: "database", status: "unhealthy" })
-      redis_check = instance_double("Health::Checks::Base",
-        call: { name: "redis", status: "healthy" })
       queue_check = instance_double("Health::Checks::Base",
         call: { name: "queue", status: "healthy" })
-      allow(Health::CheckRegistry).to receive(:ready).and_return([ db_check, redis_check, queue_check ])
+      allow(Health::CheckRegistry).to receive(:ready).and_return([ db_check, queue_check ])
 
       metrics = described_class.metrics
 
       expect(metrics[:health]).to eq(0) # overall degraded
       expect(metrics[:database]).to eq(0)
-      expect(metrics[:redis]).to eq(1)
+      expect(metrics[:queue]).to eq(1)
     end
   end
 
