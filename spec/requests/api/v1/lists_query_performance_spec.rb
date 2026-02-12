@@ -22,8 +22,8 @@ RSpec.describe "Lists API Query Performance", type: :request do
 
       expect(response).to have_http_status(:ok)
 
-      small_task_selects = task_select_count(small_queries)
-      large_task_selects = task_select_count(large_queries)
+      small_task_selects = table_select_count(small_queries, "tasks")
+      large_task_selects = table_select_count(large_queries, "tasks")
 
       expect(large_task_selects).to be <= (small_task_selects + 1)
     end
@@ -44,8 +44,8 @@ RSpec.describe "Lists API Query Performance", type: :request do
 
       expect(response).to have_http_status(:ok)
 
-      small_membership_selects = membership_select_count(small_queries)
-      large_membership_selects = membership_select_count(large_queries)
+      small_membership_selects = table_select_count(small_queries, "memberships")
+      large_membership_selects = table_select_count(large_queries, "memberships")
 
       expect(large_membership_selects).to be <= (small_membership_selects + 1)
     end
@@ -66,8 +66,8 @@ RSpec.describe "Lists API Query Performance", type: :request do
 
       expect(response).to have_http_status(:ok)
 
-      small_reschedule_selects = reschedule_select_count(small_queries)
-      large_reschedule_selects = reschedule_select_count(large_queries)
+      small_reschedule_selects = table_select_count(small_queries, "reschedule_events")
+      large_reschedule_selects = table_select_count(large_queries, "reschedule_events")
 
       expect(large_reschedule_selects).to be <= (small_reschedule_selects + 1)
     end
@@ -79,34 +79,5 @@ RSpec.describe "Lists API Query Performance", type: :request do
     create_list(:list, list_count, user: owner).each do |list|
       create_list(:task, tasks_per_list, list: list, creator: owner, due_at: 1.day.from_now)
     end
-  end
-
-  def task_select_count(queries)
-    queries.count { |sql| sql.start_with?("SELECT") && sql.include?("FROM \"tasks\"") }
-  end
-
-  def membership_select_count(queries)
-    queries.count { |sql| sql.start_with?("SELECT") && sql.include?("FROM \"memberships\"") }
-  end
-
-  def reschedule_select_count(queries)
-    queries.count { |sql| sql.start_with?("SELECT") && sql.include?("FROM \"reschedule_events\"") }
-  end
-
-  def collect_queries
-    queries = []
-    callback = lambda do |_name, _start, _finish, _id, payload|
-      sql = payload[:sql].to_s
-      next if sql.include?("SCHEMA")
-      next if sql.start_with?("BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE SAVEPOINT")
-
-      queries << sql
-    end
-
-    ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
-      yield
-    end
-
-    queries
   end
 end

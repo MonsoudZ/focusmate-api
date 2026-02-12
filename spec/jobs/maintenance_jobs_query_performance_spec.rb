@@ -111,25 +111,4 @@ RSpec.describe "Maintenance Jobs Query Performance", type: :job do
       create(:refresh_token, user: user, family: family, revoked_at: 4.days.ago)
     end
   end
-
-  def table_query_count(queries, table_name)
-    queries.count { |sql| sql.include?("\"#{table_name}\"") }
-  end
-
-  def collect_queries
-    queries = []
-    callback = lambda do |_name, _start, _finish, _id, payload|
-      sql = payload[:sql].to_s
-      next if sql.include?("SCHEMA")
-      next if sql.start_with?("BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE SAVEPOINT")
-
-      queries << sql
-    end
-
-    ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
-      yield
-    end
-
-    queries
-  end
 end

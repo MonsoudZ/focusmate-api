@@ -27,12 +27,8 @@ RSpec.describe "Tasks API Query Performance", type: :request do
 
       expect(response).to have_http_status(:ok)
 
-      small_membership_selects = small_queries.count do |sql|
-        sql.start_with?("SELECT") && sql.include?("FROM \"memberships\"")
-      end
-      large_membership_selects = large_queries.count do |sql|
-        sql.start_with?("SELECT") && sql.include?("FROM \"memberships\"")
-      end
+      small_membership_selects = table_select_count(small_queries, "memberships")
+      large_membership_selects = table_select_count(large_queries, "memberships")
 
       expect(large_membership_selects).to be <= (small_membership_selects + 1)
     end
@@ -52,33 +48,10 @@ RSpec.describe "Tasks API Query Performance", type: :request do
 
       expect(response).to have_http_status(:ok)
 
-      small_membership_selects = small_queries.count do |sql|
-        sql.start_with?("SELECT") && sql.include?("FROM \"memberships\"")
-      end
-      large_membership_selects = large_queries.count do |sql|
-        sql.start_with?("SELECT") && sql.include?("FROM \"memberships\"")
-      end
+      small_membership_selects = table_select_count(small_queries, "memberships")
+      large_membership_selects = table_select_count(large_queries, "memberships")
 
       expect(large_membership_selects).to be <= (small_membership_selects + 1)
     end
-  end
-
-  private
-
-  def collect_queries
-    queries = []
-    callback = lambda do |_name, _start, _finish, _id, payload|
-      sql = payload[:sql].to_s
-      next if sql.include?("SCHEMA")
-      next if sql.start_with?("BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE SAVEPOINT")
-
-      queries << sql
-    end
-
-    ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
-      yield
-    end
-
-    queries
   end
 end

@@ -7,6 +7,14 @@ RSpec.describe "Tasks API", type: :request do
   let(:other_user) { create(:user) }
   let(:list) { create(:list, user: user) }
 
+  def response_task_titles
+    json_response["tasks"].map { |t| t["title"] }
+  end
+
+  def response_task_ids
+    json_response["tasks"].map { |t| t["id"] }
+  end
+
   describe "GET /api/v1/lists/:list_id/tasks" do
     let!(:task1) { create(:task, list: list, creator: user, title: "Task 1") }
     let!(:task2) { create(:task, list: list, creator: user, title: "Task 2") }
@@ -16,7 +24,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user
 
         expect(response).to have_http_status(:ok)
-        task_ids = json_response["tasks"].map { |t| t["id"] }
+        task_ids = response_task_ids
         expect(task_ids).to include(task1.id, task2.id)
       end
     end
@@ -42,21 +50,21 @@ RSpec.describe "Tasks API", type: :request do
       it "shows hidden tasks to creator" do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user
 
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).to include("Hidden Owner Task")
       end
 
       it "hides other members' hidden tasks" do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user
 
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).not_to include("Hidden Member Task")
       end
 
       it "shows member's own hidden tasks to them" do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: member
 
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).to include("Hidden Member Task")
         expect(titles).not_to include("Hidden Owner Task")
       end
@@ -64,7 +72,7 @@ RSpec.describe "Tasks API", type: :request do
       it "always shows visible tasks to all members" do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: member
 
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).to include("Visible Task")
       end
     end
@@ -78,7 +86,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user, params: { status: "pending" }
 
         expect(response).to have_http_status(:ok)
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).to include("Pending", "Overdue")
         expect(titles).not_to include("Done")
       end
@@ -87,7 +95,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user, params: { status: "completed" }
 
         expect(response).to have_http_status(:ok)
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).to include("Done")
         expect(titles).not_to include("Pending")
       end
@@ -96,7 +104,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user, params: { status: "done" }
 
         expect(response).to have_http_status(:ok)
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).to include("Done")
       end
 
@@ -104,7 +112,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user, params: { status: "overdue" }
 
         expect(response).to have_http_status(:ok)
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).to include("Overdue")
         expect(titles).not_to include("Done")
       end
@@ -126,7 +134,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user
 
         expect(response).to have_http_status(:ok)
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles.index("Newer")).to be < titles.index("Older")
       end
 
@@ -557,7 +565,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/tasks/search", user: user, params: { q: "Find me" }
 
         expect(response).to have_http_status(:ok)
-        task_ids = json_response["tasks"].map { |t| t["id"] }
+        task_ids = response_task_ids
         expect(task_ids).to include(matching_task.id)
         expect(task_ids).not_to include(non_matching.id)
       end
@@ -582,7 +590,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/tasks/search", user: user, params: { q: "Unique note" }
 
         expect(response).to have_http_status(:ok)
-        task_ids = json_response["tasks"].map { |t| t["id"] }
+        task_ids = response_task_ids
         expect(task_ids).to include(task_with_note.id)
       end
     end

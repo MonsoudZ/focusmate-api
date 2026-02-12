@@ -8,10 +8,13 @@ RSpec.describe TaskSerializer do
   let(:list) { create(:list, user: user) }
   let(:task) { create(:task, list: list, creator: user) }
 
+  def serialize(task, current_user: user, **options)
+    described_class.new(task, current_user: current_user, **options).as_json
+  end
+
   describe "#as_json" do
     it "serializes basic task attributes" do
-      serializer = described_class.new(task, current_user: user)
-      json = serializer.as_json
+      json = serialize(task)
 
       expect(json[:id]).to eq(task.id)
       expect(json[:title]).to eq(task.title)
@@ -20,32 +23,28 @@ RSpec.describe TaskSerializer do
     end
 
     it "includes permissions" do
-      serializer = described_class.new(task, current_user: user)
-      json = serializer.as_json
+      json = serialize(task)
 
       expect(json[:can_edit]).to be true
       expect(json[:can_delete]).to be true
     end
 
     it "denies permissions for unauthorized user" do
-      serializer = described_class.new(task, current_user: other_user)
-      json = serializer.as_json
+      json = serialize(task, current_user: other_user)
 
       expect(json[:can_edit]).to be false
       expect(json[:can_delete]).to be false
     end
 
     it "includes hidden field as false for visible tasks" do
-      serializer = described_class.new(task, current_user: user)
-      json = serializer.as_json
+      json = serialize(task)
 
       expect(json[:hidden]).to be false
     end
 
     it "includes hidden field as true for private tasks" do
       hidden_task = create(:task, list: list, creator: user, visibility: :private_task)
-      serializer = described_class.new(hidden_task, current_user: user)
-      json = serializer.as_json
+      json = serialize(hidden_task)
 
       expect(json[:hidden]).to be true
     end
@@ -56,15 +55,13 @@ RSpec.describe TaskSerializer do
       let(:overdue_task) { create(:task, list: list, creator: user, due_at: 30.minutes.ago, status: :pending) }
 
       it "returns overdue true" do
-        serializer = described_class.new(overdue_task, current_user: user)
-        json = serializer.as_json
+        json = serialize(overdue_task)
 
         expect(json[:overdue]).to be true
       end
 
       it "calculates minutes_overdue" do
-        serializer = described_class.new(overdue_task, current_user: user)
-        json = serializer.as_json
+        json = serialize(overdue_task)
 
         expect(json[:minutes_overdue]).to be >= 30
       end
@@ -74,8 +71,7 @@ RSpec.describe TaskSerializer do
       let(:in_progress_task) { create(:task, list: list, creator: user, due_at: 30.minutes.ago, status: :in_progress) }
 
       it "returns overdue true" do
-        serializer = described_class.new(in_progress_task, current_user: user)
-        json = serializer.as_json
+        json = serialize(in_progress_task)
 
         expect(json[:overdue]).to be true
       end
@@ -85,8 +81,7 @@ RSpec.describe TaskSerializer do
       let(:done_task) { create(:task, list: list, creator: user, due_at: 30.minutes.ago, status: :done) }
 
       it "returns overdue false" do
-        serializer = described_class.new(done_task, current_user: user)
-        json = serializer.as_json
+        json = serialize(done_task)
 
         expect(json[:overdue]).to be false
         expect(json[:minutes_overdue]).to eq(0)
@@ -97,8 +92,7 @@ RSpec.describe TaskSerializer do
       let(:no_due_task) { create(:task, list: list, creator: user, parent_task: task, due_at: nil) }
 
       it "returns overdue false" do
-        serializer = described_class.new(no_due_task, current_user: user)
-        json = serializer.as_json
+        json = serialize(no_due_task)
 
         expect(json[:overdue]).to be false
         expect(json[:minutes_overdue]).to eq(0)
@@ -110,8 +104,7 @@ RSpec.describe TaskSerializer do
         overdue_task = create(:task, list: list, creator: user, due_at: 30.minutes.ago)
         overdue_task.update_column(:status, nil)
 
-        serializer = described_class.new(overdue_task.reload, current_user: user)
-        json = serializer.as_json
+        json = serialize(overdue_task.reload)
 
         expect(json[:overdue]).to be true
       end
@@ -124,8 +117,7 @@ RSpec.describe TaskSerializer do
         completed_time = 1.hour.ago
         done_task = create(:task, list: list, creator: user, status: :done, completed_at: completed_time)
 
-        serializer = described_class.new(done_task, current_user: user)
-        json = serializer.as_json
+        json = serialize(done_task)
 
         expect(json[:completed_at]).to eq(completed_time.iso8601)
       end
@@ -134,8 +126,7 @@ RSpec.describe TaskSerializer do
         done_task = create(:task, list: list, creator: user, status: :done)
         done_task.update_column(:completed_at, nil)
 
-        serializer = described_class.new(done_task.reload, current_user: user)
-        json = serializer.as_json
+        json = serialize(done_task.reload)
 
         expect(json[:completed_at]).to eq(done_task.updated_at.iso8601)
       end
@@ -143,8 +134,7 @@ RSpec.describe TaskSerializer do
 
     context "when task is pending" do
       it "returns nil for completed_at" do
-        serializer = described_class.new(task, current_user: user)
-        json = serializer.as_json
+        json = serialize(task)
 
         expect(json[:completed_at]).to be_nil
       end
@@ -153,8 +143,7 @@ RSpec.describe TaskSerializer do
 
   describe "creator_data" do
     it "includes creator information" do
-      serializer = described_class.new(task, current_user: user)
-      json = serializer.as_json
+      json = serialize(task)
 
       expect(json[:creator][:id]).to eq(user.id)
       expect(json[:creator][:email]).to eq(user.email)
@@ -167,8 +156,7 @@ RSpec.describe TaskSerializer do
       task_without_creator.instance_variable_set(:@creator, nil)
       allow(task_without_creator).to receive(:creator).and_return(nil)
 
-      serializer = described_class.new(task_without_creator, current_user: user)
-      json = serializer.as_json
+      json = serialize(task_without_creator)
 
       expect(json[:creator][:id]).to eq(list.user.id)
     end
@@ -179,16 +167,14 @@ RSpec.describe TaskSerializer do
     let!(:subtask2) { create(:task, list: list, creator: user, parent_task: task, due_at: nil, position: 2, status: :done) }
 
     it "includes subtasks array for parent tasks" do
-      serializer = described_class.new(task, current_user: user)
-      json = serializer.as_json
+      json = serialize(task)
 
       expect(json[:subtasks]).to be_an(Array)
       expect(json[:subtasks].size).to eq(2)
     end
 
     it "calculates subtask counts" do
-      serializer = described_class.new(task, current_user: user)
-      json = serializer.as_json
+      json = serialize(task)
 
       expect(json[:has_subtasks]).to be true
       expect(json[:subtasks_count]).to eq(2)
@@ -197,15 +183,13 @@ RSpec.describe TaskSerializer do
     end
 
     it "excludes subtasks array for subtask itself" do
-      serializer = described_class.new(subtask1, current_user: user)
-      json = serializer.as_json
+      json = serialize(subtask1)
 
       expect(json).not_to have_key(:subtasks)
     end
 
     it "respects include_subtasks option" do
-      serializer = described_class.new(task, current_user: user, include_subtasks: false)
-      json = serializer.as_json
+      json = serialize(task, include_subtasks: false)
 
       expect(json).not_to have_key(:subtasks)
     end
@@ -214,8 +198,7 @@ RSpec.describe TaskSerializer do
       let(:standalone_task) { create(:task, list: list, creator: user) }
 
       it "returns zero for subtask percentage" do
-        serializer = described_class.new(standalone_task, current_user: user)
-        json = serializer.as_json
+        json = serialize(standalone_task)
 
         expect(json[:has_subtasks]).to be false
         expect(json[:subtasks_count]).to eq(0)
@@ -227,8 +210,7 @@ RSpec.describe TaskSerializer do
       it "uses preloaded subtasks" do
         task_with_preload = Task.includes(:subtasks).find(task.id)
 
-        serializer = described_class.new(task_with_preload, current_user: user)
-        json = serializer.as_json
+        json = serialize(task_with_preload)
 
         expect(json[:subtasks_count]).to eq(2)
       end
@@ -239,8 +221,7 @@ RSpec.describe TaskSerializer do
         subtask2.update_column(:completed_at, nil)
         subtask2.reload
 
-        serializer = described_class.new(task, current_user: user)
-        json = serializer.as_json
+        json = serialize(task)
         done_subtask = json[:subtasks].find { |s| s[:id] == subtask2.id }
 
         expect(done_subtask[:completed_at]).to eq(subtask2.updated_at.iso8601)
@@ -256,8 +237,7 @@ RSpec.describe TaskSerializer do
     end
 
     it "serializes tags" do
-      serializer = described_class.new(task, current_user: user)
-      json = serializer.as_json
+      json = serialize(task)
 
       expect(json[:tags]).to be_an(Array)
       expect(json[:tags].first[:name]).to eq("urgent")
@@ -268,8 +248,7 @@ RSpec.describe TaskSerializer do
       it "uses preloaded tags" do
         task_with_tags = Task.includes(:tags).find(task.id)
 
-        serializer = described_class.new(task_with_tags, current_user: user)
-        json = serializer.as_json
+        json = serialize(task_with_tags)
 
         expect(json[:tags].first[:name]).to eq("urgent")
       end
@@ -288,8 +267,7 @@ RSpec.describe TaskSerializer do
     end
 
     it "includes recurring attributes" do
-      serializer = described_class.new(recurring_task, current_user: user)
-      json = serializer.as_json
+      json = serialize(recurring_task)
 
       expect(json[:is_recurring]).to be true
       expect(json[:recurrence_pattern]).to eq("daily")
@@ -313,8 +291,7 @@ RSpec.describe TaskSerializer do
     end
 
     it "includes location attributes" do
-      serializer = described_class.new(location_task, current_user: user)
-      json = serializer.as_json
+      json = serialize(location_task)
 
       expect(json[:location_based]).to be true
       expect(json[:location_name]).to eq("Office")
@@ -335,8 +312,7 @@ RSpec.describe TaskSerializer do
       end
 
       it "defaults notify_on_arrival to true" do
-        serializer = described_class.new(location_task_defaults, current_user: user)
-        json = serializer.as_json
+        json = serialize(location_task_defaults)
 
         expect(json[:notify_on_arrival]).to be true
       end
@@ -345,8 +321,7 @@ RSpec.describe TaskSerializer do
 
   describe "reschedule_events" do
     it "includes empty array when no reschedule events" do
-      serializer = described_class.new(task, current_user: user)
-      json = serializer.as_json
+      json = serialize(task)
 
       expect(json[:reschedule_events]).to eq([])
     end
@@ -355,8 +330,7 @@ RSpec.describe TaskSerializer do
       older_event = create(:reschedule_event, task: task, reason: "first", created_at: 2.hours.ago)
       newer_event = create(:reschedule_event, task: task, reason: "second", created_at: 1.hour.ago)
 
-      serializer = described_class.new(task.reload, current_user: user)
-      json = serializer.as_json
+      json = serialize(task.reload)
 
       expect(json[:reschedule_events].length).to eq(2)
       expect(json[:reschedule_events][0][:id]).to eq(newer_event.id)
@@ -371,8 +345,7 @@ RSpec.describe TaskSerializer do
                      reason: "blocked",
                      user: user)
 
-      serializer = described_class.new(task.reload, current_user: user)
-      json = serializer.as_json
+      json = serialize(task.reload)
 
       event_json = json[:reschedule_events][0]
       expect(event_json[:id]).to eq(event.id)
@@ -388,8 +361,7 @@ RSpec.describe TaskSerializer do
     it "handles nil user gracefully" do
       event = create(:reschedule_event, task: task, user: nil)
 
-      serializer = described_class.new(task.reload, current_user: user)
-      json = serializer.as_json
+      json = serialize(task.reload)
 
       expect(json[:reschedule_events][0][:rescheduled_by]).to be_nil
     end
@@ -397,8 +369,7 @@ RSpec.describe TaskSerializer do
     it "excludes reschedule_events when include_reschedule_events is false" do
       create(:reschedule_event, task: task)
 
-      serializer = described_class.new(task.reload, current_user: user, include_reschedule_events: false)
-      json = serializer.as_json
+      json = serialize(task.reload, include_reschedule_events: false)
 
       expect(json).not_to have_key(:reschedule_events)
     end
@@ -416,8 +387,7 @@ RSpec.describe TaskSerializer do
     end
 
     it "includes missed reason fields" do
-      serializer = described_class.new(overdue_task, current_user: user)
-      json = serializer.as_json
+      json = serialize(overdue_task)
 
       expect(json[:requires_explanation_if_missed]).to be true
       expect(json[:missed_reason]).to eq("Was in a meeting")

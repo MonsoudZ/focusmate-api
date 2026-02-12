@@ -113,20 +113,6 @@ RSpec.describe "TaskReminderJob Performance", type: :performance do
     collect_queries(&block).count
   end
 
-  def collect_queries
-    queries = []
-    callback = lambda do |_name, _start, _finish, _id, payload|
-      sql = payload[:sql]
-      queries << sql unless sql.include?("SCHEMA") || sql.include?("pg_") || sql.include?("SAVEPOINT")
-    end
-
-    ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
-      yield
-    end
-
-    queries
-  end
-
   def retained_object_count
     GC.start(full_mark: true, immediate_sweep: true)
     ObjectSpace.count_objects.fetch(:T_OBJECT, 0)

@@ -33,8 +33,8 @@ RSpec.describe "Today API Query Performance", type: :request do
 
       expect(response).to have_http_status(:ok)
 
-      small_membership_selects = select_count_for(small_queries, "memberships")
-      large_membership_selects = select_count_for(large_queries, "memberships")
+      small_membership_selects = table_select_count(small_queries, "memberships")
+      large_membership_selects = table_select_count(large_queries, "memberships")
 
       expect(large_membership_selects).to be <= (small_membership_selects + 1)
     end
@@ -54,33 +54,10 @@ RSpec.describe "Today API Query Performance", type: :request do
 
       expect(response).to have_http_status(:ok)
 
-      small_reschedule_selects = select_count_for(small_queries, "reschedule_events")
-      large_reschedule_selects = select_count_for(large_queries, "reschedule_events")
+      small_reschedule_selects = table_select_count(small_queries, "reschedule_events")
+      large_reschedule_selects = table_select_count(large_queries, "reschedule_events")
 
       expect(large_reschedule_selects).to be <= (small_reschedule_selects + 1)
     end
-  end
-
-  private
-
-  def select_count_for(queries, table_name)
-    queries.count { |sql| sql.start_with?("SELECT") && sql.include?("FROM \"#{table_name}\"") }
-  end
-
-  def collect_queries
-    queries = []
-    callback = lambda do |_name, _start, _finish, _id, payload|
-      sql = payload[:sql].to_s
-      next if sql.include?("SCHEMA")
-      next if sql.start_with?("BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE SAVEPOINT")
-
-      queries << sql
-    end
-
-    ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
-      yield
-    end
-
-    queries
   end
 end
