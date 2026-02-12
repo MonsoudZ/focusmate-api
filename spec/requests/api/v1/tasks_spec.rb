@@ -287,6 +287,17 @@ RSpec.describe "Tasks API", type: :request do
       end
     end
 
+    context "with empty JSON body" do
+      it "returns bad request" do
+        post "/api/v1/lists/#{list.id}/tasks",
+             params: "",
+             headers: auth_headers_for(user),
+             as: :json
+
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
     context "as stranger" do
       it "returns not found" do
         auth_post "/api/v1/lists/#{list.id}/tasks", user: other_user, params: valid_params

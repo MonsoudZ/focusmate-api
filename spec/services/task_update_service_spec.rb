@@ -130,6 +130,61 @@ RSpec.describe TaskUpdateService do
     end
   end
 
+  describe "analytics tracking" do
+    context "when priority changes" do
+      it "tracks task_priority_changed" do
+        task = create(:task, list: list, creator: list_owner, priority: :low)
+
+        expect(AnalyticsTracker).to receive(:task_priority_changed).with(
+          task, list_owner, from: "low", to: "high"
+        )
+
+        described_class.call!(task: task, user: list_owner, attributes: { priority: :high })
+      end
+    end
+
+    context "when priority stays the same" do
+      it "does not track task_priority_changed" do
+        task = create(:task, list: list, creator: list_owner, priority: :low)
+
+        expect(AnalyticsTracker).not_to receive(:task_priority_changed)
+
+        described_class.call!(task: task, user: list_owner, attributes: { priority: :low })
+      end
+    end
+
+    context "when task is starred" do
+      it "tracks task_starred" do
+        task = create(:task, list: list, creator: list_owner, starred: false)
+
+        expect(AnalyticsTracker).to receive(:task_starred).with(task, list_owner)
+
+        described_class.call!(task: task, user: list_owner, attributes: { starred: true })
+      end
+    end
+
+    context "when task is unstarred" do
+      it "tracks task_unstarred" do
+        task = create(:task, list: list, creator: list_owner, starred: true)
+
+        expect(AnalyticsTracker).to receive(:task_unstarred).with(task, list_owner)
+
+        described_class.call!(task: task, user: list_owner, attributes: { starred: false })
+      end
+    end
+
+    context "when starred stays the same" do
+      it "does not track starred analytics" do
+        task = create(:task, list: list, creator: list_owner, starred: true)
+
+        expect(AnalyticsTracker).not_to receive(:task_starred)
+        expect(AnalyticsTracker).not_to receive(:task_unstarred)
+
+        described_class.call!(task: task, user: list_owner, attributes: { starred: true })
+      end
+    end
+  end
+
   describe "ValidationError" do
     it "stores details hash" do
       error = ApplicationError::Validation.new("Test message", details: { field: [ "error" ] })

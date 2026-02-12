@@ -373,6 +373,40 @@ RSpec.describe Task, type: :model do
     it 'returns true when user has list access' do
       expect(task.visible_to?(user)).to be true
     end
+
+    it 'returns true for private task viewed by its creator' do
+      private_task = create(:task, list: list, creator: user, visibility: :private_task)
+      expect(private_task.visible_to?(user)).to be true
+    end
+
+    it 'returns false for private task viewed by non-creator member' do
+      member = create(:user)
+      create(:membership, list: list, user: member, role: "editor")
+      private_task = create(:task, list: list, creator: user, visibility: :private_task)
+      expect(private_task.visible_to?(member)).to be false
+    end
+  end
+
+  describe '.visible_to_user' do
+    it 'returns only visible_to_all tasks when user is nil' do
+      public_task = create(:task, list: list, creator: user, visibility: :visible_to_all)
+      private_task = create(:task, list: list, creator: user, visibility: :private_task)
+
+      results = Task.visible_to_user(nil)
+      expect(results).to include(public_task)
+      expect(results).not_to include(private_task)
+    end
+
+    it 'returns visible_to_all and own private tasks when user is present' do
+      other = create(:user)
+      create(:membership, list: list, user: other, role: "editor")
+      public_task = create(:task, list: list, creator: user, visibility: :visible_to_all)
+      own_private = create(:task, list: list, creator: other, visibility: :private_task)
+
+      results = Task.visible_to_user(other)
+      expect(results).to include(public_task)
+      expect(results).to include(own_private)
+    end
   end
 
   describe '#subtask?' do

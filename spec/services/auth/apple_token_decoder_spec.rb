@@ -65,5 +65,40 @@ RSpec.describe Auth::AppleTokenDecoder do
       expect(claims).to be_a(Hash)
       expect(claims["sub"]).to eq("apple-user-123")
     end
+
+    it "returns nil when token header has no kid" do
+      # Build a token with an empty kid header
+      token_without_kid = JWT.encode(valid_claims, rsa_key, "RS256", { kid: "" })
+
+      expect(described_class.decode(token_without_kid)).to be_nil
+    end
+
+    context "when Apple keys endpoint returns an HTTP error" do
+      before do
+        allow_any_instance_of(described_class).to receive(:fetch_apple_public_keys).and_call_original
+        error_response = instance_double(Net::HTTPServiceUnavailable, code: "503", body: "")
+        allow(error_response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(false)
+        allow(Net::HTTP).to receive(:start).and_return(error_response)
+        Rails.cache.delete("apple_auth_public_keys")
+      end
+
+      it "returns nil" do
+        expect(described_class.decode(id_token)).to be_nil
+      end
+    end
+
+    context "when Apple keys payload is missing keys array" do
+      before do
+        allow_any_instance_of(described_class).to receive(:fetch_apple_public_keys).and_call_original
+        ok_response = instance_double(Net::HTTPOK, body: { "not_keys" => "something" }.to_json)
+        allow(ok_response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
+        allow(Net::HTTP).to receive(:start).and_return(ok_response)
+        Rails.cache.delete("apple_auth_public_keys")
+      end
+
+      it "returns nil" do
+        expect(described_class.decode(id_token)).to be_nil
+      end
+    end
   end
 end

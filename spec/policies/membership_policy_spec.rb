@@ -67,6 +67,23 @@ RSpec.describe MembershipPolicy, type: :policy do
   describe "permissions" do
     let(:membership) { owned_list_membership }
 
+    describe "#show?" do
+      it "allows list owner to view membership" do
+        policy = described_class.new(owner, owned_list_membership)
+        expect(policy.show?).to be true
+      end
+
+      it "allows list member to view membership" do
+        policy = described_class.new(member, owned_list_membership)
+        expect(policy.show?).to be true
+      end
+
+      it "denies stranger from viewing membership" do
+        policy = described_class.new(stranger, owned_list_membership)
+        expect(policy.show?).to be false
+      end
+    end
+
     describe "#create?" do
       it "allows list owner to create memberships" do
         policy = described_class.new(owner, membership)
