@@ -126,6 +126,43 @@ RSpec.describe TaskReminderJob, type: :job do
       end
     end
 
+    context "reminder_due_now? guard clauses" do
+      let(:job) { described_class.new }
+
+      it "returns false when task has no due_at" do
+        task = create(:task, list: list, creator: user, due_at: 5.minutes.from_now)
+        task.update_columns(due_at: nil)
+
+        expect(job.send(:reminder_due_now?, task)).to be false
+      end
+
+      it "returns false when task is overdue" do
+        task = create(:task, list: list, creator: user, due_at: 5.minutes.from_now)
+        task.update_columns(due_at: 5.minutes.ago)
+
+        expect(job.send(:reminder_due_now?, task)).to be false
+      end
+
+      it "returns false when task is completed" do
+        task = create(:task, list: list, creator: user, due_at: 5.minutes.from_now, status: :done)
+
+        expect(job.send(:reminder_due_now?, task)).to be false
+      end
+
+      it "returns false when task is deleted" do
+        task = create(:task, list: list, creator: user, due_at: 5.minutes.from_now)
+        task.update_columns(deleted_at: Time.current)
+
+        expect(job.send(:reminder_due_now?, task)).to be false
+      end
+
+      it "returns false when task is a template" do
+        task = create(:task, list: list, creator: user, due_at: 5.minutes.from_now, is_template: true)
+
+        expect(job.send(:reminder_due_now?, task)).to be false
+      end
+    end
+
     context "error handling" do
       it "continues processing if one task fails" do
         task1 = create(:task, list: list, creator: user, due_at: 5.minutes.from_now)

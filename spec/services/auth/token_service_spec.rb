@@ -47,6 +47,30 @@ RSpec.describe Auth::TokenService do
     end
   end
 
+  describe "token creation error handling" do
+    it "re-raises non-retryable errors without retrying" do
+      allow(RefreshToken).to receive(:create!).and_raise(ActiveRecord::RecordInvalid.new(RefreshToken.new))
+
+      expect { described_class.issue_pair(user) }.to raise_error(ActiveRecord::RecordInvalid)
+    end
+
+    it "retries on RecordInvalid when token_digest is taken" do
+      attempts = 0
+      allow(RefreshToken).to receive(:create!).and_wrap_original do |original, *args|
+        attempts += 1
+        if attempts == 1
+          record = RefreshToken.new
+          record.errors.add(:token_digest, :taken)
+          raise ActiveRecord::RecordInvalid, record
+        end
+        original.call(*args)
+      end
+
+      expect { described_class.issue_pair(user) }.to change(RefreshToken, :count).by(1)
+      expect(attempts).to eq(2)
+    end
+  end
+
   describe ".refresh" do
     let(:pair) { described_class.issue_pair(user) }
     let(:raw_refresh) { pair[:refresh_token] }
