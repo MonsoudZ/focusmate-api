@@ -40,9 +40,6 @@ module FocusmateApi
     # We do not use Active Storage endpoints in this API.
     config.active_storage.draw_routes = false
 
-    # Configure Active Job to use Sidekiq
-    config.active_job.queue_adapter = :sidekiq
-
     # Add Rack::Attack middleware
     config.middleware.use Rack::Attack
 

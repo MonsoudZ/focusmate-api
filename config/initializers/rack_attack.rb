@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
 class Rack::Attack
-  # Configure cache store — use RedisProxy directly to avoid
-  # ActiveSupport::Cache::RedisCacheStore incompatibility with connection_pool 3.x
-  Rack::Attack.cache.store = Rack::Attack::StoreProxy::RedisProxy.new(
-    Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/1"))
-  )
+  # Configure cache store — use Redis when available, fall back to Rails cache
+  if ENV["REDIS_URL"].present?
+    Rack::Attack.cache.store = Rack::Attack::StoreProxy::RedisProxy.new(
+      Redis.new(url: ENV["REDIS_URL"])
+    )
+  else
+    Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+  end
 
   # ---------------------------------------------------------------------------
   # Helpers
