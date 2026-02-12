@@ -50,7 +50,7 @@ RSpec.describe Tag, type: :model do
     end
 
     it "allows valid colors" do
-      Task::COLORS.each do |color|
+      Colorable::COLORS.each do |color|
         tag = build(:tag, color: color, user: user)
         expect(tag).to be_valid
       end

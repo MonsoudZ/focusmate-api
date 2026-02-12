@@ -2,6 +2,7 @@
 
 class Task < ApplicationRecord
   include SoftDeletable
+  include Colorable
 
   belongs_to :list, counter_cache: true
   belongs_to :creator, class_name: "User", foreign_key: :creator_id
@@ -20,7 +21,6 @@ class Task < ApplicationRecord
   enum :status, { pending: 0, in_progress: 1, done: 2 }, default: :pending
   enum :visibility, { visible_to_all: 0, private_task: 1 }, default: :visible_to_all
   enum :priority, { no_priority: 0, low: 1, medium: 2, high: 3, urgent: 4 }, default: :no_priority
-  COLORS = %w[blue green orange red purple pink teal yellow gray].freeze
   MAX_NOTIFICATION_INTERVAL_MINUTES = 30
 
   # Validations
@@ -41,8 +41,6 @@ class Task < ApplicationRecord
   validate :prevent_circular_subtask_relationship
   validate :recurrence_constraints
   validate :assigned_to_has_list_access
-  validates :color, inclusion: { in: COLORS }, allow_nil: true
-
   after_initialize :set_defaults
   after_create :record_creation_event
   after_create :increment_parent_tasks_count, unless: :subtask?

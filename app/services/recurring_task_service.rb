@@ -28,7 +28,7 @@ class RecurringTaskService
         recurrence_pattern: recurrence_params[:pattern],
         recurrence_interval: recurrence_params[:interval] || 1,
         recurrence_days: recurrence_params[:days],
-        recurrence_time: extract_time(due_at),
+        recurrence_time: due_at,
         recurrence_end_date: recurrence_params[:end_date],
         recurrence_count: recurrence_params[:count],
         due_at: due_at,
@@ -144,10 +144,5 @@ class RecurringTaskService
       time.min,
       0
     )
-  end
-
-  def extract_time(datetime)
-    return nil if datetime.nil?
-    datetime
   end
 end

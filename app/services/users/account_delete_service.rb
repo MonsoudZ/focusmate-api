@@ -1,12 +1,8 @@
 # frozen_string_literal: true
 
 module Users
-  class AccountDeleteService
-    def self.call!(user:, password: nil)
-      new(user:, password:).call!
-    end
-
-    def initialize(user:, password:)
+  class AccountDeleteService < ApplicationService
+    def initialize(user:, password: nil)
       @user = user
       @password = password
     end

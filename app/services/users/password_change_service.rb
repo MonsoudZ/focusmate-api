@@ -1,16 +1,7 @@
 # frozen_string_literal: true
 
 module Users
-  class PasswordChangeService
-    def self.call!(user:, current_password:, password:, password_confirmation:)
-      new(
-        user:,
-        current_password:,
-        password:,
-        password_confirmation:
-      ).call!
-    end
-
+  class PasswordChangeService < ApplicationService
     def initialize(user:, current_password:, password:, password_confirmation:)
       @user = user
       @current_password = current_password

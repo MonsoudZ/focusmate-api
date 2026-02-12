@@ -1,12 +1,8 @@
 # frozen_string_literal: true
 
 module Users
-  class ProfileUpdateService
-    def self.call!(user:, **attrs)
-      new(user:, attrs:).call!
-    end
-
-    def initialize(user:, attrs:)
+  class ProfileUpdateService < ApplicationService
+    def initialize(user:, **attrs)
       @user = user
       @attrs = attrs.slice(:name, :timezone).compact
     end
