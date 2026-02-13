@@ -183,6 +183,61 @@ RSpec.describe TodayTasksQuery do
     end
   end
 
+  describe "timezone boundaries" do
+    # User in America/New_York (UTC-5). Outer around freezes to
+    # 2024-01-15 12:00 UTC = 2024-01-15 07:00 EST.
+    # NY day boundaries: 05:00 UTC (midnight EST) .. 04:59:59 UTC+1day (23:59:59 EST)
+    let(:ny_user) { create(:user, timezone: "America/New_York") }
+    let(:ny_list) { create(:list, user: ny_user) }
+
+    it "excludes tomorrow 12:01am local from due_today" do
+      # 00:01 EST Jan 16 = 05:01 UTC Jan 16
+      task = create(:task, list: ny_list, creator: ny_user,
+                    due_at: Time.utc(2024, 1, 16, 5, 1, 0), status: :pending)
+
+      query = described_class.new(ny_user)
+      expect(query.due_today).not_to include(task)
+    end
+
+    it "includes tomorrow 12:01am local in upcoming" do
+      # 00:01 EST Jan 16 = 05:01 UTC Jan 16
+      task = create(:task, list: ny_list, creator: ny_user,
+                    due_at: Time.utc(2024, 1, 16, 5, 1, 0), status: :pending)
+
+      query = described_class.new(ny_user)
+      expect(query.upcoming(days: 7)).to include(task)
+    end
+
+    it "includes today 11:59pm local in due_today" do
+      # 23:59 EST Jan 15 = 04:59 UTC Jan 16
+      task = create(:task, list: ny_list, creator: ny_user,
+                    due_at: Time.utc(2024, 1, 16, 4, 59, 0), status: :pending)
+
+      query = described_class.new(ny_user)
+      expect(query.due_today).to include(task)
+    end
+
+    it "includes today 12:00am local (start of day) in due_today" do
+      # 00:00 EST Jan 15 = 05:00 UTC Jan 15
+      task = create(:task, list: ny_list, creator: ny_user,
+                    due_at: Time.utc(2024, 1, 15, 5, 0, 0), status: :pending)
+
+      query = described_class.new(ny_user)
+      expect(query.due_today).to include(task)
+    end
+
+    it "puts yesterday 11:59pm local in overdue, not due_today" do
+      # 23:59 EST Jan 14 = 04:59 UTC Jan 15
+      task = create(:task, list: ny_list, creator: ny_user,
+                    due_at: Time.utc(2024, 1, 15, 4, 59, 0), status: :pending,
+                    skip_due_at_validation: true)
+
+      query = described_class.new(ny_user)
+      expect(query.overdue).to include(task)
+      expect(query.due_today).not_to include(task)
+    end
+  end
+
   describe "timezone safety" do
     it "falls back to UTC when user timezone is invalid" do
       user.update_column(:timezone, "Invalid/Zone")

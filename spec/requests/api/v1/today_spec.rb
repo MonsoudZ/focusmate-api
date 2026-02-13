@@ -87,6 +87,34 @@ RSpec.describe "Today API", type: :request do
       end
     end
 
+    context "with non-UTC timezone at boundary" do
+      # User in America/New_York (UTC-5). Outer around freezes to
+      # 2024-01-15 12:00 UTC = 2024-01-15 07:00 EST.
+      # NY day boundaries: 05:00 UTC .. 04:59:59 UTC+1day
+      let(:ny_user) { create(:user, timezone: "America/New_York") }
+      let(:ny_list) { create(:list, user: ny_user) }
+
+      it "returns tasks based on user timezone, not UTC" do
+        # 23:59 EST Jan 15 = 04:59 UTC Jan 16 → should be "due_today"
+        late_tonight = create(:task, list: ny_list, creator: ny_user,
+                              due_at: Time.utc(2024, 1, 16, 4, 59, 0),
+                              status: :pending, title: "Late tonight")
+
+        # 00:01 EST Jan 16 = 05:01 UTC Jan 16 → should NOT be "due_today"
+        early_tomorrow = create(:task, list: ny_list, creator: ny_user,
+                                due_at: Time.utc(2024, 1, 16, 5, 1, 0),
+                                status: :pending, title: "Early tomorrow")
+
+        auth_get "/api/v1/today", user: ny_user
+
+        expect(response).to have_http_status(:ok)
+
+        today_ids = json_response["due_today"].map { |t| t["id"] }
+        expect(today_ids).to include(late_tonight.id)
+        expect(today_ids).not_to include(early_tomorrow.id)
+      end
+    end
+
     context "when not authenticated" do
       it "returns unauthorized" do
         get "/api/v1/today"

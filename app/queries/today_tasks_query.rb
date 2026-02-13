@@ -83,7 +83,7 @@ class TodayTasksQuery
   # Tasks due in the next few days (not including today)
   def upcoming(days: 7, limit: 20)
     base_scope
-      .where(tasks: { due_at: end_of_today..days.days.from_now.end_of_day })
+      .where(tasks: { due_at: end_of_today..days.days.from_now.in_time_zone(timezone).end_of_day })
       .where.not(status: "done")
       .order("tasks.due_at ASC")
       .limit(limit)
