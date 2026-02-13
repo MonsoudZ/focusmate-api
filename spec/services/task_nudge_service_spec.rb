@@ -61,40 +61,46 @@ RSpec.describe TaskNudgeService do
       end
 
       it "skips recipients who were recently nudged but nudges others" do
-        # Create a recent nudge to owner only
-        create(:nudge, task: task, from_user: member1, to_user: list_owner, created_at: 5.minutes.ago)
+        freeze_time do
+          # Create a recent nudge to owner only
+          create(:nudge, task: task, from_user: member1, to_user: list_owner, created_at: 5.minutes.ago)
 
-        service = described_class.new(task: task, from_user: member1)
+          service = described_class.new(task: task, from_user: member1)
 
-        # Should only create nudge for member2 (owner was recently nudged)
-        expect { service.call! }.to change(Nudge, :count).by(1)
-          .and have_enqueued_job(SendNudgeNotificationJob).exactly(1).times
+          # Should only create nudge for member2 (owner was recently nudged)
+          expect { service.call! }.to change(Nudge, :count).by(1)
+            .and have_enqueued_job(SendNudgeNotificationJob).exactly(1).times
 
-        nudge = Nudge.last
-        expect(nudge.to_user).to eq(member2)
+          nudge = Nudge.last
+          expect(nudge.to_user).to eq(member2)
+        end
       end
 
       it "allows nudging after the rate limit window" do
-        # Create an old nudge to owner (outside the 10 minute window but inside 1 hour)
-        # Note: Nudge model has separate rate limit of 3 per task per hour
-        create(:nudge, task: task, from_user: member1, to_user: list_owner, created_at: 15.minutes.ago)
+        freeze_time do
+          # Create an old nudge to owner (outside the 10 minute window but inside 1 hour)
+          # Note: Nudge model has separate rate limit of 3 per task per hour
+          create(:nudge, task: task, from_user: member1, to_user: list_owner, created_at: 15.minutes.ago)
 
-        service = described_class.new(task: task, from_user: member1)
+          service = described_class.new(task: task, from_user: member1)
 
-        # Should nudge both recipients (owner again since >10min, and member2 for first time)
-        expect { service.call! }.to change(Nudge, :count).by(2)
+          # Should nudge both recipients (owner again since >10min, and member2 for first time)
+          expect { service.call! }.to change(Nudge, :count).by(2)
+        end
       end
 
       it "raises error when all recipients are rate limited" do
-        # Rate limit both recipients
-        create(:nudge, task: task, from_user: member1, to_user: list_owner, created_at: 5.minutes.ago)
-        create(:nudge, task: task, from_user: member1, to_user: member2, created_at: 5.minutes.ago)
+        freeze_time do
+          # Rate limit both recipients
+          create(:nudge, task: task, from_user: member1, to_user: list_owner, created_at: 5.minutes.ago)
+          create(:nudge, task: task, from_user: member1, to_user: member2, created_at: 5.minutes.ago)
 
-        service = described_class.new(task: task, from_user: member1)
+          service = described_class.new(task: task, from_user: member1)
 
-        expect {
-          service.call!
-        }.to raise_error(ApplicationError::UnprocessableEntity, /recently nudged/)
+          expect {
+            service.call!
+          }.to raise_error(ApplicationError::UnprocessableEntity, /recently nudged/)
+        end
       end
     end
 

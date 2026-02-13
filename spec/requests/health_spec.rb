@@ -87,6 +87,12 @@ RSpec.describe "Health API", type: :request do
       expect(json_response["health"]).to be_in([ 0, 1 ])
     end
 
+    it "rejects invalid token" do
+      get "/health/detailed", headers: { "X-Health-Token" => "wrong-token" }
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
     it "returns 404 when production token is not configured" do
       allow(ENV).to receive(:[]).with("HEALTH_DIAGNOSTICS_TOKEN").and_return(nil)
 

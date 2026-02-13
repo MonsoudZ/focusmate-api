@@ -6,6 +6,10 @@ RSpec.describe TaskReminderJob, type: :job do
   let(:user) { create(:user) }
   let(:list) { create(:list, user: user) }
 
+  around do |example|
+    freeze_time { example.run }
+  end
+
   before do
     allow(PushNotifications::Sender).to receive(:send_task_reminder).and_return(true)
   end
