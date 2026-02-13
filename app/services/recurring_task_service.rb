@@ -11,7 +11,7 @@ class RecurringTaskService
       # Advisory lock prevents duplicate templates from concurrent requests.
       # The lock is automatically released when the transaction ends.
       lock_key = Digest::MD5.hexdigest("recurring_task:#{@user.id}:#{list.id}:#{params[:title]}").to_i(16) & 0x7FFFFFFFFFFFFFFF
-      ActiveRecord::Base.connection.exec_query("SELECT pg_advisory_xact_lock($1)", "advisory_lock", [ lock_key ])
+      ActiveRecord::Base.connection.execute("SELECT pg_advisory_xact_lock(#{lock_key.to_i})")
       due_at = params[:due_at]
 
       # Create the template (hidden from normal queries)
@@ -28,11 +28,12 @@ class RecurringTaskService
         recurrence_pattern: recurrence_params[:pattern],
         recurrence_interval: recurrence_params[:interval] || 1,
         recurrence_days: recurrence_params[:days],
-        recurrence_time: extract_time(due_at),
+        recurrence_time: due_at,
         recurrence_end_date: recurrence_params[:end_date],
         recurrence_count: recurrence_params[:count],
         due_at: due_at,
-        status: :pending
+        status: :pending,
+        skip_due_at_validation: true
       )
 
       # Create the first instance with the exact due_at from params
@@ -79,7 +80,8 @@ class RecurringTaskService
       instance_number: instance_number,
       status: :pending,
       strict_mode: template.strict_mode,
-      requires_explanation_if_missed: template.requires_explanation_if_missed
+      requires_explanation_if_missed: template.requires_explanation_if_missed,
+      skip_due_at_validation: true
     )
   end
 
@@ -104,26 +106,32 @@ class RecurringTaskService
       next_date = last_due_date.to_date + interval.years
       combine_date_and_time(next_date, base_time)
     else
+      Rails.logger.warn(
+        event: "unknown_recurrence_pattern",
+        pattern: template.recurrence_pattern,
+        template_id: template.id
+      )
       nil
     end
   end
 
   def find_next_weekday(from_date, allowed_days, interval = 1)
-    current = from_date
-    start_week = from_date.beginning_of_week
+    return from_date + interval.weeks if allowed_days.empty?
 
-    100.times do
-      current_week = current.beginning_of_week
-      weeks_diff = ((current_week - start_week) / 7).to_i
+    # Max days needed: interval weeks * 7 days (typically 7-14)
+    max_days = interval * 7
 
-      if allowed_days.include?(current.wday) && (weeks_diff % interval).zero?
-        return current
+    (0...max_days).each do |offset|
+      candidate = from_date + offset.days
+      week_num = (offset / 7).to_i
+
+      if allowed_days.include?(candidate.wday) && (week_num % interval).zero?
+        return candidate
       end
-
-      current += 1.day
     end
 
-    from_date + 7.days
+    # Fallback (shouldn't reach here with valid input)
+    from_date + interval.weeks
   end
 
   def recurrence_ended?(template, last_instance)
@@ -143,10 +151,5 @@ class RecurringTaskService
       time.min,
       0
     )
-  end
-
-  def extract_time(datetime)
-    return nil if datetime.nil?
-    datetime
   end
 end

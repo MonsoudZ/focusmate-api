@@ -27,8 +27,10 @@ Rails.application.configure do
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
   config.force_ssl = true
 
-  # Skip http-to-https redirect for the default health check endpoint.
-  config.ssl_options = { redirect: { exclude: ->(request) { request.path.start_with?("/health") } } }
+  health_probe_paths = %w[/health/live /health/ready].freeze
+
+  # Keep liveness/readiness probe endpoints reachable by plain HTTP for load balancers.
+  config.ssl_options = { redirect: { exclude: ->(request) { health_probe_paths.include?(request.path) } } }
 
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]
@@ -43,35 +45,8 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # ====================
-  # CACHE STORE
-  # ====================
-  # Use Redis for caching in production (shared across processes, survives restarts)
-  # Falls back to memory_store if REDIS_URL not configured
-  if ENV["REDIS_URL"].present?
-    config.cache_store = :redis_cache_store, {
-      url: ENV["REDIS_URL"],
-      expires_in: 1.day,
-      namespace: "intentia_cache",
-      error_handler: lambda { |method:, returning:, exception:|
-        Rails.logger.error("Redis cache error: #{method} - #{exception.message}")
-        Sentry.capture_exception(exception) if defined?(Sentry)
-      }
-    }
-  else
-    config.cache_store = :memory_store, { size: 64.megabytes }
-  end
-
-  # ====================
-  # BACKGROUND JOBS
-  # ====================
-  # Use Sidekiq for background jobs in production (requires Redis)
-  # Falls back to async (in-process) if REDIS_URL not configured
-  if ENV["REDIS_URL"].present?
-    config.active_job.queue_adapter = :sidekiq
-  else
-    config.active_job.queue_adapter = :async
-  end
+  # Background jobs via Solid Queue (PostgreSQL-backed, no Redis required)
+  config.active_job.queue_adapter = :solid_queue
 
   # ====================
   # EMAIL
@@ -112,6 +87,6 @@ Rails.application.configure do
     /.*\.up\.railway\.app/
   ]
 
-  # Skip DNS rebinding protection for health check endpoints.
-  config.host_authorization = { exclude: ->(request) { request.path.start_with?("/health") } }
+  # Allow only probe endpoints to bypass host authorization (not detailed diagnostics).
+  config.host_authorization = { exclude: ->(request) { health_probe_paths.include?(request.path) } }
 end

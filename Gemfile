@@ -1,10 +1,9 @@
 source "https://rubygems.org"
 
-gem "rails", "~> 8.0.3"
+gem "rails", "~> 8.1.2"
 gem "pg", "~> 1.1"
 gem "puma", ">= 5.0"
 
-gem "apple_id"
 # Authentication
 gem "bcrypt", "~> 3.1.7"
 gem "devise"
@@ -14,20 +13,13 @@ gem "devise-jwt"
 gem "pundit"
 
 # Background jobs
-gem "sidekiq"
-
-# Redis
-gem "redis", "~> 5.0"
+gem "solid_queue"
 
 # Rate limiting
 gem "rack-attack"
 
 # CORS
 gem "rack-cors"
-
-# Feature flags
-gem "flipper"
-gem "flipper-active_record"
 
 # Error tracking
 gem "sentry-ruby"
@@ -55,15 +47,16 @@ group :development, :test do
   gem "rubocop-rails-omakase", require: false
   gem "rubycritic", require: false
   gem "bundler-audit", require: false
-  gem "danger", require: false
   gem "rspec-rails"
   gem "factory_bot_rails"
   gem "faker"
   gem "shoulda-matchers"
   gem "simplecov", require: false
   gem "dotenv-rails"
+  gem "bullet"  # N+1 query detection
+  gem "benchmark-ips"  # Benchmarking
+  gem "benchmark", require: false  # Extracted from default gems in Ruby 4.0
 end
 
 gem "rack-timeout", "~> 0.7"
-gem "sidekiq-cron", "~> 1.12"
 gem "apnotic"

@@ -8,11 +8,9 @@ module Health
       private
 
       def run
-        raise "Sidekiq not loaded" unless defined?(Sidekiq)
-
         {
-          queue_size: Sidekiq::Queue.new.size,
-          dead_jobs: Sidekiq::DeadSet.new.size
+          pending_jobs: SolidQueue::Job.where(finished_at: nil).count,
+          failed_jobs: SolidQueue::FailedExecution.count
         }
       end
     end

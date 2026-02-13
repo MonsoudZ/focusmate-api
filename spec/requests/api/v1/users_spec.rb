@@ -39,6 +39,13 @@ RSpec.describe "Users API", type: :request do
         expect(response).to have_http_status(:ok)
         expect(user.reload.timezone).to eq("America/New_York")
       end
+
+      it "ignores non-scalar profile params" do
+        auth_patch "/api/v1/users/profile", user: user, params: { name: { bad: "value" } }
+
+        expect(response).to have_http_status(:ok)
+        expect(user.reload.name).to eq("Test User")
+      end
     end
   end
 
@@ -68,6 +75,16 @@ RSpec.describe "Users API", type: :request do
 
         expect(response.status).to be_in([ 401, 422 ])
       end
+
+      it "returns error for non-scalar password params" do
+        auth_patch "/api/v1/users/profile/password", user: user, params: {
+          current_password: { bad: "value" },
+          password: { bad: "value" },
+          password_confirmation: { bad: "value" }
+        }
+
+        expect(response.status).to be_in([ 400, 422 ])
+      end
     end
 
     context "with password mismatch" do
@@ -89,6 +106,14 @@ RSpec.describe "Users API", type: :request do
         auth_delete "/api/v1/users/profile", user: user
 
         expect(response.status).to be_in([ 200, 204, 422 ])
+      end
+
+      it "returns validation error for non-scalar password param" do
+        delete "/api/v1/users/profile",
+               params: { password: { bad: "value" } }.to_json,
+               headers: auth_headers_for(user)
+
+        expect(response.status).to be_in([ 400, 422 ])
       end
     end
   end

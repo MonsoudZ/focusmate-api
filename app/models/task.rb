@@ -2,6 +2,9 @@
 
 class Task < ApplicationRecord
   include SoftDeletable
+  include Colorable
+
+  attr_accessor :skip_due_at_validation
 
   belongs_to :list, counter_cache: true
   belongs_to :creator, class_name: "User", foreign_key: :creator_id
@@ -14,19 +17,25 @@ class Task < ApplicationRecord
   has_many :task_events, dependent: :destroy
   has_many :task_tags, dependent: :destroy
   has_many :tags, through: :task_tags
+  has_many :reschedule_events, dependent: :destroy
 
   # Enums
   enum :status, { pending: 0, in_progress: 1, done: 2 }, default: :pending
   enum :visibility, { visible_to_all: 0, private_task: 1 }, default: :visible_to_all
   enum :priority, { no_priority: 0, low: 1, medium: 2, high: 3, urgent: 4 }, default: :no_priority
-  COLORS = %w[blue green orange red purple pink teal yellow gray].freeze
+  MAX_NOTIFICATION_INTERVAL_MINUTES = 30
 
   # Validations
   validates :title, presence: true, length: { maximum: 255 }
   validates :note, length: { maximum: 1000 }, allow_nil: true
   validates :due_at, presence: true, unless: :subtask?
   validates :strict_mode, inclusion: { in: [ true, false ] }
-  validates :notification_interval_minutes, numericality: { greater_than: 0 }, allow_nil: true
+  validates :notification_interval_minutes,
+            numericality: {
+              greater_than: 0,
+              less_than_or_equal_to: MAX_NOTIFICATION_INTERVAL_MINUTES
+            },
+            allow_nil: true
   validates :recurrence_pattern, inclusion: { in: %w[daily weekly monthly yearly] }, allow_nil: true
   validates :recurrence_interval, numericality: { greater_than: 0 }, allow_nil: true
 
@@ -34,8 +43,6 @@ class Task < ApplicationRecord
   validate :prevent_circular_subtask_relationship
   validate :recurrence_constraints
   validate :assigned_to_has_list_access
-  validates :color, inclusion: { in: COLORS }, allow_nil: true
-
   after_initialize :set_defaults
   after_create :record_creation_event
   after_create :increment_parent_tasks_count, unless: :subtask?
@@ -47,13 +54,8 @@ class Task < ApplicationRecord
   # Scopes (SoftDeletable provides: with_deleted, only_deleted, not_deleted)
   scope :completed, -> { where(status: :done) }
   scope :pending, -> { where(status: :pending) }
-  scope :in_progress, -> { where(status: :in_progress) }
   scope :overdue, -> { pending.where("due_at < ?", Time.current) }
-  scope :due_soon, -> { where("due_at <= ?", 1.day.from_now) }
   scope :incomplete, -> { where.not(status: :done) }
-  scope :recurring, -> { where(is_recurring: true) }
-  scope :by_list, ->(list_id) { where(list_id: list_id) }
-  scope :by_creator, ->(creator_id) { where(creator_id: creator_id) }
 
   # Primary sorting scope - urgent tasks first, then starred, then by position/column
   scope :sorted_with_priority, ->(column = :created_at, direction = :desc) {
@@ -64,10 +66,38 @@ class Task < ApplicationRecord
     )
   }
 
-  scope :visible, -> { where(is_template: [ false, nil ]) }
-  scope :templates, -> { where(is_template: true) }
-  scope :recurring_templates, -> { where(is_template: true, template_type: "recurring") }
+  def self.grouped_counts_by_list(list_ids)
+    return {} if list_ids.empty?
 
+    counts = list_ids.index_with { { completed: 0, overdue: 0 } }
+    base = unscoped.where(list_id: list_ids, deleted_at: nil, parent_task_id: nil)
+
+    base.where(status: :done).group(:list_id).count.each do |list_id, count|
+      counts[list_id][:completed] = count
+    end
+
+    base.where.not(status: :done)
+        .where("due_at IS NOT NULL AND due_at < ?", Time.current)
+        .group(:list_id)
+        .count
+        .each do |list_id, count|
+      counts[list_id][:overdue] = count
+    end
+
+    counts
+  end
+
+  scope :visible, -> { where(is_template: [ false, nil ]) }
+  scope :visible_to_user, lambda { |user|
+    task_table = arel_table
+    visible_to_all = task_table[:visibility].eq(visibilities[:visible_to_all])
+
+    if user&.id
+      where(visible_to_all.or(task_table[:creator_id].eq(user.id)))
+    else
+      where(visible_to_all)
+    end
+  }
   # Business logic
   def complete!
     update!(status: :done, completed_at: Time.current)
@@ -92,7 +122,12 @@ class Task < ApplicationRecord
   def visible_to?(user)
     return false unless user
     return false if list.deleted?
+    return false if private_task? && creator_id != user.id
     list.accessible_by?(user)
+  end
+
+  def hidden?
+    private_task?
   end
 
   def subtask?
@@ -118,7 +153,7 @@ class Task < ApplicationRecord
   def due_at_not_in_past_on_create
     return unless new_record?
     return unless due_at.present?
-    return if Rails.env.test?
+    return if skip_due_at_validation
 
     # Allow any time today, but not past days
     if due_at < Time.current.beginning_of_day

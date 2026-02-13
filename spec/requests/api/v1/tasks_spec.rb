@@ -7,6 +7,14 @@ RSpec.describe "Tasks API", type: :request do
   let(:other_user) { create(:user) }
   let(:list) { create(:list, user: user) }
 
+  def response_task_titles
+    json_response["tasks"].map { |t| t["title"] }
+  end
+
+  def response_task_ids
+    json_response["tasks"].map { |t| t["id"] }
+  end
+
   describe "GET /api/v1/lists/:list_id/tasks" do
     let!(:task1) { create(:task, list: list, creator: user, title: "Task 1") }
     let!(:task2) { create(:task, list: list, creator: user, title: "Task 2") }
@@ -16,16 +24,56 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user
 
         expect(response).to have_http_status(:ok)
-        task_ids = json_response["tasks"].map { |t| t["id"] }
+        task_ids = response_task_ids
         expect(task_ids).to include(task1.id, task2.id)
       end
     end
 
     context "as stranger" do
-      it "returns forbidden" do
+      it "returns not found" do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: other_user
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context "with hidden tasks" do
+      let(:member) { create(:user) }
+      let!(:visible_task) { create(:task, list: list, creator: user, title: "Visible Task") }
+      let!(:hidden_owner_task) { create(:task, list: list, creator: user, title: "Hidden Owner Task", visibility: :private_task) }
+      let!(:hidden_member_task) { create(:task, list: list, creator: member, title: "Hidden Member Task", visibility: :private_task) }
+
+      before do
+        list.memberships.create!(user: member, role: "editor")
+      end
+
+      it "shows hidden tasks to creator" do
+        auth_get "/api/v1/lists/#{list.id}/tasks", user: user
+
+        titles = response_task_titles
+        expect(titles).to include("Hidden Owner Task")
+      end
+
+      it "hides other members' hidden tasks" do
+        auth_get "/api/v1/lists/#{list.id}/tasks", user: user
+
+        titles = response_task_titles
+        expect(titles).not_to include("Hidden Member Task")
+      end
+
+      it "shows member's own hidden tasks to them" do
+        auth_get "/api/v1/lists/#{list.id}/tasks", user: member
+
+        titles = response_task_titles
+        expect(titles).to include("Hidden Member Task")
+        expect(titles).not_to include("Hidden Owner Task")
+      end
+
+      it "always shows visible tasks to all members" do
+        auth_get "/api/v1/lists/#{list.id}/tasks", user: member
+
+        titles = response_task_titles
+        expect(titles).to include("Visible Task")
       end
     end
 
@@ -38,7 +86,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user, params: { status: "pending" }
 
         expect(response).to have_http_status(:ok)
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).to include("Pending", "Overdue")
         expect(titles).not_to include("Done")
       end
@@ -47,7 +95,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user, params: { status: "completed" }
 
         expect(response).to have_http_status(:ok)
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).to include("Done")
         expect(titles).not_to include("Pending")
       end
@@ -56,7 +104,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user, params: { status: "done" }
 
         expect(response).to have_http_status(:ok)
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).to include("Done")
       end
 
@@ -64,7 +112,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user, params: { status: "overdue" }
 
         expect(response).to have_http_status(:ok)
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles).to include("Overdue")
         expect(titles).not_to include("Done")
       end
@@ -86,7 +134,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/lists/#{list.id}/tasks", user: user
 
         expect(response).to have_http_status(:ok)
-        titles = json_response["tasks"].map { |t| t["title"] }
+        titles = response_task_titles
         expect(titles.index("Newer")).to be < titles.index("Older")
       end
 
@@ -140,6 +188,16 @@ RSpec.describe "Tasks API", type: :request do
     context "as stranger" do
       it "returns not found" do
         auth_get "/api/v1/lists/#{list.id}/tasks/#{task.id}", user: other_user
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context "with mismatched list_id" do
+      let(:other_list) { create(:list, user: user) }
+
+      it "returns not found even when user can access both lists" do
+        auth_get "/api/v1/lists/#{other_list.id}/tasks/#{task.id}", user: user
 
         expect(response).to have_http_status(:not_found)
       end
@@ -229,11 +287,56 @@ RSpec.describe "Tasks API", type: :request do
       end
     end
 
+    context "with empty JSON body" do
+      it "returns bad request" do
+        post "/api/v1/lists/#{list.id}/tasks",
+             params: "",
+             headers: auth_headers_for(user),
+             as: :json
+
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
     context "as stranger" do
-      it "returns forbidden" do
+      it "returns not found" do
         auth_post "/api/v1/lists/#{list.id}/tasks", user: other_user, params: valid_params
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context "with hidden param" do
+      it "creates a hidden task when hidden is true" do
+        hidden_params = {
+          task: {
+            title: "Hidden Task",
+            due_at: 1.day.from_now.iso8601,
+            hidden: true
+          }
+        }
+
+        auth_post "/api/v1/lists/#{list.id}/tasks", user: user, params: hidden_params
+
+        expect(response).to have_http_status(:created)
+        expect(json_response["task"]["hidden"]).to be true
+        expect(Task.last.visibility).to eq("private_task")
+      end
+
+      it "creates a visible task when hidden is false" do
+        visible_params = {
+          task: {
+            title: "Visible Task",
+            due_at: 1.day.from_now.iso8601,
+            hidden: false
+          }
+        }
+
+        auth_post "/api/v1/lists/#{list.id}/tasks", user: user, params: visible_params
+
+        expect(response).to have_http_status(:created)
+        expect(json_response["task"]["hidden"]).to be false
+        expect(Task.last.visibility).to eq("visible_to_all")
       end
     end
 
@@ -271,6 +374,37 @@ RSpec.describe "Tasks API", type: :request do
         auth_patch "/api/v1/lists/#{list.id}/tasks/#{task.id}", user: other_user, params: { task: { title: "Viewer Update" } }
 
         expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "with mismatched list_id" do
+      let(:other_list) { create(:list, user: user) }
+
+      it "returns not found and does not update the task" do
+        auth_patch "/api/v1/lists/#{other_list.id}/tasks/#{task.id}", user: user, params: { task: { title: "Wrong List" } }
+
+        expect(response).to have_http_status(:not_found)
+        expect(task.reload.title).to eq("Original Title")
+      end
+    end
+
+    context "toggling hidden status" do
+      it "updates task to hidden" do
+        auth_patch "/api/v1/lists/#{list.id}/tasks/#{task.id}", user: user, params: { task: { hidden: true } }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["task"]["hidden"]).to be true
+        expect(task.reload.visibility).to eq("private_task")
+      end
+
+      it "updates task to visible" do
+        hidden_task = create(:task, list: list, creator: user, visibility: :private_task)
+
+        auth_patch "/api/v1/lists/#{list.id}/tasks/#{hidden_task.id}", user: user, params: { task: { hidden: false } }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["task"]["hidden"]).to be false
+        expect(hidden_task.reload.visibility).to eq("visible_to_all")
       end
     end
   end
@@ -317,6 +451,17 @@ RSpec.describe "Tasks API", type: :request do
         expect(overdue_task.reload.status).to eq("done")
         expect(overdue_task.missed_reason).to eq("Was in a meeting")
       end
+
+      it "rejects non-scalar missed_reason values" do
+        overdue_task = create(:task, list: list, creator: user, status: :pending, due_at: 1.hour.ago, requires_explanation_if_missed: true)
+
+        auth_patch "/api/v1/lists/#{list.id}/tasks/#{overdue_task.id}/complete",
+                   user: user,
+                   params: { missed_reason: { bad: "input" } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(overdue_task.reload.status).to eq("pending")
+      end
     end
   end
 
@@ -348,6 +493,15 @@ RSpec.describe "Tasks API", type: :request do
 
         expect(response).to have_http_status(:ok)
         expect(task.reload.assigned_to_id).to eq(assignee.id)
+      end
+
+      it "returns bad request for non-scalar assigned_to values" do
+        auth_patch "/api/v1/lists/#{list.id}/tasks/#{task.id}/assign",
+                   user: user,
+                   params: { assigned_to: { bad: "input" } }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(task.reload.assigned_to_id).to be_nil
       end
     end
   end
@@ -387,13 +541,28 @@ RSpec.describe "Tasks API", type: :request do
       end
     end
 
-    context "when trying to nudge yourself" do
+    context "when nudging your own task" do
       let(:own_task) { create(:task, list: list, creator: user) }
 
-      it "returns unprocessable entity" do
+      it "sends nudge to other list members" do
+        # With the new behavior, nudging your own task sends to other members
+        # (e.g., "hey everyone, remind me about this task")
         auth_post "/api/v1/lists/#{list.id}/tasks/#{own_task.id}/nudge", user: user
 
+        expect(response).to have_http_status(:ok)
+        expect(Nudge.last.to_user).to eq(task_creator)
+      end
+    end
+
+    context "when no other members in list" do
+      let(:private_list) { create(:list, user: user) }
+      let(:solo_task) { create(:task, list: private_list, creator: user) }
+
+      it "returns unprocessable entity" do
+        auth_post "/api/v1/lists/#{private_list.id}/tasks/#{solo_task.id}/nudge", user: user
+
         expect(response).to have_http_status(:unprocessable_content)
+        expect(json_response["error"]["message"]).to include("only member")
       end
     end
   end
@@ -407,7 +576,7 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/tasks/search", user: user, params: { q: "Find me" }
 
         expect(response).to have_http_status(:ok)
-        task_ids = json_response["tasks"].map { |t| t["id"] }
+        task_ids = response_task_ids
         expect(task_ids).to include(matching_task.id)
         expect(task_ids).not_to include(non_matching.id)
       end
@@ -432,8 +601,124 @@ RSpec.describe "Tasks API", type: :request do
         auth_get "/api/v1/tasks/search", user: user, params: { q: "Unique note" }
 
         expect(response).to have_http_status(:ok)
-        task_ids = json_response["tasks"].map { |t| t["id"] }
+        task_ids = response_task_ids
         expect(task_ids).to include(task_with_note.id)
+      end
+    end
+  end
+
+  describe "POST /api/v1/lists/:list_id/tasks/:id/reschedule" do
+    let(:task) { create(:task, list: list, creator: user, due_at: 1.day.from_now) }
+
+    context "as list owner" do
+      it "reschedules the task" do
+        new_due = 3.days.from_now.iso8601
+
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: new_due, reason: "priorities_shifted" }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["task"]["due_at"]).to eq(new_due)
+      end
+
+      it "creates a reschedule event with user tracking" do
+        original_due = task.due_at
+        new_due = 3.days.from_now.iso8601
+
+        expect {
+          auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                    user: user,
+                    params: { new_due_at: new_due, reason: "blocked" }
+        }.to change(RescheduleEvent, :count).by(1)
+
+        event = RescheduleEvent.last
+        expect(event.previous_due_at.to_i).to eq(original_due.to_i)
+        expect(event.reason).to eq("blocked")
+        expect(event.user).to eq(user)
+      end
+
+      it "includes reschedule_events in response with user info" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: 3.days.from_now.iso8601, reason: "underestimated" }
+
+        expect(json_response["task"]["reschedule_events"]).to be_an(Array)
+        expect(json_response["task"]["reschedule_events"].length).to eq(1)
+        event = json_response["task"]["reschedule_events"][0]
+        expect(event["reason"]).to eq("underestimated")
+        expect(event["rescheduled_by"]["id"]).to eq(user.id)
+        expect(event["rescheduled_by"]["name"]).to eq(user.name)
+      end
+
+      it "accepts custom reason text" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: 3.days.from_now.iso8601, reason: "Client requested delay" }
+
+        expect(response).to have_http_status(:ok)
+        expect(RescheduleEvent.last.reason).to eq("Client requested delay")
+      end
+
+      it "returns reschedule events in reverse chronological order" do
+        # Create existing reschedule event
+        create(:reschedule_event, task: task, reason: "first", created_at: 1.hour.ago)
+
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: 3.days.from_now.iso8601, reason: "second" }
+
+        events = json_response["task"]["reschedule_events"]
+        expect(events[0]["reason"]).to eq("second")
+        expect(events[1]["reason"]).to eq("first")
+      end
+
+      it "returns 400 when new_due_at is missing" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { reason: "blocked" }
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it "returns 400 when reason is missing" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: 3.days.from_now.iso8601 }
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it "returns 400 for non-scalar reschedule params" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: user,
+                  params: { new_due_at: { bad: "input" }, reason: [ "blocked" ] }
+
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    context "as viewer" do
+      before { list.memberships.create!(user: other_user, role: "viewer") }
+
+      it "returns forbidden" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: other_user,
+                  params: { new_due_at: 3.days.from_now.iso8601, reason: "blocked" }
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "as editor" do
+      before { list.memberships.create!(user: other_user, role: "editor") }
+
+      it "can reschedule the task" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/#{task.id}/reschedule",
+                  user: other_user,
+                  params: { new_due_at: 3.days.from_now.iso8601, reason: "priorities_shifted" }
+
+        expect(response).to have_http_status(:ok)
       end
     end
   end
@@ -457,6 +742,55 @@ RSpec.describe "Tasks API", type: :request do
         expect(task3.reload.position).to eq(1)
         expect(task1.reload.position).to eq(2)
         expect(task2.reload.position).to eq(3)
+      end
+
+      it "accepts numeric string ids and positions" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: user, params: {
+          tasks: [
+            { id: task2.id.to_s, position: "1" },
+            { id: task1.id.to_s, position: "2" }
+          ]
+        }
+
+        expect(response).to have_http_status(:ok)
+        expect(task2.reload.position).to eq(1)
+        expect(task1.reload.position).to eq(2)
+      end
+
+      it "returns bad request when tasks payload is missing" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: user, params: {}
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it "returns bad request when a task entry is not an object" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: user, params: {
+          tasks: [ "invalid" ]
+        }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("each task entry must be an object")
+      end
+
+      it "returns bad request when task id is not an integer" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: user, params: {
+          tasks: [ { id: "abc", position: 1 } ]
+        }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("id must be an integer")
+      end
+
+      it "returns bad request when positions are duplicated" do
+        auth_post "/api/v1/lists/#{list.id}/tasks/reorder", user: user, params: {
+          tasks: [
+            { id: task1.id, position: 1 },
+            { id: task2.id, position: 1 }
+          ]
+        }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response.dig("error", "code")).to eq("duplicate_positions")
       end
     end
 

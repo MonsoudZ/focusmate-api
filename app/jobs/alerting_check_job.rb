@@ -6,8 +6,7 @@ class AlertingCheckJob < ApplicationJob
   # Run every 5 minutes to check alerting thresholds
   # This provides near-real-time alerting for critical issues
   #
-  # Schedule with sidekiq-cron:
-  #   AlertingCheckJob.perform_later
+  # Scheduled via Solid Queue recurring tasks (config/recurring.yml)
   #
   def perform
     results = AlertingService.check_all_thresholds

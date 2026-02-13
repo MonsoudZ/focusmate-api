@@ -59,12 +59,12 @@ RSpec.describe "Tasks Authorization", type: :request do
     end
 
     context "as stranger" do
-      it "forbids reordering" do
+      it "denies reordering" do
         post "/api/v1/lists/#{list.id}/tasks/reorder",
              params: reorder_params.to_json,
              headers: auth_headers_for(stranger)
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
 
@@ -130,7 +130,7 @@ RSpec.describe "Tasks Authorization", type: :request do
               params: { assigned_to: stranger.id }.to_json,
               headers: auth_headers_for(owner)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = JSON.parse(response.body)
         expect(json["error"]["message"]).to include("cannot be assigned")
       end

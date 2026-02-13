@@ -11,11 +11,11 @@ class ListInviteSerializer
       code: @invite.code,
       role: @invite.role,
       invite_url: @invite.invite_url,
-      expires_at: @invite.expires_at&.iso8601,
+      expires_at: @invite.expires_at,
       max_uses: @invite.max_uses,
       uses_count: @invite.uses_count,
       usable: @invite.usable?,
-      created_at: @invite.created_at.iso8601
+      created_at: @invite.created_at
     }
   end
 

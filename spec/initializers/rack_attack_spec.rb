@@ -65,6 +65,53 @@ RSpec.describe "Rack::Attack", type: :request do
 
       expect(response.status).to eq(429)
     end
+
+    it "throttles invite accept endpoint after 20 requests" do
+      21.times do
+        post "/api/v1/invites/ABCDEFGH/accept",
+             headers: { "CONTENT_TYPE" => "application/json" }
+      end
+
+      expect(response.status).to eq(429)
+    end
+
+    it "throttles password reset request endpoint after 3 requests" do
+      4.times do
+        post "/api/v1/auth/password",
+             params: { user: { email: "test@test.com" } }.to_json,
+             headers: { "CONTENT_TYPE" => "application/json" }
+      end
+
+      expect(response.status).to eq(429)
+    end
+
+    it "throttles password reset token submit endpoint after 3 requests" do
+      4.times do
+        put "/api/v1/auth/password",
+            params: {
+              user: {
+                reset_password_token: "fake",
+                password: "new-password-123",
+                password_confirmation: "new-password-123"
+              }
+            }.to_json,
+            headers: { "CONTENT_TYPE" => "application/json" }
+      end
+
+      expect(response.status).to eq(429)
+    end
+
+    it "throttles app_opened analytics endpoint after 30 requests per user" do
+      headers = auth_headers_for(user).merge("CONTENT_TYPE" => "application/json")
+
+      31.times do
+        post "/api/v1/analytics/app_opened",
+             params: { platform: "ios" }.to_json,
+             headers: headers
+      end
+
+      expect(response.status).to eq(429)
+    end
   end
 
   describe "throttled response format" do

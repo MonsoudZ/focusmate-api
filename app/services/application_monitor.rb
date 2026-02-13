@@ -10,6 +10,8 @@
 #   ApplicationMonitor.alert("High error rate detected", severity: :warning)
 #
 class ApplicationMonitor
+  SENTRY_FAILURE_TTL = 5.minutes
+
   class << self
     # Track a business event
     def track_event(event_name, **metadata)
@@ -58,11 +60,18 @@ class ApplicationMonitor
       else :info
       end
 
-      Rails.logger.send(level == :info ? :info : :warn,
-                        event: "alert",
-                        message: message,
-                        severity: severity,
-                        context: context
+      logger_method = case level
+      when :error then :error
+      when :warning then :warn
+      else :info
+      end
+
+      Rails.logger.public_send(
+        logger_method,
+        event: "alert",
+        message: message,
+        severity: severity,
+        context: context
       )
 
       send_to_sentry("Alert: #{message}", context, level: level)
@@ -77,7 +86,7 @@ class ApplicationMonitor
         context: context
       )
 
-      Sentry.capture_exception(error, extra: context) if defined?(Sentry)
+      capture_exception(error, context)
     end
 
     # Health metrics for dashboards
@@ -85,8 +94,7 @@ class ApplicationMonitor
       {
         timestamp: Time.current.iso8601,
         database: database_health,
-        redis: redis_health,
-        sidekiq: sidekiq_health,
+        queue: queue_health,
         memory: memory_usage
       }
     end
@@ -106,8 +114,38 @@ class ApplicationMonitor
 
       Sentry.capture_message(message, level: level, extra: context)
     rescue StandardError => e
-      # Log only - can't use Rails.error.report as it would loop back to Sentry
-      Rails.logger.error("Failed to send to Sentry: #{e.message}")
+      log_sentry_failure_once(
+        e,
+        operation: "capture_message",
+        payload: { message: message, level: level }
+      )
+    end
+
+    def capture_exception(error, context)
+      return unless defined?(Sentry)
+
+      Sentry.capture_exception(error, extra: context)
+    rescue StandardError => e
+      log_sentry_failure_once(
+        e,
+        operation: "capture_exception",
+        payload: { error_class: error.class.name, error_message: error.message }
+      )
+    end
+
+    def log_sentry_failure_once(error, operation:, payload:)
+      digest = Digest::SHA256.hexdigest(error.message.to_s)[0, 16]
+      cache_key = "application_monitor:sentry_failure:#{operation}:#{error.class.name}:#{digest}"
+      return if Rails.cache.read(cache_key).present?
+
+      Rails.cache.write(cache_key, true, expires_in: SENTRY_FAILURE_TTL)
+      Rails.logger.error(
+        event: "application_monitor_sentry_failure",
+        operation: operation,
+        error_class: error.class.name,
+        error_message: error.message,
+        payload: payload
+      )
     end
 
     def database_health
@@ -120,28 +158,11 @@ class ApplicationMonitor
       { error: e.message }
     end
 
-    def redis_health
-      redis = Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"))
-      info = redis.info
+    def queue_health
       {
-        connected: true,
-        version: info["redis_version"],
-        memory_used: info["used_memory_human"],
-        connected_clients: info["connected_clients"]
-      }
-    rescue StandardError => e
-      { connected: false, error: e.message }
-    end
-
-    def sidekiq_health
-      stats = Sidekiq::Stats.new
-      {
-        processed: stats.processed,
-        failed: stats.failed,
-        queues: stats.queues,
-        enqueued: stats.enqueued,
-        retry_size: stats.retry_size,
-        dead_size: stats.dead_size
+        pending_jobs: SolidQueue::Job.where(finished_at: nil).count,
+        failed_jobs: SolidQueue::FailedExecution.count,
+        ready_jobs: SolidQueue::ReadyExecution.count
       }
     rescue StandardError => e
       { error: e.message }

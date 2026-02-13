@@ -35,12 +35,12 @@ RSpec.describe Api::V1::TasksController, type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it 'forbids access to other users list' do
+    it 'denies access to other users list' do
       other_list = create(:list, user: create(:user))
 
       get "/api/v1/lists/#{other_list.id}/tasks", headers: auth_headers
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -84,7 +84,7 @@ RSpec.describe Api::V1::TasksController, type: :request do
     it 'validates required fields' do
       post "/api/v1/lists/#{list.id}/tasks", params: { task: { note: "No title" } }, headers: auth_headers
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
   end
 

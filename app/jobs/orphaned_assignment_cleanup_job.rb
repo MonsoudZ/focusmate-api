@@ -8,32 +8,26 @@ class OrphanedAssignmentCleanupJob < ApplicationJob
   # between task assignment validation and save.
   def perform
     orphaned_count = 0
+    timestamp = Time.current
 
-    # Find all tasks with assignments
-    Task.where.not(assigned_to_id: nil).where(deleted_at: nil).find_each do |task|
-      next if user_has_access?(task)
-
-      task.update_column(:assigned_to_id, nil)
-      orphaned_count += 1
-
-      Rails.logger.info(
-        "OrphanedAssignmentCleanupJob: Unassigned task #{task.id} " \
-        "(user #{task.assigned_to_id} no longer has access to list #{task.list_id})"
-      )
+    orphaned_tasks.in_batches(of: 1000) do |batch|
+      orphaned_count += batch.update_all(assigned_to_id: nil, updated_at: timestamp)
     end
+
+    Rails.logger.info(event: "orphaned_assignment_cleanup_completed", cleaned_up: orphaned_count)
 
     { cleaned_up: orphaned_count }
   end
 
   private
 
-  def user_has_access?(task)
-    return false unless task.assigned_to_id
-    return false unless task.list
-
-    assignee = User.find_by(id: task.assigned_to_id)
-    return false unless assignee
-
-    task.list.accessible_by?(assignee)
+  def orphaned_tasks
+    Task
+      .joins(:list)
+      .joins("LEFT JOIN memberships ON memberships.list_id = tasks.list_id AND memberships.user_id = tasks.assigned_to_id")
+      .where(tasks: { deleted_at: nil })
+      .where.not(assigned_to_id: nil)
+      .where("tasks.assigned_to_id <> lists.user_id")
+      .where("memberships.id IS NULL")
   end
 end

@@ -46,9 +46,59 @@ RSpec.describe TaskPolicy, type: :policy do
       expect(policy.show?).to be false
     end
 
-    it "allows owner" do
+    it "allows creator" do
       policy = described_class.new(owner, task)
       expect(policy.show?).to be true
+    end
+
+    context "when task creator is a list member (not owner)" do
+      let(:member) { create(:user) }
+      let(:member_task) { create(:task, list: list, creator: member, visibility: :private_task) }
+
+      before do
+        create(:membership, list: list, user: member, role: "editor")
+      end
+
+      it "allows creator to view" do
+        policy = described_class.new(member, member_task)
+        expect(policy.show?).to be true
+      end
+
+      it "blocks list owner from viewing" do
+        policy = described_class.new(owner, member_task)
+        expect(policy.show?).to be false
+      end
+    end
+  end
+
+  describe "Scope" do
+    let(:member) { create(:user) }
+    let!(:visible_task) { create(:task, list: list, creator: owner, visibility: :visible_to_all) }
+    let!(:hidden_owner_task) { create(:task, list: list, creator: owner, visibility: :private_task) }
+    let!(:hidden_member_task) { create(:task, list: list, creator: member, visibility: :private_task) }
+
+    before do
+      create(:membership, list: list, user: member, role: "editor")
+    end
+
+    it "includes visible tasks for all members" do
+      scope = described_class::Scope.new(member, Task).resolve
+      expect(scope).to include(visible_task)
+    end
+
+    it "excludes hidden tasks created by others" do
+      scope = described_class::Scope.new(member, Task).resolve
+      expect(scope).not_to include(hidden_owner_task)
+    end
+
+    it "includes hidden tasks created by self" do
+      scope = described_class::Scope.new(member, Task).resolve
+      expect(scope).to include(hidden_member_task)
+    end
+
+    it "includes own hidden tasks for creator" do
+      scope = described_class::Scope.new(owner, Task).resolve
+      expect(scope).to include(hidden_owner_task)
     end
   end
 

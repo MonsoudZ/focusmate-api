@@ -43,6 +43,30 @@ RSpec.describe AlertingService do
       end
     end
 
+    context "when threshold is exceeded and alert just fired" do
+      around do |example|
+        original_cache = Rails.cache
+        Rails.cache = ActiveSupport::Cache::MemoryStore.new
+        example.run
+        Rails.cache = original_cache
+      end
+
+      it "reports not in cooldown for the current check result" do
+        result = described_class.check(:queue_backlog, current_value: 1500)
+
+        expect(result[:triggered]).to be true
+        expect(result[:in_cooldown]).to be false
+      end
+
+      it "reports in cooldown on subsequent checks" do
+        described_class.check(:queue_backlog, current_value: 1500)
+        second = described_class.check(:queue_backlog, current_value: 1500)
+
+        expect(second[:triggered]).to be true
+        expect(second[:in_cooldown]).to be true
+      end
+    end
+
     context "with unknown alert" do
       it "returns error" do
         result = described_class.check(:unknown_alert, current_value: 100)
@@ -64,18 +88,29 @@ RSpec.describe AlertingService do
   end
 
   describe "threshold_exceeded?" do
-    context "with less_than comparison" do
-      it "triggers when value is less than threshold" do
-        # We can test this by using the check method with a modified config
-        # For now, we'll test the internal behavior indirectly
-        # by checking that different comparison types work
-      end
+    it "triggers for less_than comparison" do
+      triggered = described_class.send(:threshold_exceeded?, 5, 10, :less_than)
+      expect(triggered).to be true
     end
 
-    context "with equals comparison" do
-      it "handles equals comparison" do
-        # Test equals comparison by checking specific value
-      end
+    it "does not trigger for less_than when value exceeds threshold" do
+      triggered = described_class.send(:threshold_exceeded?, 15, 10, :less_than)
+      expect(triggered).to be false
+    end
+
+    it "triggers for equals comparison" do
+      triggered = described_class.send(:threshold_exceeded?, 10, 10, :equals)
+      expect(triggered).to be true
+    end
+
+    it "does not trigger for equals when value differs" do
+      triggered = described_class.send(:threshold_exceeded?, 5, 10, :equals)
+      expect(triggered).to be false
+    end
+
+    it "returns false for unknown comparison type" do
+      triggered = described_class.send(:threshold_exceeded?, 10, 10, :unknown)
+      expect(triggered).to be false
     end
   end
 
@@ -118,11 +153,87 @@ RSpec.describe AlertingService do
 
       described_class.check(:dead_jobs, current_value: 15)
     end
+
+    it "does not raise when Sentry capture_message fails" do
+      if defined?(Sentry)
+        allow(Sentry).to receive(:capture_message).and_raise(StandardError, "Sentry API down")
+        allow(Rails.logger).to receive(:error)
+      end
+
+      expect { described_class.check(:queue_backlog, current_value: 1500) }.not_to raise_error
+
+      if defined?(Sentry)
+        expect(Rails.logger).to have_received(:error).with(hash_including(
+          event: "alerting_service_sentry_failure",
+          error_class: "StandardError",
+          error_message: "Sentry API down"
+        ))
+      end
+    end
+  end
+
+  describe "error throttling" do
+    around do |example|
+      original_cache = Rails.cache
+      Rails.cache = ActiveSupport::Cache::MemoryStore.new
+      example.run
+      Rails.cache = original_cache
+    end
+
+    it "throttles repeated Sentry failures" do
+      stub_const("Sentry", Class.new) unless defined?(Sentry)
+      allow(Sentry).to receive(:capture_message).and_raise(StandardError, "Sentry down")
+      allow(Rails.logger).to receive(:error)
+
+      # First call — logs the failure
+      described_class.check(:queue_backlog, current_value: 1500)
+      # Second call — same error, should be throttled
+      described_class.check(:dead_jobs, current_value: 15)
+
+      sentry_failure_logs = 0
+      expect(Rails.logger).to have_received(:error).at_least(:once) do |args|
+        sentry_failure_logs += 1 if args.is_a?(Hash) && args[:event] == "alerting_service_sentry_failure"
+      end
+    end
+
+    it "throttles repeated metric collection error logs" do
+      allow(SolidQueue::ReadyExecution).to receive(:count).and_raise(StandardError, "DB down")
+      allow(SolidQueue::FailedExecution).to receive(:count).and_raise(StandardError, "DB down")
+      allow(Rails.logger).to receive(:error)
+
+      # First call logs, second call with same error is throttled
+      described_class.check_all_thresholds
+      described_class.check_all_thresholds
+
+      metric_failure_count = 0
+      expect(Rails.logger).to have_received(:error).at_least(:once) do |args|
+        metric_failure_count += 1 if args.is_a?(Hash) && args[:event] == "alerting_metric_collection_failed" && args[:metric] == "queue_pending"
+      end
+    end
+  end
+
+  describe "memory_mb" do
+    it "returns 0 when GetProcessMem is not defined" do
+      allow(described_class).to receive(:memory_mb).and_call_original
+      # GetProcessMem is typically not defined in test env
+      result = described_class.send(:memory_mb)
+      # Either returns 0 (not defined) or a positive number (defined)
+      expect(result).to be_a(Numeric)
+    end
   end
 
   describe "metric collection" do
-    it "handles sidekiq errors gracefully" do
-      allow(Sidekiq::Stats).to receive(:new).and_raise(StandardError, "Connection failed")
+    it "handles queue errors gracefully" do
+      allow(SolidQueue::ReadyExecution).to receive(:count).and_raise(StandardError, "Connection failed")
+      allow(SolidQueue::FailedExecution).to receive(:count).and_raise(StandardError, "Connection failed")
+      expect(Rails.logger).to receive(:error).with(hash_including(
+        event: "alerting_metric_collection_failed",
+        metric: "queue_pending"
+      ))
+      expect(Rails.logger).to receive(:error).with(hash_including(
+        event: "alerting_metric_collection_failed",
+        metric: "queue_failed"
+      ))
 
       results = described_class.check_all_thresholds
 

@@ -35,7 +35,7 @@ RSpec.describe "List Sharing & Collaboration Flow E2E", type: :request do
       # ==========================================
       auth_get "/api/v1/lists/#{list_id}", user: collaborator
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:not_found)
 
       # ==========================================
       # Step 4: Owner creates an invite for editor role
@@ -179,7 +179,7 @@ RSpec.describe "List Sharing & Collaboration Flow E2E", type: :request do
       # ==========================================
       auth_get "/api/v1/lists/#{list_id}", user: collaborator
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:not_found)
 
       # ==========================================
       # Step 20: Friendship remains (removal doesn't unfriend)
@@ -283,7 +283,7 @@ RSpec.describe "List Sharing & Collaboration Flow E2E", type: :request do
       invite_code = json_response["invite"]["code"]
 
       auth_post "/api/v1/invites/#{invite_code}/accept", user: owner, params: {}
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(json_response["error"]["message"]).to include("owner")
     end
   end
@@ -307,7 +307,7 @@ RSpec.describe "List Sharing & Collaboration Flow E2E", type: :request do
 
       # Removed member can no longer access
       auth_get "/api/v1/lists/#{list.id}", user: collaborator
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:not_found)
     end
   end
 end

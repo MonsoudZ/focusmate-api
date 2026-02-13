@@ -9,7 +9,7 @@ Rails.application.configure do
     {
       request_id: controller.request.request_id,
       user_id: controller.try(:current_user)&.id,
-      params: controller.request.filtered_parameters.except("controller", "action"),
+      params: controller.request.filtered_parameters.except("controller", "action", "title", "note", "name", "description"),
       ip: controller.request.remote_ip,
       user_agent: controller.request.user_agent
     }

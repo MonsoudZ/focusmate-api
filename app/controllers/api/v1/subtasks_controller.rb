@@ -6,8 +6,6 @@ module Api
       before_action :set_parent_task
       before_action :set_subtask, only: [ :show, :update, :destroy, :complete, :reopen ]
 
-      after_action :verify_authorized
-
       # GET /api/v1/lists/:list_id/tasks/:task_id/subtasks
       def index
         authorize @parent_task, :show?
@@ -69,7 +67,7 @@ module Api
       private
 
       def set_parent_task
-        @parent_task = policy_scope(Task).find(params[:task_id])
+        @parent_task = policy_scope(Task).where(list_id: params[:list_id]).find(params[:task_id])
       end
 
       def set_subtask
@@ -77,7 +75,7 @@ module Api
       end
 
       def subtask_params
-        params.require(:subtask).permit(:title, :note, :status, :position)
+        params.require(:subtask).permit(:title, :note, :position)
       end
     end
   end

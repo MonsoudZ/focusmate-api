@@ -9,7 +9,7 @@ module Health
       return File.read(file).strip if File.exist?(file)
 
       "unknown"
-    rescue
+    rescue StandardError
       "unknown"
     end
 
@@ -18,7 +18,7 @@ module Health
       return nil unless boot
 
       (Time.current - boot).to_i
-    rescue
+    rescue StandardError
       nil
     end
 
@@ -27,7 +27,7 @@ module Health
 
       mem = GetProcessMem.new
       { rss_mb: mem.mb.round(2) }
-    rescue
+    rescue StandardError
       nil
     end
   end

@@ -17,7 +17,7 @@ class TaskSerializer
       color: task.color,
       title: task.title,
       note: task.note,
-      due_at: task.due_at&.iso8601,
+      due_at: task.due_at,
       completed_at: completed_at_value,
       priority: Task.priorities[task.priority],
       starred: task.starred,
@@ -29,7 +29,7 @@ class TaskSerializer
       minutes_overdue: minutes_overdue,
       requires_explanation_if_missed: task.requires_explanation_if_missed || false,
       missed_reason: task.missed_reason,
-      missed_reason_submitted_at: task.missed_reason_submitted_at&.iso8601,
+      missed_reason_submitted_at: task.missed_reason_submitted_at,
 
       # Recurring
       is_recurring: task.is_recurring || false,
@@ -37,7 +37,7 @@ class TaskSerializer
       recurrence_interval: task.recurrence_interval || 1,
       recurrence_days: task.recurrence_days,
       template_id: task.template_id,
-      instance_date: task.instance_date&.iso8601,
+      instance_date: task.instance_date,
       instance_number: task.instance_number,
 
       # Location
@@ -52,6 +52,9 @@ class TaskSerializer
       # Creator
       creator: creator_data,
 
+      # Visibility
+      hidden: task.private_task?,
+
       # Permissions
       can_edit: can_edit?,
       can_delete: can_delete?,
@@ -64,13 +67,18 @@ class TaskSerializer
       subtask_completion_percentage: subtask_percentage,
 
       # Timestamps
-      created_at: task.created_at.iso8601,
-      updated_at: task.updated_at.iso8601
+      created_at: task.created_at,
+      updated_at: task.updated_at
     }
 
     # Include subtasks array if this is a parent task (not a subtask itself)
     if task.parent_task_id.nil? && options[:include_subtasks] != false
       result[:subtasks] = serialize_subtasks
+    end
+
+    # Include reschedule_events only when requested (to avoid N+1 in list views)
+    if options[:include_reschedule_events] != false
+      result[:reschedule_events] = serialize_reschedule_events
     end
 
     result
@@ -102,11 +110,11 @@ class TaskSerializer
   end
 
   def can_edit?
-    @can_edit ||= Permissions::TaskPermissions.can_edit?(task, current_user)
+    @can_edit ||= use_fast_permission_path? ? fast_can_edit? : Permissions::TaskPermissions.can_edit?(task, current_user)
   end
 
   def can_delete?
-    @can_delete ||= Permissions::TaskPermissions.can_delete?(task, current_user)
+    @can_delete ||= use_fast_permission_path? ? can_edit? : Permissions::TaskPermissions.can_delete?(task, current_user)
   end
 
   # Use memoized subtasks collection to avoid N+1 queries
@@ -142,22 +150,60 @@ class TaskSerializer
         title: subtask.title,
         note: subtask.note,
         status: subtask.status,
-        completed_at: subtask.status == "done" ? (subtask.completed_at&.iso8601 || subtask.updated_at.iso8601) : nil,
+        completed_at: subtask.status == "done" ? iso8601_or_nil(subtask.completed_at || subtask.updated_at) : nil,
         position: subtask.position,
-        created_at: subtask.created_at.iso8601
+        created_at: subtask.created_at
       }
     end
   end
 
   def completed_at_value
     if task.status == "done"
-      task.completed_at&.iso8601 || task.updated_at.iso8601
+      iso8601_or_nil(task.completed_at || task.updated_at)
     end
+  end
+
+  def iso8601_or_nil(value)
+    value&.iso8601
   end
 
   # Use loaded tags if available
   def serialize_tags
     tags = task.tags.loaded? ? task.tags.to_a : task.tags
     tags.map { |t| { id: t.id, name: t.name, color: t.color } }
+  end
+
+  def serialize_reschedule_events
+    events = if task.reschedule_events.loaded?
+               task.reschedule_events.sort_by(&:created_at).reverse
+    else
+               task.reschedule_events.includes(:user).recent_first.to_a
+    end
+
+    events.map do |event|
+      {
+        id: event.id,
+        task_id: event.task_id,
+        previous_due_at: event.previous_due_at,
+        new_due_at: event.new_due_at,
+        reason: event.reason,
+        rescheduled_by: event.user ? { id: event.user.id, name: event.user.name } : nil,
+        created_at: event.created_at
+      }
+    end
+  end
+
+  def use_fast_permission_path?
+    options[:editable_list_ids].present?
+  end
+
+  def fast_can_edit?
+    return false if current_user.nil? || task.nil?
+    return false if task.deleted? || task.list.nil?
+    return false if task.private_task? && task.creator_id != current_user.id
+
+    task.list.user_id == current_user.id ||
+      task.creator_id == current_user.id ||
+      options[:editable_list_ids].include?(task.list_id)
   end
 end

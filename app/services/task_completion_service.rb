@@ -11,10 +11,6 @@ class TaskCompletionService < ApplicationService
     new(task:, user:).uncomplete!
   end
 
-  def self.toggle!(task:, user:, completed:, missed_reason: nil)
-    new(task:, user:, missed_reason:).toggle_completion!(completed:)
-  end
-
   def initialize(task:, user:, missed_reason: nil)
     @task = task
     @user = user
@@ -29,6 +25,12 @@ class TaskCompletionService < ApplicationService
     @minutes_overdue = calculate_minutes_overdue
 
     ActiveRecord::Base.transaction do
+      # Lock task to prevent concurrent completion/modification
+      @task.lock!
+
+      # Skip if already completed (race condition)
+      return @task if @task.done?
+
       if @missed_reason.present?
         @task.missed_reason = @missed_reason
         @task.missed_reason_submitted_at = Time.current
@@ -53,14 +55,6 @@ class TaskCompletionService < ApplicationService
     end
 
     @task
-  end
-
-  def toggle_completion!(completed:)
-    if completed == false || completed == "false"
-      uncomplete!
-    else
-      complete!
-    end
   end
 
   private
@@ -92,10 +86,7 @@ class TaskCompletionService < ApplicationService
   end
 
   def can_access_task?
-    return true if @task.list.user_id == @user.id
-    return true if @task.creator_id == @user.id
-    return true if @task.list.memberships.exists?(user_id: @user.id)
-    false
+    Permissions::TaskPermissions.can_edit?(@task, @user)
   end
 
   def track_completion_analytics

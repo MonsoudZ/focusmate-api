@@ -10,52 +10,64 @@ RSpec.describe "Api::V1::Memberships", type: :request do
 
   describe "GET /api/v1/lists/:list_id/memberships" do
     context "as list owner" do
-      it "returns all memberships" do
+      it "returns owner and all memberships" do
         create(:membership, list: list, user: member, role: "editor")
         create(:membership, list: list, user: other_user, role: "viewer")
 
         auth_get "/api/v1/lists/#{list.id}/memberships", user: owner
 
         expect(response).to have_http_status(:ok)
+        expect(json_response["owner"]).to be_present
         expect(json_response["memberships"].length).to eq(2)
       end
 
-      it "returns empty array when no members" do
+      it "returns owner with empty memberships when no other members" do
         auth_get "/api/v1/lists/#{list.id}/memberships", user: owner
 
         expect(response).to have_http_status(:ok)
+        expect(json_response["owner"]["id"]).to eq(owner.id)
         expect(json_response["memberships"]).to eq([])
       end
 
-      it "includes member details" do
+      it "includes owner details separately" do
+        auth_get "/api/v1/lists/#{list.id}/memberships", user: owner
+
+        expect(json_response["owner"]["id"]).to eq(owner.id)
+        expect(json_response["owner"]["name"]).to eq("Owner")
+        expect(json_response["owner"]["email"]).to eq(owner.email)
+      end
+
+      it "includes member details in memberships array" do
         create(:membership, list: list, user: member, role: "editor")
 
         auth_get "/api/v1/lists/#{list.id}/memberships", user: owner
 
-        membership = json_response["memberships"][0]
-        expect(membership["id"]).to be_present
-        expect(membership["role"]).to eq("editor")
-        expect(membership["user"]["id"]).to eq(member.id)
-        expect(membership["user"]["name"]).to eq("Member")
+        member_entry = json_response["memberships"][0]
+        expect(member_entry["id"]).to be_present
+        expect(member_entry["role"]).to eq("editor")
+        expect(member_entry["user"]["id"]).to eq(member.id)
+        expect(member_entry["user"]["name"]).to eq("Member")
       end
     end
 
     context "as list member" do
       let!(:membership) { create(:membership, list: list, user: member, role: "editor") }
 
-      it "can view memberships" do
+      it "can view owner and memberships" do
         auth_get "/api/v1/lists/#{list.id}/memberships", user: member
 
         expect(response).to have_http_status(:ok)
+        expect(json_response["owner"]["id"]).to eq(owner.id)
         expect(json_response["memberships"].length).to eq(1)
+        expect(json_response["memberships"][0]["role"]).to eq("editor")
       end
     end
 
     context "as non-member" do
-      it "returns 403 forbidden" do
+      it "returns 404 (no info leakage)" do
         auth_get "/api/v1/lists/#{list.id}/memberships", user: other_user
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
 
@@ -66,6 +78,14 @@ RSpec.describe "Api::V1::Memberships", type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      auth_get "/api/v1/lists/#{list.id}/memberships", user: owner
+
+      expect(response).to have_http_status(:not_found)
+    end
   end
 
   describe "POST /api/v1/lists/:list_id/memberships" do
@@ -73,7 +93,9 @@ RSpec.describe "Api::V1::Memberships", type: :request do
 
     context "as list owner" do
       context "adding by user_identifier (email)" do
-        it "adds a member with editor role" do
+        before { Friendship.create_mutual!(owner, new_member) }
+
+        it "adds a friend with editor role" do
           expect {
             auth_post "/api/v1/lists/#{list.id}/memberships",
                       user: owner,
@@ -85,13 +107,23 @@ RSpec.describe "Api::V1::Memberships", type: :request do
           expect(json_response["membership"]["role"]).to eq("editor")
         end
 
-        it "adds a member with viewer role" do
+        it "adds a friend with viewer role" do
           auth_post "/api/v1/lists/#{list.id}/memberships",
                     user: owner,
                     params: { membership: { user_identifier: new_member.email, role: "viewer" } }
 
           expect(response).to have_http_status(:created)
           expect(json_response["membership"]["role"]).to eq("viewer")
+        end
+
+        it "cannot add non-friend by user_identifier" do
+          non_friend = create(:user)
+
+          auth_post "/api/v1/lists/#{list.id}/memberships",
+                    user: owner,
+                    params: { membership: { user_identifier: non_friend.email, role: "editor" } }
+
+          expect(response).to have_http_status(:forbidden)
         end
       end
 
@@ -123,6 +155,8 @@ RSpec.describe "Api::V1::Memberships", type: :request do
       end
 
       it "returns 400 for invalid role" do
+        Friendship.create_mutual!(owner, new_member)
+
         auth_post "/api/v1/lists/#{list.id}/memberships",
                   user: owner,
                   params: { membership: { user_identifier: new_member.email, role: "admin" } }
@@ -131,6 +165,7 @@ RSpec.describe "Api::V1::Memberships", type: :request do
       end
 
       it "returns 409 when user is already a member" do
+        Friendship.create_mutual!(owner, new_member)
         create(:membership, list: list, user: new_member)
 
         auth_post "/api/v1/lists/#{list.id}/memberships",
@@ -145,7 +180,8 @@ RSpec.describe "Api::V1::Memberships", type: :request do
                   user: owner,
                   params: { membership: { user_identifier: owner.email, role: "editor" } }
 
-        expect(response).to have_http_status(:conflict)
+        # Owner can't befriend themselves, so this hits the friendship check first
+        expect(response).to have_http_status(:forbidden)
       end
 
       it "returns 404 for non-existent user" do
@@ -163,12 +199,41 @@ RSpec.describe "Api::V1::Memberships", type: :request do
 
         expect(response).to have_http_status(:bad_request)
       end
+
+      it "returns 400 when membership payload is not an object" do
+        auth_post "/api/v1/lists/#{list.id}/memberships",
+                  user: owner,
+                  params: { membership: "invalid" }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("membership must be an object")
+      end
+
+      it "returns 400 for non-scalar user_identifier values" do
+        auth_post "/api/v1/lists/#{list.id}/memberships",
+                  user: owner,
+                  params: { membership: { user_identifier: { bad: "input" }, role: "viewer" } }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("user_identifier or friend_id is required")
+      end
+
+      it "returns 400 for non-integer friend_id values" do
+        auth_post "/api/v1/lists/#{list.id}/memberships",
+                  user: owner,
+                  params: { membership: { friend_id: "abc", role: "viewer" } }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("friend_id must be a positive integer")
+      end
     end
 
     context "as list member (non-owner)" do
       let!(:membership) { create(:membership, list: list, user: member, role: "editor") }
 
-      it "returns 403 forbidden" do
+      it "returns 403 forbidden (only owner can manage)" do
+        Friendship.create_mutual!(member, new_member)
+
         auth_post "/api/v1/lists/#{list.id}/memberships",
                   user: member,
                   params: { membership: { user_identifier: new_member.email, role: "editor" } }
@@ -178,13 +243,26 @@ RSpec.describe "Api::V1::Memberships", type: :request do
     end
 
     context "as non-member" do
-      it "returns 403 forbidden" do
+      it "returns 404 (no info leakage)" do
+        Friendship.create_mutual!(other_user, new_member)
+
         auth_post "/api/v1/lists/#{list.id}/memberships",
                   user: other_user,
                   params: { membership: { user_identifier: new_member.email, role: "editor" } }
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
+    end
+
+    it "returns 404 for a deleted list" do
+      Friendship.create_mutual!(owner, new_member)
+      list.soft_delete!
+
+      auth_post "/api/v1/lists/#{list.id}/memberships",
+                user: owner,
+                params: { membership: { user_identifier: new_member.email, role: "editor" } }
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -219,6 +297,15 @@ RSpec.describe "Api::V1::Memberships", type: :request do
                    params: { membership: { role: "owner" } }
 
         expect(response).to have_http_status(:bad_request)
+      end
+
+      it "returns 400 when membership payload is not an object" do
+        auth_patch "/api/v1/lists/#{list.id}/memberships/#{membership.id}",
+                   user: owner,
+                   params: { membership: "invalid" }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response["error"]["message"]).to eq("membership must be an object")
       end
 
       it "returns 404 for membership in different list" do
@@ -258,13 +345,23 @@ RSpec.describe "Api::V1::Memberships", type: :request do
     context "as non-member" do
       let(:outsider) { create(:user) }
 
-      it "returns 403 forbidden" do
+      it "returns 404 (no info leakage)" do
         auth_patch "/api/v1/lists/#{list.id}/memberships/#{membership.id}",
                    user: outsider,
                    params: { membership: { role: "editor" } }
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
+    end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      auth_patch "/api/v1/lists/#{list.id}/memberships/#{membership.id}",
+                 user: owner,
+                 params: { membership: { role: "editor" } }
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -284,11 +381,20 @@ RSpec.describe "Api::V1::Memberships", type: :request do
         auth_delete "/api/v1/lists/#{list.id}/memberships/#{membership.id}", user: owner
 
         auth_get "/api/v1/lists/#{list.id}", user: member
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
 
       it "returns 404 for non-existent membership" do
         auth_delete "/api/v1/lists/#{list.id}/memberships/999999", user: owner
+
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it "returns 404 for membership in different list" do
+        other_list = create(:list, user: owner)
+        other_membership = create(:membership, list: other_list, user: other_user)
+
+        auth_delete "/api/v1/lists/#{list.id}/memberships/#{other_membership.id}", user: owner
 
         expect(response).to have_http_status(:not_found)
       end
@@ -317,11 +423,19 @@ RSpec.describe "Api::V1::Memberships", type: :request do
     context "as non-member" do
       let(:outsider) { create(:user) }
 
-      it "returns 403 forbidden" do
+      it "returns 404 (no info leakage)" do
         auth_delete "/api/v1/lists/#{list.id}/memberships/#{membership.id}", user: outsider
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
+    end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      auth_delete "/api/v1/lists/#{list.id}/memberships/#{membership.id}", user: owner
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 

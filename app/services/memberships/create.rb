@@ -11,12 +11,13 @@ module Memberships
     def initialize(list:, inviter:, user_identifier: nil, friend_id: nil, role:)
       @list = list
       @inviter = inviter
-      @user_identifier = user_identifier.to_s.strip.presence
-      @friend_id = friend_id
+      @user_identifier = normalize_user_identifier(user_identifier)
+      @friend_id = normalize_friend_id(friend_id)
       @role = role.to_s.downcase.strip.presence || "viewer"
     end
 
     def call!
+      validate_authorization!
       validate_inputs!
       target_user = find_target_user!
       validate_membership!(target_user)
@@ -24,6 +25,12 @@ module Memberships
     end
 
     private
+
+    def validate_authorization!
+      unless Permissions::ListPermissions.new(@list, @inviter).can_manage_memberships?
+        raise ApplicationError::Forbidden.new("You do not have permission to manage memberships", code: "membership_forbidden")
+      end
+    end
 
     def validate_inputs!
       raise ApplicationError::BadRequest, "user_identifier or friend_id is required" if @user_identifier.blank? && @friend_id.blank?
@@ -48,6 +55,7 @@ module Memberships
     def find_by_identifier!
       user = UserFinder.find_by_identifier(@user_identifier)
       raise ApplicationError::NotFound, "User not found" unless user
+      raise ApplicationError::Forbidden, "You can only add friends to lists" unless Friendship.friends?(@inviter, user)
       user
     end
 
@@ -58,6 +66,29 @@ module Memberships
 
     def create_membership!(target_user)
       @list.memberships.create!(user: target_user, role: @role)
+    rescue ActiveRecord::RecordNotUnique
+      raise ApplicationError::Conflict, "User is already a member of this list"
+    rescue ActiveRecord::RecordInvalid => e
+      if e.record.errors.added?(:user_id, :taken)
+        raise ApplicationError::Conflict, "User is already a member of this list"
+      end
+      raise
+    end
+
+    def normalize_user_identifier(value)
+      return nil if value.nil?
+      return value.strip.presence if value.is_a?(String)
+
+      raise ApplicationError::BadRequest, "user_identifier must be a string"
+    end
+
+    def normalize_friend_id(value)
+      return nil if value.nil? || (value.respond_to?(:blank?) && value.blank?)
+
+      parsed = Integer(value, exception: false)
+      return parsed if parsed && parsed.positive?
+
+      raise ApplicationError::BadRequest, "friend_id must be a positive integer"
     end
   end
 end

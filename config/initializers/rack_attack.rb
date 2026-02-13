@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
 class Rack::Attack
-  # Configure cache store
-  Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
-    url: ENV.fetch("REDIS_URL", "redis://localhost:6379/1")
-  )
+  # Configure cache store — use in-process memory store (no Redis dependency)
+  Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
 
   # ---------------------------------------------------------------------------
   # Helpers
@@ -13,12 +11,12 @@ class Rack::Attack
   # Extract authenticated user ID from the JWT in the Authorization header.
   # Returns nil for unauthenticated requests (they fall through to IP throttles).
   def self.authenticated_user_id(req)
-    token = req.get_header("HTTP_AUTHORIZATION").to_s.remove("Bearer ")
+    token = req.get_header("HTTP_AUTHORIZATION").to_s.delete_prefix("Bearer ")
     return nil if token.blank?
 
     payload = JWT.decode(
       token,
-      Rails.application.credentials.secret_key_base || Rails.application.secret_key_base,
+      Rails.application.secret_key_base,
       true,
       { algorithm: "HS256" }
     ).first
@@ -58,14 +56,26 @@ class Rack::Attack
     req.ip if req.post? && AUTH_PATHS.include?(req.path)
   end
 
-  # Password reset — 3 req/hour per IP
+  PASSWORD_RESET_PATH = "/api/v1/auth/password"
+
+  # Password reset — 3 req/hour per IP (covers reset email + token submit)
   Rack::Attack.throttle("password_reset/ip", limit: 3, period: 1.hour) do |req|
-    req.ip if req.path.start_with?("/users/password")
+    req.ip if PASSWORD_RESET_PATH == req.path && (req.post? || req.put? || req.patch?)
   end
 
   # Token refresh — 10 req/min per IP
   Rack::Attack.throttle("refresh/ip", limit: 10, period: 1.minute) do |req|
     req.ip if req.post? && req.path == "/api/v1/auth/refresh"
+  end
+
+  # Public invite preview — 20 req/min per IP (prevent invite code enumeration)
+  Rack::Attack.throttle("invite_preview/ip", limit: 20, period: 1.minute) do |req|
+    req.ip if req.get? && req.path.match?(%r{^/api/v1/invites/[A-Za-z0-9]+$})
+  end
+
+  # Invite accept — 20 req/min per IP to limit brute-force attempts on invite codes.
+  Rack::Attack.throttle("invite_accept/ip", limit: 20, period: 1.minute) do |req|
+    req.ip if req.post? && req.path.match?(%r{^/api/v1/invites/[A-Za-z0-9]+/accept$})
   end
 
   # ---------------------------------------------------------------------------
@@ -89,6 +99,15 @@ class Rack::Attack
   ) do |req|
     next unless req.path.start_with?("/api/")
     next if req.get? || req.head? || req.options?
+    authenticated_user_id(req)
+  end
+
+  # Analytics app_opened is low-priority telemetry; tighter cap prevents event spam.
+  Rack::Attack.throttle("analytics_app_opened/user",
+    limit: ENV.fetch("RATE_LIMIT_ANALYTICS_APP_OPENED_PER_USER", 30).to_i,
+    period: 1.minute
+  ) do |req|
+    next unless req.post? && req.path == "/api/v1/analytics/app_opened"
     authenticated_user_id(req)
   end
 

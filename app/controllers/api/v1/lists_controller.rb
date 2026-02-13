@@ -3,15 +3,14 @@
 module Api
   module V1
     class ListsController < BaseController
+      include EditableLists
       before_action :set_list, only: %i[show update destroy]
-      after_action :verify_authorized
       after_action :verify_policy_scoped, only: :index
 
       # GET /api/v1/lists
       def index
         lists = policy_scope(List)
                   .includes(:user, memberships: :user)
-                  .where(deleted_at: nil)
 
         if params[:since].present?
           since_time = safe_parse_time(params[:since])
@@ -20,8 +19,17 @@ module Api
 
         authorize List
 
+        lists = lists.order(updated_at: :desc).to_a
+        task_counts_by_list = Task.grouped_counts_by_list(lists.map(&:id))
+
         render json: {
-          lists: lists.order(updated_at: :desc).map { |l| ListSerializer.new(l, current_user: current_user).as_json },
+          lists: lists.map do |list|
+            ListSerializer.new(
+              list,
+              current_user: current_user,
+              task_counts_by_list: task_counts_by_list
+            ).as_json
+          end,
           tombstones: []
         }, status: :ok
       end
@@ -29,7 +37,14 @@ module Api
       # GET /api/v1/lists/:id
       def show
         authorize @list
-        render json: { list: ListSerializer.new(@list, current_user: current_user, include_tasks: true).as_json }, status: :ok
+        render json: {
+          list: ListSerializer.new(
+            @list,
+            current_user: current_user,
+            include_tasks: true,
+            editable_list_ids: editable_list_ids
+          ).as_json
+        }, status: :ok
       end
 
       # POST /api/v1/lists
@@ -58,7 +73,7 @@ module Api
       private
 
       def set_list
-        @list = List.find(params[:id])
+        @list = policy_scope(List).includes(:user, memberships: :user).find(params[:id])
       end
 
       def list_params

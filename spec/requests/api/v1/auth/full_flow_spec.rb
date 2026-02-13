@@ -140,7 +140,7 @@ RSpec.describe "Auth Full Flow E2E", type: :request do
   describe "token reuse attack detection" do
     let(:user) { create(:user) }
 
-    it "revokes entire token family when refresh token is reused" do
+    it "revokes entire token family when refresh token is reused after grace period" do
       # Login to get initial tokens
       post "/api/v1/auth/sign_in",
            params: { user: { email: user.email, password: "password123" } }.to_json,
@@ -156,7 +156,6 @@ RSpec.describe "Auth Full Flow E2E", type: :request do
 
       expect(response).to have_http_status(:ok)
       second_refresh_token = json_response["refresh_token"]
-      second_access_token = json_response["token"]
 
       # Second refresh with new token (legitimate)
       post "/api/v1/auth/refresh",
@@ -166,19 +165,21 @@ RSpec.describe "Auth Full Flow E2E", type: :request do
       expect(response).to have_http_status(:ok)
       third_refresh_token = json_response["refresh_token"]
 
-      # Attacker tries to use the stolen original refresh token
-      post "/api/v1/auth/refresh",
-           params: { refresh_token: original_refresh_token }.to_json,
-           headers: json_headers
+      # Attacker tries to use the stolen original refresh token (after grace period)
+      travel 15.seconds do
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: original_refresh_token }.to_json,
+             headers: json_headers
 
-      expect(response).to have_http_status(:unauthorized)
+        expect(response).to have_http_status(:unauthorized)
 
-      # The entire family should be revoked - third token should now be invalid
-      post "/api/v1/auth/refresh",
-           params: { refresh_token: third_refresh_token }.to_json,
-           headers: json_headers
+        # The entire family should be revoked - third token should now be invalid
+        post "/api/v1/auth/refresh",
+             params: { refresh_token: third_refresh_token }.to_json,
+             headers: json_headers
 
-      expect(response).to have_http_status(:unauthorized)
+        expect(response).to have_http_status(:unauthorized)
+      end
     end
   end
 

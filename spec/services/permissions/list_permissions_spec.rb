@@ -220,6 +220,40 @@ RSpec.describe Permissions::ListPermissions do
     end
   end
 
+  describe "nil guards on individual methods" do
+    it "owner? returns false when user is nil" do
+      expect(described_class.new(list, nil).owner?).to be false
+    end
+
+    it "owner? returns false when list is nil" do
+      expect(described_class.new(nil, owner).owner?).to be false
+    end
+
+    it "editor? returns false when user is nil" do
+      expect(described_class.new(list, nil).editor?).to be false
+    end
+
+    it "editor? returns false when list is nil" do
+      expect(described_class.new(nil, editor_user).editor?).to be false
+    end
+
+    it "viewer? returns false when user is nil" do
+      expect(described_class.new(list, nil).viewer?).to be false
+    end
+
+    it "viewer? returns false when list is nil" do
+      expect(described_class.new(nil, viewer_user).viewer?).to be false
+    end
+
+    it "member? returns false when user is nil" do
+      expect(described_class.new(list, nil).member?).to be false
+    end
+
+    it "member? returns false when list is nil" do
+      expect(described_class.new(nil, editor_user).member?).to be false
+    end
+  end
+
   describe "#viewer?" do
     it "returns true for viewer member" do
       expect(described_class.new(list, viewer_user).viewer?).to be true
@@ -231,6 +265,10 @@ RSpec.describe Permissions::ListPermissions do
 
     it "returns false for editor" do
       expect(described_class.new(list, editor_user).viewer?).to be false
+    end
+
+    it "returns false for non-member" do
+      expect(described_class.new(list, other_user).viewer?).to be false
     end
   end
 end

@@ -6,8 +6,6 @@ module Api
       before_action :set_list
       before_action :set_invite, only: %i[show destroy]
 
-      after_action :verify_authorized
-
       # GET /api/v1/lists/:list_id/invites
       def index
         authorize @list, :manage_memberships?
@@ -15,7 +13,7 @@ module Api
         invites = @list.invites.order(created_at: :desc)
 
         render json: {
-          invites: invites.map { |i| ListInviteSerializer.new(i).as_json }
+          invites: invites.map { |invite| ListInviteSerializer.new(invite).as_json }
         }, status: :ok
       end
 
@@ -55,7 +53,7 @@ module Api
       private
 
       def set_list
-        @list = List.find(params[:list_id])
+        @list = policy_scope(List).merge(List.not_deleted).find(params[:list_id])
       end
 
       def set_invite
@@ -63,7 +61,12 @@ module Api
       end
 
       def invite_params
-        params.fetch(:invite, {}).permit(:role, :expires_at, :max_uses)
+        raw = params[:invite]
+        return {} if raw.blank?
+
+        raise ApplicationError::BadRequest, "invite must be an object" unless raw.is_a?(ActionController::Parameters)
+
+        raw.permit(:role, :expires_at, :max_uses)
       end
     end
   end

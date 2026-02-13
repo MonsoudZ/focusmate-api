@@ -16,8 +16,8 @@ class SubtaskSerializer
       status: subtask.status,
       completed_at: completed_at_value,
       position: subtask.position,
-      created_at: subtask.created_at.iso8601,
-      updated_at: subtask.updated_at.iso8601
+      created_at: subtask.created_at,
+      updated_at: subtask.updated_at
     }
   end
 
@@ -25,7 +25,7 @@ class SubtaskSerializer
 
   def completed_at_value
     if subtask.status == "done"
-      subtask.completed_at&.iso8601 || subtask.updated_at.iso8601
+      subtask.completed_at || subtask.updated_at
     end
   end
 end

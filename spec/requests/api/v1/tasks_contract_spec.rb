@@ -120,7 +120,7 @@ RSpec.describe 'Tasks API Contract', type: :request, skip_committee_validation: 
       it 'returns validation error' do
         post "/api/v1/lists/#{list.id}/tasks", params: { task: { title: '' } }, headers: auth_headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to include('application/json')
 
         json = JSON.parse(response.body)

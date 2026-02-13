@@ -44,6 +44,121 @@ RSpec.describe "Api::V1::Friends", type: :request do
 
       expect(response).to have_http_status(:unauthorized)
     end
+
+    describe "with exclude_list_id parameter" do
+      let(:list) { create(:list, user: user) }
+      let(:friend_on_list) { create(:user, name: "On List") }
+      let(:friend_not_on_list) { create(:user, name: "Not On List") }
+
+      before do
+        Friendship.create_mutual!(user, friend_on_list)
+        Friendship.create_mutual!(user, friend_not_on_list)
+        create(:membership, list: list, user: friend_on_list, role: "editor")
+      end
+
+      it "excludes friends who are already members of the list" do
+        get "/api/v1/friends", headers: headers, params: { exclude_list_id: list.id }
+
+        expect(response).to have_http_status(:ok)
+        names = json_response["friends"].map { |f| f["name"] }
+        expect(names).to include("Not On List")
+        expect(names).not_to include("On List")
+      end
+
+      it "excludes the list owner from results when user is member" do
+        # Create another user who owns a list and is friends with user
+        other_owner = create(:user, name: "Other Owner")
+        other_list = create(:list, user: other_owner)
+        Friendship.create_mutual!(user, other_owner)
+        # User must be a member of the list for filtering to apply
+        create(:membership, list: other_list, user: user, role: "editor")
+
+        get "/api/v1/friends", headers: headers, params: { exclude_list_id: other_list.id }
+
+        expect(response).to have_http_status(:ok)
+        names = json_response["friends"].map { |f| f["name"] }
+        expect(names).not_to include("Other Owner")
+      end
+
+      it "returns all friends when exclude_list_id is not provided" do
+        get "/api/v1/friends", headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["friends"].length).to eq(2)
+      end
+
+      it "returns all friends when list does not exist" do
+        get "/api/v1/friends", headers: headers, params: { exclude_list_id: 999999 }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["friends"].length).to eq(2)
+      end
+
+      it "returns all friends when user has no access to the list" do
+        other_user = create(:user)
+        private_list = create(:list, user: other_user)
+
+        get "/api/v1/friends", headers: headers, params: { exclude_list_id: private_list.id }
+
+        expect(response).to have_http_status(:ok)
+        # Should not filter because user can't access the list
+        expect(json_response["friends"].length).to eq(2)
+      end
+
+      it "updates pagination total_count correctly" do
+        get "/api/v1/friends", headers: headers, params: { exclude_list_id: list.id }
+
+        expect(json_response["pagination"]["total_count"]).to eq(1)
+      end
+
+      it "ignores non-scalar exclude_list_id values" do
+        get "/api/v1/friends", headers: headers, params: { exclude_list_id: { bad: "input" } }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["friends"].length).to eq(2)
+      end
+    end
+
+    describe "pagination parameter normalization" do
+      before do
+        3.times do |i|
+          friend = create(:user, name: "Friend #{i}")
+          Friendship.create_mutual!(user, friend)
+        end
+      end
+
+      it "falls back to defaults when per_page is zero" do
+        get "/api/v1/friends", headers: headers, params: { per_page: 0 }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["pagination"]["per_page"]).to eq(50)
+      end
+
+      it "falls back to defaults when per_page is negative" do
+        get "/api/v1/friends", headers: headers, params: { per_page: -10 }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["pagination"]["per_page"]).to eq(50)
+      end
+
+      it "falls back to page 1 when page is non-positive" do
+        get "/api/v1/friends", headers: headers, params: { page: 0 }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["pagination"]["page"]).to eq(1)
+      end
+
+      it "falls back to defaults when page/per_page are non-scalar" do
+        get "/api/v1/friends", headers: headers, params: {
+          page: { bad: "input" },
+          per_page: [ "10" ]
+        }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["pagination"]["page"]).to eq(1)
+        expect(json_response["pagination"]["per_page"]).to eq(50)
+      end
+    end
   end
 
   describe "DELETE /api/v1/friends/:id" do

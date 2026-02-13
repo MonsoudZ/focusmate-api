@@ -1,0 +1,46 @@
+# Solid Queue Recurring Schedule
+# ===============================
+# Replaces sidekiq_schedule.yml — cron-style schedules for background jobs.
+
+# Maintenance Jobs
+jwt_cleanup:
+  class: JwtCleanupJob
+  queue: maintenance
+  schedule: "0 3 * * *"  # Daily at 3 AM UTC
+
+analytics_cleanup:
+  class: AnalyticsCleanupJob
+  queue: maintenance
+  schedule: "0 4 * * 0"  # Weekly on Sunday at 4 AM UTC
+
+stale_device_cleanup:
+  class: StaleDeviceCleanupJob
+  queue: maintenance
+  schedule: "0 5 * * 0"  # Weekly on Sunday at 5 AM UTC
+
+orphaned_assignment_cleanup:
+  class: OrphanedAssignmentCleanupJob
+  queue: maintenance
+  schedule: "0 6 * * 0"  # Weekly on Sunday at 6 AM UTC
+
+# Health & Monitoring
+database_health_check:
+  class: DatabaseHealthCheckJob
+  queue: critical
+  schedule: "0 * * * *"  # Every hour at :00
+
+alerting_check:
+  class: AlertingCheckJob
+  queue: critical
+  schedule: "*/5 * * * *"  # Every 5 minutes
+
+# Business Logic
+recurring_task_generation:
+  class: RecurringTaskGenerationJob
+  queue: default
+  schedule: "0 * * * *"  # Every hour at :00
+
+task_reminders:
+  class: TaskReminderJob
+  queue: default
+  schedule: "* * * * *"  # Every minute

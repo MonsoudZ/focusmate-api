@@ -14,9 +14,9 @@ RSpec.describe TodayTasksQuery do
   end
 
   describe "#overdue" do
-    let!(:overdue_task) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending) }
+    let!(:overdue_task) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending, skip_due_at_validation: true) }
     let!(:today_task) { create(:task, list: list, creator: user, due_at: Time.current, status: :pending) }
-    let!(:completed_overdue) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :done) }
+    let!(:completed_overdue) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :done, skip_due_at_validation: true) }
 
     it "includes tasks past due" do
       query = described_class.new(user)
@@ -37,7 +37,7 @@ RSpec.describe TodayTasksQuery do
   describe "#due_today" do
     let!(:today_morning) { create(:task, list: list, creator: user, due_at: Time.current.beginning_of_day + 1.hour, status: :pending) }
     let!(:today_evening) { create(:task, list: list, creator: user, due_at: Time.current.end_of_day - 1.hour, status: :pending) }
-    let!(:yesterday) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending) }
+    let!(:yesterday) { create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending, skip_due_at_validation: true) }
     let!(:tomorrow) { create(:task, list: list, creator: user, due_at: 1.day.from_now, status: :pending) }
     let!(:completed_today) { create(:task, list: list, creator: user, due_at: Time.current, status: :done) }
 
@@ -113,7 +113,7 @@ RSpec.describe TodayTasksQuery do
     before do
       create(:task, list: list, creator: user, due_at: Time.current, status: :done, completed_at: Time.current)
       create(:task, list: list, creator: user, due_at: Time.current, status: :pending)
-      create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending)
+      create(:task, list: list, creator: user, due_at: 1.day.ago, status: :pending, skip_due_at_validation: true)
     end
 
     it "returns correct statistics" do
@@ -144,9 +144,18 @@ RSpec.describe TodayTasksQuery do
     let(:other_list) { create(:list, user: other_user) }
     let!(:other_task) { create(:task, list: other_list, creator: other_user, due_at: Time.current) }
 
-    it "only returns tasks from user's lists" do
+    it "excludes tasks from lists user has no access to" do
       query = described_class.new(user)
       expect(query.due_today).not_to include(other_task)
+    end
+
+    it "includes tasks from shared lists where user is a member" do
+      shared_list = create(:list, user: other_user)
+      create(:membership, list: shared_list, user: user, role: "editor")
+      shared_task = create(:task, list: shared_list, creator: other_user, due_at: Time.current)
+
+      query = described_class.new(user)
+      expect(query.due_today).to include(shared_task)
     end
 
     it "excludes subtasks" do
@@ -171,6 +180,18 @@ RSpec.describe TodayTasksQuery do
 
       query = described_class.new(user)
       expect(query.due_today).not_to include(deleted_task)
+    end
+  end
+
+  describe "timezone safety" do
+    it "falls back to UTC when user timezone is invalid" do
+      user.update_column(:timezone, "Invalid/Zone")
+      task = create(:task, list: list, creator: user, due_at: Time.current, status: :pending)
+
+      query = described_class.new(user)
+
+      expect { query.due_today.to_a }.not_to raise_error
+      expect(query.due_today).to include(task)
     end
   end
 end

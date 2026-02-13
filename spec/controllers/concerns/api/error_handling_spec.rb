@@ -94,7 +94,7 @@ RSpec.describe Api::ErrorHandling, type: :controller do
     it "returns 422 with validation_error code and details" do
       get :record_invalid
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["code"]).to eq("validation_error")
       expect(json["error"]["details"]).to have_key("email")
@@ -187,7 +187,7 @@ RSpec.describe Api::ErrorHandling, type: :controller do
     it "handles UnprocessableEntity with custom code" do
       get :unprocessable_error
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["code"]).to eq("custom_unprocessable")
     end
@@ -205,7 +205,7 @@ RSpec.describe Api::ErrorHandling, type: :controller do
     it "returns 422 with details hash" do
       get :validation_error
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json["error"]["code"]).to eq("validation_error")
       expect(json["error"]["message"]).to eq("Validation failed")

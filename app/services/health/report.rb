@@ -2,7 +2,7 @@
 
 module Health
   class Report
-    READY_CHECK_KEYS = %w[database redis queue].freeze
+    READY_CHECK_KEYS = %w[database queue].freeze
 
     def self.live
       { ok: true }
@@ -23,7 +23,6 @@ module Health
       {
         health: healthy_results?(results) ? 1 : 0,
         database: healthy?(by_name["database"]) ? 1 : 0,
-        redis: healthy?(by_name["redis"]) ? 1 : 0,
         queue: healthy?(by_name["queue"]) ? 1 : 0,
         timestamp: Time.current.to_i
       }

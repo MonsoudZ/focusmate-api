@@ -254,6 +254,25 @@ RSpec.describe TaskCreationService, type: :service do
       expect(task.note).to be_nil
     end
 
+    it "safely handles ActionController::Parameters input with extra keys" do
+      tag = create(:tag, user: user)
+      ac_params = ActionController::Parameters.new(
+        title: "Params Task",
+        due_at: 1.hour.from_now.iso8601,
+        tag_ids: [ tag.id ],
+        subtasks: [ "AC Subtask" ],
+        unexpected_admin_flag: true
+      )
+
+      service = TaskCreationService.new(list: list, user: user, params: ac_params)
+      task = service.call!
+
+      expect(task.title).to eq("Params Task")
+      expect(task.tags).to contain_exactly(tag)
+      expect(task.subtasks.count).to eq(1)
+      expect(task.subtasks.first.title).to eq("AC Subtask")
+    end
+
     it "should handle very long subtask titles" do
       long_subtask_title = "a" * 250 # Long but within 255 character limit
       params_with_long_subtask = params.merge(
@@ -283,9 +302,10 @@ RSpec.describe TaskCreationService, type: :service do
 
     it "should handle timezone-aware dates" do
       # Use only due_date without due_at to test the parsing
+      future_time = 1.day.from_now.beginning_of_day.iso8601
       timezone_params = {
         title: "Timezone Task",
-        due_date: "2024-01-01T12:00:00Z" # UTC timezone
+        due_date: future_time # UTC timezone
       }
 
       service = TaskCreationService.new(list: list, user: user, params: timezone_params)
@@ -293,7 +313,7 @@ RSpec.describe TaskCreationService, type: :service do
 
       expect(task.due_at).not_to be_nil
       # Should parse the UTC time correctly
-      expect(task.due_at.utc.iso8601).to eq("2024-01-01T12:00:00Z")
+      expect(task.due_at.utc.iso8601).to eq(future_time)
     end
 
     it "should handle multiple date formats" do

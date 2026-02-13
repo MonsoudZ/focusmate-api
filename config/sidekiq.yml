@@ -1,7 +1,0 @@
-:concurrency: 5
-:queues:
-  - critical
-  - notifications
-  - maintenance
-  - default
-  - low

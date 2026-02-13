@@ -6,18 +6,26 @@ module Api
       before_action :set_list
       before_action :set_membership, only: %i[update destroy]
 
-      after_action :verify_authorized
       after_action :verify_policy_scoped, only: :index
 
       # GET /api/v1/lists/:list_id/memberships
+      # Returns list owner and all members
       def index
         authorize @list, :show?
 
         memberships = policy_scope(@list.memberships)
                         .includes(:user)
                         .order(created_at: :asc)
+                        .limit(100)
+
+        owner = @list.user
 
         render json: {
+          owner: {
+            id: owner.id,
+            email: owner.email,
+            name: owner.name
+          },
           memberships: memberships.map { |m| MembershipSerializer.new(m).as_json }
         }, status: :ok
       end
@@ -45,7 +53,6 @@ module Api
 
         membership = Memberships::Update.call!(
           membership: @membership,
-          actor: current_user,
           role: update_params[:role]
         )
 
@@ -56,7 +63,7 @@ module Api
       def destroy
         authorize @list, :manage_memberships?
 
-        Memberships::Destroy.call!(membership: @membership, actor: current_user)
+        Memberships::Destroy.call!(membership: @membership)
 
         head :no_content
       end
@@ -64,7 +71,7 @@ module Api
       private
 
       def set_list
-        @list = List.find(params[:list_id])
+        @list = policy_scope(List).merge(List.not_deleted).find(params[:list_id])
       end
 
       def set_membership
@@ -72,11 +79,26 @@ module Api
       end
 
       def create_params
-        params.require(:membership).permit(:user_identifier, :friend_id, :role)
+        payload = membership_payload
+        {
+          user_identifier: payload[:user_identifier],
+          friend_id: payload[:friend_id],
+          role: payload[:role]
+        }
       end
 
       def update_params
-        params.require(:membership).permit(:role)
+        payload = membership_payload
+        {
+          role: payload[:role]
+        }
+      end
+
+      def membership_payload
+        raw = params.require(:membership)
+        raise ApplicationError::BadRequest, "membership must be an object" unless raw.is_a?(ActionController::Parameters)
+
+        raw.permit(:user_identifier, :friend_id, :role)
       end
     end
   end

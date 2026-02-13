@@ -90,4 +90,23 @@ RSpec.describe Friendship, type: :model do
       expect(described_class.friends?(user_a, user_c)).to be false
     end
   end
+
+  describe ".ensure_mutual!" do
+    let(:user_a) { create(:user) }
+    let(:user_b) { create(:user) }
+
+    it "creates both directions when missing" do
+      expect {
+        described_class.ensure_mutual!(user_a, user_b)
+      }.to change(Friendship, :count).by(2)
+    end
+
+    it "is idempotent when friendship already exists" do
+      described_class.create_mutual!(user_a, user_b)
+
+      expect {
+        described_class.ensure_mutual!(user_a, user_b)
+      }.not_to change(Friendship, :count)
+    end
+  end
 end

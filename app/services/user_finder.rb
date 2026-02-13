@@ -74,6 +74,11 @@ class UserFinder
         password: SecureRandom.hex(16),
         timezone: "UTC"
       )
+    rescue ActiveRecord::RecordNotUnique
+      # A concurrent request won the race — re-fetch the winner's record
+      User.find_by(apple_user_id: apple_user_id) ||
+        User.find_by(email: email&.downcase) ||
+        raise
     end
 
     private

@@ -26,6 +26,36 @@ RSpec.describe "API surface", type: :request do
       post "/api/v1/tasks/1/reassign"
       expect(response.status).to be_between(404, 410).inclusive
     end
+
+    it "does not expose devise html-form routes for API auth" do
+      get "/api/v1/auth/sign_in"
+      expect(response.status).to be_between(404, 410).inclusive
+
+      get "/api/v1/auth/sign_up/sign_up"
+      expect(response.status).to be_between(404, 410).inclusive
+
+      get "/api/v1/auth/password/new"
+      expect(response.status).to be_between(404, 410).inclusive
+    end
+
+    it "does not expose unsupported sign_up verbs" do
+      patch "/api/v1/auth/sign_up"
+      expect(response.status).to be_between(404, 410).inclusive
+
+      put "/api/v1/auth/sign_up"
+      expect(response.status).to be_between(404, 410).inclusive
+
+      delete "/api/v1/auth/sign_up"
+      expect(response.status).to be_between(404, 410).inclusive
+    end
+
+    it "does not expose unused framework routes" do
+      get "/rails/action_mailbox/relay/inbound_emails"
+      expect(response.status).to be_between(404, 410).inclusive
+
+      get "/rails/active_storage/blobs/redirect/abc/file.txt"
+      expect(response.status).to be_between(404, 410).inclusive
+    end
   end
 
   describe "kept routes should be accessible" do

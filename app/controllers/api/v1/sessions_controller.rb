@@ -5,6 +5,10 @@ module Api
     class SessionsController < Devise::SessionsController
       respond_to :json
 
+      # Skip session-based signed-out check — irrelevant for JWT auth
+      # (warden session is always empty so it wrongly assumes "already signed out")
+      skip_before_action :verify_signed_out_user, only: :destroy
+
       private
 
       def respond_with(resource, _opts = {})
@@ -16,10 +20,19 @@ module Api
         }, status: :ok
       end
 
-      def respond_to_on_destroy
-        raw = request.headers["X-Refresh-Token"].presence || params[:refresh_token]
-        ::Auth::TokenService.revoke(raw) if raw
-        head :no_content
+      def respond_to_on_destroy(non_navigational_status: :no_content)
+        raw = request.headers["X-Refresh-Token"].presence || sign_out_params[:refresh_token]
+        token = normalize_refresh_token(raw)
+        ::Auth::TokenService.revoke(token) if token
+        head non_navigational_status
+      end
+
+      def sign_out_params
+        ActionController::Parameters.new(request.request_parameters).permit(:refresh_token)
+      end
+
+      def normalize_refresh_token(value)
+        ::Auth::TokenService.normalize_refresh_token(value)
       end
     end
   end

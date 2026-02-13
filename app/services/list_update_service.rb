@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
 class ListUpdateService < ApplicationService
+  ALLOWED_ATTRIBUTES = %i[name description visibility color].freeze
+
   def initialize(list:, user:, attributes:)
     @list = list
     @user = user
-    @attributes = attributes
+    @attributes = attributes.slice(*ALLOWED_ATTRIBUTES)
   end
 
   def call!

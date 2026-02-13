@@ -3,6 +3,17 @@
 class TaskCreationService < ApplicationService
   include TimeParsing
 
+  PERMITTED_SCALAR_PARAMS = %i[
+    title note due_at priority color starred strict_mode
+    notification_interval_minutes requires_explanation_if_missed visibility
+    parent_task_id location_based location_name location_latitude
+    location_longitude location_radius_meters notify_on_arrival
+    notify_on_departure is_recurring recurrence_pattern recurrence_interval
+    recurrence_time recurrence_end_date recurrence_count name description
+    dueDate due_date
+  ].freeze
+  PERMITTED_ARRAY_PARAMS = { tag_ids: [], recurrence_days: [], subtasks: [] }.freeze
+
   def initialize(list:, user:, params:)
     @list = list
     @user = user
@@ -28,9 +39,7 @@ class TaskCreationService < ApplicationService
   private
 
   def normalize_params(params)
-    # Convert ActionController::Parameters to hash if needed
-    params = params.to_unsafe_h if params.respond_to?(:to_unsafe_h)
-    params = params.with_indifferent_access
+    params = sanitize_params(params).with_indifferent_access
 
     # Handle iOS naming conventions
     params[:title] ||= params.delete(:name)
@@ -38,6 +47,22 @@ class TaskCreationService < ApplicationService
     params[:due_at] ||= parse_due_date(params)
 
     params
+  end
+
+  def sanitize_params(params)
+    case params
+    when ActionController::Parameters
+      params.permit(*PERMITTED_SCALAR_PARAMS, PERMITTED_ARRAY_PARAMS).to_h
+    when Hash
+      params.with_indifferent_access.slice(
+        *PERMITTED_SCALAR_PARAMS,
+        :tag_ids,
+        :recurrence_days,
+        :subtasks
+      )
+    else
+      {}
+    end
   end
 
   def parse_due_date(params)
@@ -78,9 +103,21 @@ class TaskCreationService < ApplicationService
       recurrence_end_date: @params[:recurrence_end_date],
       recurrence_count: @params[:recurrence_count],
 
-      # Tags
-      tag_ids: @params[:tag_ids]
+      # Tags (validated for ownership)
+      tag_ids: validated_tag_ids
     }.compact
+  end
+
+  def validated_tag_ids
+    ids = @params[:tag_ids]
+    return nil if ids.blank?
+
+    owned_ids = @user.tags.where(id: ids).pluck(:id)
+    invalid_ids = ids.map(&:to_i) - owned_ids
+    if invalid_ids.any?
+      raise ApplicationError::Forbidden.new("Cannot use tags that don't belong to you", code: "invalid_tag_ids")
+    end
+    owned_ids
   end
 
   def subtask_titles
@@ -90,6 +127,16 @@ class TaskCreationService < ApplicationService
   def create_subtasks(parent_task)
     valid_titles = subtask_titles.reject(&:blank?)
     return if valid_titles.empty?
+
+    # Validate titles upfront — insert_all bypasses model validations,
+    # and the DB column is TEXT (no length constraint), so this is the only guard.
+    valid_titles.each do |title|
+      if title.length > 255
+        raise ActiveRecord::RecordInvalid.new(
+          Task.new.tap { |t| t.errors.add(:title, "is too long (maximum is 255 characters)") }
+        )
+      end
+    end
 
     now = Time.current
 
@@ -111,11 +158,11 @@ class TaskCreationService < ApplicationService
       }
     end
 
-    # Bulk insert all subtasks in a single query
     Task.insert_all(subtask_records)
 
-    # Manually update counter cache since insert_all skips callbacks
+    # Manually update counter caches since insert_all skips callbacks
     Task.update_counters(parent_task.id, subtasks_count: valid_titles.size)
+    List.update_counters(@list.id, tasks_count: valid_titles.size)
   end
 
   def track_analytics(task)

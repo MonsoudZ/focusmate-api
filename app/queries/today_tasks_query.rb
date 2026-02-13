@@ -19,7 +19,7 @@ class TodayTasksQuery
 
   def initialize(user, timezone: nil)
     @user = user
-    @timezone = timezone || user.timezone || "UTC"
+    @timezone = normalize_timezone(timezone || user.timezone)
     @cached_data = nil
   end
 
@@ -31,19 +31,19 @@ class TodayTasksQuery
     # Execute queries once and cache results
     overdue_tasks = overdue.to_a
     due_today_tasks = due_today.to_a
-    completed_today_tasks = completed_today.to_a
+    all_completed_today = completed_today(limit: nil).to_a
 
-    # Compute stats from already-loaded data (no additional queries)
+    # Compute stats from the full set (no limit) for accuracy
     stats = compute_stats(
       overdue_tasks: overdue_tasks,
       due_today_tasks: due_today_tasks,
-      completed_today_tasks: completed_today_tasks
+      completed_today_tasks: all_completed_today
     )
 
     @cached_data = {
       overdue: overdue_tasks,
       due_today: due_today_tasks,
-      completed_today: completed_today_tasks,
+      completed_today: all_completed_today.first(10),
       stats: stats
     }
   end
@@ -134,11 +134,21 @@ class TodayTasksQuery
   def base_scope
     Task
       .joins(:list)
-      .where(lists: { user_id: user.id, deleted_at: nil })
+      .where(list_id: accessible_list_ids)
+      .where(lists: { deleted_at: nil })
       .where(parent_task_id: nil)
       .where(is_template: [ false, nil ])
       .where(deleted_at: nil)
-      .includes(:tags, :creator, :subtasks, list: :user)
+      .visible_to_user(user)
+      .includes(:tags, :creator, :subtasks, { list: :user }, { reschedule_events: :user })
+  end
+
+  def accessible_list_ids
+    @accessible_list_ids ||= List
+      .left_joins(:memberships)
+      .where("lists.user_id = :uid OR memberships.user_id = :uid", uid: user.id)
+      .where(deleted_at: nil)
+      .select(:id)
   end
 
   def beginning_of_today
@@ -151,5 +161,19 @@ class TodayTasksQuery
 
   def today_range
     beginning_of_today..end_of_today
+  end
+
+  def normalize_timezone(value)
+    return "UTC" if value.blank?
+
+    zone_name = value.to_s
+    return zone_name if ActiveSupport::TimeZone[zone_name]
+
+    Rails.logger.warn(
+      event: "today_tasks_invalid_timezone_fallback",
+      user_id: user&.id,
+      timezone: zone_name
+    )
+    "UTC"
   end
 end

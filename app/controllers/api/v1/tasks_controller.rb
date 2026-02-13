@@ -4,11 +4,12 @@ module Api
   module V1
     class TasksController < BaseController
       include Paginatable
+      include EditableLists
 
       before_action :set_list, only: [ :index, :create, :reorder ]
-      before_action :set_task, only: [ :show, :update, :destroy, :complete, :reopen, :assign, :unassign, :nudge ]
+      before_action :set_task, only: [ :show, :update, :destroy, :complete, :reopen, :assign, :unassign, :nudge, :reschedule ]
 
-      after_action :verify_authorized, except: [ :index, :search ]
+      skip_after_action :verify_authorized, only: [ :index, :search ]
       after_action :verify_policy_scoped, only: [ :index, :search ]
 
       # GET /api/v1/tasks
@@ -19,14 +20,21 @@ module Api
           tasks = tasks.where(list_id: @list.id)
         end
 
-        tasks = tasks.where(parent_task_id: nil).where(is_template: [ false, nil ]).not_deleted
+        tasks = tasks.where(parent_task_id: nil).where(is_template: [ false, nil ])
         tasks = apply_filters(tasks)
         tasks = apply_ordering(tasks)
-        tasks = tasks.includes(:tags, :creator, :subtasks, list: :user)
+        tasks = tasks.includes(:tags, :creator, :subtasks, :list)
         result = paginate(tasks, page: params[:page], per_page: params[:per_page])
 
         render json: {
-          tasks: result[:records].map { |t| TaskSerializer.new(t, current_user: current_user).as_json },
+          tasks: result[:records].map do |t|
+            TaskSerializer.new(
+              t,
+              current_user: current_user,
+              include_reschedule_events: false,
+              editable_list_ids: editable_list_ids
+            ).as_json
+          end,
           tombstones: [],
           pagination: result[:pagination]
         }, status: :ok
@@ -41,10 +49,10 @@ module Api
       # POST /api/v1/lists/:list_id/tasks
       def create
         if empty_json_body?
-          return render json: { error: { message: "Bad Request" } }, status: :bad_request
+          return render_error("Bad Request", status: :bad_request, code: "empty_body")
         end
 
-        @list ||= current_user.owned_lists.first
+        @list ||= current_user.owned_lists.order(:id).first
         authorize @list, :create_task?
 
         task = TaskCreationService.call!(list: @list, user: current_user, params: task_params)
@@ -73,7 +81,7 @@ module Api
         TaskCompletionService.complete!(
           task: @task,
           user: current_user,
-          missed_reason: params[:missed_reason]
+          missed_reason: completion_params[:missed_reason]
         )
         @task.reload
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
@@ -89,7 +97,7 @@ module Api
       # PATCH /api/v1/lists/:list_id/tasks/:id/assign
       def assign
         authorize @task, :update?
-        TaskAssignmentService.assign!(task: @task, user: current_user, assigned_to_id: params[:assigned_to])
+        TaskAssignmentService.assign!(task: @task, user: current_user, assigned_to_id: assignment_params[:assigned_to])
         render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
       end
 
@@ -107,10 +115,23 @@ module Api
         render json: { message: "Nudge sent" }, status: :ok
       end
 
+      # POST /api/v1/lists/:list_id/tasks/:id/reschedule
+      def reschedule
+        authorize @task, :update?
+        TaskRescheduleService.call!(
+          task: @task,
+          user: current_user,
+          new_due_at: reschedule_params[:new_due_at],
+          reason: reschedule_params[:reason]
+        )
+        @task.reload
+        render json: { task: TaskSerializer.new(@task, current_user: current_user).as_json }
+      end
+
       # POST /api/v1/lists/:list_id/tasks/reorder
       def reorder
         authorize @list, :update?
-        TaskReorderService.call!(list: @list, task_positions: params[:tasks].map { |t| t.permit(:id, :position).to_h.symbolize_keys })
+        TaskReorderService.call!(list: @list, task_positions: reorder_task_positions)
         head :ok
       end
 
@@ -125,18 +146,27 @@ module Api
 
         if query.length > 255
           skip_policy_scope
-          return render json: { error: { message: "Search query too long (max 255 characters)" } }, status: :bad_request
+          return render_error("Search query too long (max 255 characters)", status: :bad_request, code: "query_too_long")
         end
 
+        # Escape LIKE special characters to prevent unexpected matching
+        escaped_query = Task.sanitize_sql_like(query)
+
         tasks = policy_scope(Task)
-                  .where("title ILIKE :q OR note ILIKE :q", q: "%#{query}%")
+                  .where("title ILIKE :q OR note ILIKE :q", q: "%#{escaped_query}%")
                   .where(parent_task_id: nil)
-                  .not_deleted
-                  .includes(:tags, :creator, :subtasks, list: :user)
+                  .includes(:tags, :creator, :subtasks, :list)
                   .limit(50)
 
         render json: {
-          tasks: tasks.map { |t| TaskSerializer.new(t, current_user: current_user).as_json }
+          tasks: tasks.map do |t|
+            TaskSerializer.new(
+              t,
+              current_user: current_user,
+              include_reschedule_events: false,
+              editable_list_ids: editable_list_ids
+            ).as_json
+          end
         }, status: :ok
       end
 
@@ -146,15 +176,14 @@ module Api
         list_id = params[:list_id] || params[:listId]
 
         if list_id.present?
-          @list = List.find(list_id)
-          unless @list.accessible_by?(current_user)
-            render json: { error: { message: "Forbidden" } }, status: :forbidden
-          end
+          @list = policy_scope(List).not_deleted.find(list_id)
         end
       end
 
       def set_task
-        @task = policy_scope(Task).includes(:tags, :creator, :subtasks, list: :user).find(params[:id])
+        scope = policy_scope(Task).includes(:tags, :creator, :subtasks, :list, reschedule_events: :user)
+        scope = scope.where(list_id: params[:list_id]) if params[:list_id].present?
+        @task = scope.find(params[:id])
       end
 
       def empty_json_body?
@@ -162,16 +191,77 @@ module Api
       end
 
       def task_params
-        params.require(:task).permit(permitted_task_attributes)
+        permitted = action_name == "create" ? permitted_create_attributes : permitted_update_attributes
+        p = params.require(:task).permit(permitted)
+        if p.key?(:hidden)
+          hidden = ActiveModel::Type::Boolean.new.cast(p.delete(:hidden))
+          p[:visibility] = hidden ? :private_task : :visible_to_all
+        end
+        p
       end
 
-      def permitted_task_attributes
+      def reorder_task_positions
+        tasks = params.require(:tasks)
+        raise ApplicationError::BadRequest, "tasks must be an array" unless tasks.is_a?(Array)
+
+        tasks.map do |entry|
+          entry_params =
+            if entry.is_a?(ActionController::Parameters)
+              entry
+            elsif entry.is_a?(Hash)
+              ActionController::Parameters.new(entry)
+            else
+              raise ApplicationError::BadRequest, "each task entry must be an object"
+            end
+
+          permitted = entry_params.permit(:id, :position)
+          id = permitted[:id]
+          position = permitted[:position]
+
+          if id.blank? || position.nil?
+            raise ApplicationError::BadRequest, "each task entry must include id and position"
+          end
+
+          {
+            id: parse_integer!(id, field: "id"),
+            position: parse_integer!(position, field: "position")
+          }
+        end
+      end
+
+      def parse_integer!(value, field:)
+        parsed = Integer(value, exception: false)
+        raise ApplicationError::BadRequest, "#{field} must be an integer" if parsed.nil?
+
+        parsed
+      end
+
+      def completion_params
+        params.permit(:missed_reason)
+      end
+
+      def assignment_params
+        params.permit(:assigned_to)
+      end
+
+      def reschedule_params
+        params.permit(:new_due_at, :reason)
+      end
+
+      def permitted_base_attributes
         %i[
-          title note due_at priority strict_mode
-          notification_interval_minutes list_id visibility color starred position
+          title note due_at priority strict_mode hidden
+          notification_interval_minutes visibility color starred position
           is_recurring recurrence_pattern recurrence_interval recurrence_end_date recurrence_count recurrence_time
-          parent_task_id
         ] + [ tag_ids: [], recurrence_days: [] ]
+      end
+
+      def permitted_create_attributes
+        permitted_base_attributes + %i[list_id parent_task_id]
+      end
+
+      def permitted_update_attributes
+        permitted_base_attributes
       end
 
       def apply_filters(query)

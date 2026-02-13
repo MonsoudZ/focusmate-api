@@ -1,27 +1,26 @@
 # frozen_string_literal: true
 
-require "sidekiq/web"
-
 Rails.application.routes.draw do
   # ----------------------------
   # Devise (JWT auth)
   # ----------------------------
   devise_for :users,
+             skip: [ :sessions, :registrations, :passwords ],
              path: "api/v1/auth",
              path_names: { sign_in: "sign_in", sign_out: "sign_out", registration: "sign_up" },
              controllers: { sessions: "api/v1/sessions", registrations: "api/v1/registrations", passwords: "api/v1/passwords" },
              defaults: { format: :json }
 
-  # ----------------------------
-  # Sidekiq Web (ops only)
-  # ----------------------------
-  if Rails.env.production?
-    Sidekiq::Web.use Rack::Auth::Basic do |username, password|
-      ActiveSupport::SecurityUtils.secure_compare(username, ENV["SIDEKIQ_USERNAME"].to_s) &&
-        ActiveSupport::SecurityUtils.secure_compare(password, ENV["SIDEKIQ_PASSWORD"].to_s)
-    end
+  devise_scope :user do
+    post "api/v1/auth/sign_in", to: "api/v1/sessions#create"
+    delete "api/v1/auth/sign_out", to: "api/v1/sessions#destroy"
+
+    post "api/v1/auth/sign_up", to: "api/v1/registrations#create"
+
+    post "api/v1/auth/password", to: "api/v1/passwords#create"
+    put "api/v1/auth/password", to: "api/v1/passwords#update"
+    patch "api/v1/auth/password", to: "api/v1/passwords#update"
   end
-  mount Sidekiq::Web => "/sidekiq"
 
   # ----------------------------
   # API v1
@@ -60,6 +59,7 @@ Rails.application.routes.draw do
             patch :assign
             patch :unassign
             post :nudge
+            post :reschedule
           end
           resources :subtasks, only: [ :index, :show, :create, :update, :destroy ] do
             member do
@@ -76,6 +76,11 @@ Rails.application.routes.draw do
   # Invite Landing Page (HTML)
   # ----------------------------
   get "invite/:code", to: "invites#show", as: :invite_page
+
+  # ----------------------------
+  # Apple App Site Association (Universal Links)
+  # ----------------------------
+  get ".well-known/apple-app-site-association", to: "well_known#apple_app_site_association"
 
   # ----------------------------
   # Health

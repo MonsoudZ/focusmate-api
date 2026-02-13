@@ -113,64 +113,6 @@ RSpec.describe TaskCompletionService do
     end
   end
 
-  describe '#toggle_completion!' do
-    context 'when completed parameter is false (boolean)' do
-      it 'calls uncomplete!' do
-        completed_task = create(:task, list: list, creator: task_creator, status: :done)
-        service = described_class.new(task: completed_task, user: list_owner)
-
-        result = service.toggle_completion!(completed: false)
-
-        expect(result).to eq(completed_task)
-        expect(completed_task.reload.status).to eq('pending')
-      end
-    end
-
-    context 'when completed parameter is "false" (string)' do
-      it 'calls uncomplete!' do
-        completed_task = create(:task, list: list, creator: task_creator, status: :done)
-        service = described_class.new(task: completed_task, user: list_owner)
-
-        result = service.toggle_completion!(completed: "false")
-
-        expect(result).to eq(completed_task)
-        expect(completed_task.reload.status).to eq('pending')
-      end
-    end
-
-    context 'when completed parameter is true' do
-      it 'calls complete!' do
-        service = described_class.new(task: task, user: list_owner)
-
-        result = service.toggle_completion!(completed: true)
-
-        expect(result).to eq(task)
-        expect(task.reload.status).to eq('done')
-      end
-    end
-
-    context 'when completed parameter is any other value' do
-      it 'calls complete!' do
-        service = described_class.new(task: task, user: list_owner)
-
-        result = service.toggle_completion!(completed: "yes")
-
-        expect(result).to eq(task)
-        expect(task.reload.status).to eq('done')
-      end
-    end
-
-    context 'when user is not authorized' do
-      it 'raises UnauthorizedError' do
-        service = described_class.new(task: task, user: unauthorized_user)
-
-        expect {
-          service.toggle_completion!(completed: true)
-        }.to raise_error(ApplicationError::Forbidden)
-      end
-    end
-  end
-
   describe 'overdue task with required explanation' do
     let(:overdue_task) do
       create(:task,
@@ -250,12 +192,6 @@ RSpec.describe TaskCompletionService do
       result = described_class.uncomplete!(task: task, user: list_owner)
 
       expect(result.status).to eq('pending')
-    end
-
-    it '.toggle! toggles the task status' do
-      result = described_class.toggle!(task: task, user: list_owner, completed: true)
-
-      expect(result.status).to eq('done')
     end
   end
 

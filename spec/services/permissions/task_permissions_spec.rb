@@ -39,6 +39,26 @@ RSpec.describe Permissions::TaskPermissions do
         expect(described_class.new(task, owner).can_view?).to be false
       end
     end
+
+    context "when task is hidden (private_task)" do
+      let(:hidden_task) { create(:task, list: list, creator: editor_user, visibility: :private_task) }
+
+      it "returns true for creator" do
+        expect(described_class.new(hidden_task, editor_user).can_view?).to be true
+      end
+
+      it "returns false for non-creator list owner" do
+        expect(described_class.new(hidden_task, owner).can_view?).to be false
+      end
+
+      it "returns false for non-creator list member" do
+        expect(described_class.new(hidden_task, viewer_user).can_view?).to be false
+      end
+
+      it "returns false for non-member" do
+        expect(described_class.new(hidden_task, other_user).can_view?).to be false
+      end
+    end
   end
 
   describe "#can_edit?" do
@@ -79,6 +99,24 @@ RSpec.describe Permissions::TaskPermissions do
 
       it "returns false for owner" do
         expect(described_class.new(task, owner).can_edit?).to be false
+      end
+    end
+
+    context "when task is hidden (private_task)" do
+      let(:hidden_task) { create(:task, list: list, creator: editor_user, visibility: :private_task) }
+
+      it "returns true for creator" do
+        expect(described_class.new(hidden_task, editor_user).can_edit?).to be true
+      end
+
+      it "returns false for non-creator list owner" do
+        expect(described_class.new(hidden_task, owner).can_edit?).to be false
+      end
+
+      it "returns false for non-creator list editor" do
+        other_editor = create(:user)
+        create(:membership, list: list, user: other_editor, role: "editor")
+        expect(described_class.new(hidden_task, other_editor).can_edit?).to be false
       end
     end
   end

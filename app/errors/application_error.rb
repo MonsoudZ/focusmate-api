@@ -70,18 +70,25 @@ class ApplicationError < StandardError
     def default_message = "Conflict"
   end
 
+  # === HTTP 410 Gone ===
+  class Gone < ApplicationError
+    def status = :gone
+    def default_code = "gone"
+    def default_message = "Resource is no longer available"
+  end
+
   # === HTTP 422 Unprocessable Entity (with validation details) ===
   class Validation < ApplicationError
     def initialize(message = nil, details: {}, code: nil)
       super(message || "Validation failed", code: code || "validation_error", details: details)
     end
 
-    def status = :unprocessable_entity
+    def status = :unprocessable_content
   end
 
   # === HTTP 422 Unprocessable Entity (generic) ===
   class UnprocessableEntity < ApplicationError
-    def status = :unprocessable_entity
+    def status = :unprocessable_content
     def default_code = "unprocessable_entity"
     def default_message = "Unprocessable entity"
   end
@@ -105,5 +112,10 @@ class ApplicationError < StandardError
   class TokenReused < Unauthorized
     def default_code = "token_reused"
     def default_message = "Token has already been used"
+  end
+
+  class TokenAlreadyRefreshed < Unauthorized
+    def default_code = "token_already_refreshed"
+    def default_message = "Token was already refreshed"
   end
 end

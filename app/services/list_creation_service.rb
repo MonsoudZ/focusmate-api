@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 class ListCreationService < ApplicationService
+  PERMITTED_ATTRIBUTES = %i[name description visibility color].freeze
+
   def initialize(user:, params:)
     @user = user
-    @params = params
+    @attributes = normalize_params(params)
   end
 
   def call!
@@ -16,21 +18,34 @@ class ListCreationService < ApplicationService
   private
 
   def validate_params!
-    # Check if params are blank and no name is provided
-    cleaned = @params.except(:controller, :action, :list).to_h
-    if cleaned.blank? && !@params.key?(:name)
+    if @attributes.empty? || !@attributes.key?(:name)
       raise ApplicationError::Validation.new("Validation failed", details: { name: [ "can't be blank" ] })
     end
   end
 
   def build_list
-    @list = @user.owned_lists.new(@params)
-    @list.visibility ||= "private" # Set default visibility
+    @list = @user.owned_lists.new(@attributes)
   end
 
   def save_list!
     unless @list.save
       raise ApplicationError::Validation.new("Validation failed", details: @list.errors.as_json)
     end
+  end
+
+  def normalize_params(params)
+    source =
+      case params
+      when ActionController::Parameters
+        params.permit(*PERMITTED_ATTRIBUTES).to_h
+      when Hash
+        params.with_indifferent_access.slice(*PERMITTED_ATTRIBUTES).to_h
+      else
+        {}
+      end
+
+    source
+      .symbolize_keys
+      .transform_values { |value| value.is_a?(String) ? value.strip : value }
   end
 end

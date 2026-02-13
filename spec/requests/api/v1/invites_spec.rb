@@ -29,11 +29,23 @@ RSpec.describe "Api::V1::Invites", type: :request do
 
       expect(response).to have_http_status(:not_found)
     end
+
+    it "returns 404 when invite list has been deleted" do
+      list.soft_delete!
+
+      get "/api/v1/invites/#{invite.code}"
+
+      expect(response).to have_http_status(:not_found)
+    end
   end
 
   describe "POST /api/v1/invites/:code/accept" do
     let(:user) { create(:user) }
     let(:headers) { auth_headers(user) }
+
+    before do
+      allow(PushNotifications::Sender).to receive(:send_list_joined)
+    end
 
     it "adds user to the list" do
       expect {
@@ -65,6 +77,16 @@ RSpec.describe "Api::V1::Invites", type: :request do
       expect(Friendship.friends?(owner, user)).to be true
     end
 
+    it "sends push notification to list owner" do
+      post "/api/v1/invites/#{invite.code}/accept", headers: headers
+
+      expect(PushNotifications::Sender).to have_received(:send_list_joined).with(
+        to_user: owner,
+        new_member: user,
+        list: list
+      )
+    end
+
     it "does not duplicate friendship if already friends" do
       Friendship.create_mutual!(owner, user)
 
@@ -94,7 +116,7 @@ RSpec.describe "Api::V1::Invites", type: :request do
     it "returns 422 if user is owner" do
       post "/api/v1/invites/#{invite.code}/accept", headers: auth_headers(owner)
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(json_response["error"]["message"]).to eq("You are the owner of this list")
     end
 
@@ -107,10 +129,65 @@ RSpec.describe "Api::V1::Invites", type: :request do
       expect(json_response["error"]["message"]).to eq("You are already a member of this list")
     end
 
+    it "returns 409 when membership insert hits uniqueness race" do
+      allow_any_instance_of(ActiveRecord::Associations::CollectionProxy)
+        .to receive(:create!)
+        .and_raise(ActiveRecord::RecordNotUnique)
+
+      post "/api/v1/invites/#{invite.code}/accept", headers: headers
+
+      expect(response).to have_http_status(:conflict)
+      expect(json_response["error"]["message"]).to eq("You are already a member of this list")
+    end
+
     it "requires authentication" do
       post "/api/v1/invites/#{invite.code}/accept"
 
       expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "returns 404 when invite list has been deleted" do
+      list.soft_delete!
+
+      post "/api/v1/invites/#{invite.code}/accept", headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "atomically increments uses_count when invite is usable" do
+      multi_use_invite = create(:list_invite, list: list, inviter: owner, max_uses: 5, uses_count: 2)
+
+      post "/api/v1/invites/#{multi_use_invite.code}/accept", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(multi_use_invite.reload.uses_count).to eq(3)
+    end
+
+    it "atomic update respects max_uses constraint" do
+      # Verify the atomic SQL correctly checks max_uses
+      # This tests the core of the race condition prevention
+      invite_at_limit = create(:list_invite, list: list, inviter: owner, max_uses: 5, uses_count: 5)
+
+      # The atomic update should return 0 rows because uses_count is already at max
+      rows_updated = ListInvite
+        .where(id: invite_at_limit.id)
+        .where("max_uses IS NULL OR uses_count < max_uses")
+        .update_all("uses_count = uses_count + 1")
+
+      expect(rows_updated).to eq(0)
+      expect(invite_at_limit.reload.uses_count).to eq(5) # unchanged
+    end
+
+    it "atomic update respects expiration constraint" do
+      expired_invite = create(:list_invite, :expired, list: list, inviter: owner)
+
+      rows_updated = ListInvite
+        .where(id: expired_invite.id)
+        .where("max_uses IS NULL OR uses_count < max_uses")
+        .where("expires_at IS NULL OR expires_at > ?", Time.current)
+        .update_all("uses_count = uses_count + 1")
+
+      expect(rows_updated).to eq(0)
     end
   end
 

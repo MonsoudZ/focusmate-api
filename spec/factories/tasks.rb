@@ -3,13 +3,14 @@ FactoryBot.define do
     title { Faker::Lorem.sentence(word_count: 4) }
     due_at { 1.day.from_now }
     status { "pending" }
-    visibility { "private_task" }
+    visibility { "visible_to_all" }
     strict_mode { false }
     requires_explanation_if_missed { false }
     list { association :list }
     creator { association :user }
 
     trait :overdue do
+      skip_due_at_validation { true }
       due_at { 1.day.ago }
       status { "pending" }
     end
@@ -20,6 +21,7 @@ FactoryBot.define do
     end
 
     trait :requires_explanation do
+      skip_due_at_validation { true }
       requires_explanation_if_missed { true }
       due_at { 1.day.ago }
       status { "pending" }

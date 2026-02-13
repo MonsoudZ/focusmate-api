@@ -1,6 +1,14 @@
 require_relative "boot"
 
-require "rails/all"
+require "rails"
+require "active_model/railtie"
+require "active_job/railtie"
+require "active_record/railtie"
+require "active_storage/engine"
+require "action_controller/railtie"
+require "action_mailer/railtie"
+require "action_view/railtie"
+# require "action_cable/engine" # Not used — no channels defined
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -9,7 +17,7 @@ Bundler.require(*Rails.groups)
 module FocusmateApi
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 8.0
+    config.load_defaults 8.1
 
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
@@ -29,15 +37,8 @@ module FocusmateApi
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
 
-    # Enable ActionCable for real-time features
-    config.action_cable.mount_path = "/cable"
-    config.action_cable.allowed_request_origins = [ /http:\/\/localhost.*/ ]
-
-    # Configure Active Job to use Sidekiq
-    config.active_job.queue_adapter = :sidekiq
-
-    # Ensure custom middleware autoloads
-    config.eager_load_paths << Rails.root.join("lib")
+    # We do not use Active Storage endpoints in this API.
+    config.active_storage.draw_routes = false
 
     # Add Rack::Attack middleware
     config.middleware.use Rack::Attack

@@ -1,10 +1,16 @@
 # frozen_string_literal: true
 
 class TaskUpdateService < ApplicationService
+  ALLOWED_ATTRIBUTES = %i[
+    title note due_at priority strict_mode visibility color starred position
+    notification_interval_minutes is_recurring recurrence_pattern recurrence_interval
+    recurrence_end_date recurrence_count recurrence_time recurrence_days tag_ids
+  ].freeze
+
   def initialize(task:, user:, attributes:)
     @task = task
     @user = user
-    @attributes = attributes
+    @attributes = attributes.slice(*ALLOWED_ATTRIBUTES)
   end
 
   def call!
@@ -25,7 +31,9 @@ class TaskUpdateService < ApplicationService
   def track_changes
     @old_priority = @task.priority
     @old_starred = @task.starred
-    @changes = @attributes.keys.select { |k| @task.send(k) != @attributes[k] }
+    @changes = @attributes.keys.select do |key|
+      @task.respond_to?(key) && @task.public_send(key) != @attributes[key]
+    end
   end
 
   def perform_update

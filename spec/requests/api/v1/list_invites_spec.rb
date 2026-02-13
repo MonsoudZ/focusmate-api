@@ -17,12 +17,20 @@ RSpec.describe "Api::V1::ListInvites", type: :request do
       expect(json_response["invites"].length).to eq(3)
     end
 
-    it "returns 403 for non-owner" do
+    it "returns 404 for non-owner (no info leakage)" do
       other_user = create(:user)
 
       get "/api/v1/lists/#{list.id}/invites", headers: auth_headers(other_user)
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      get "/api/v1/lists/#{list.id}/invites", headers: headers
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -66,6 +74,35 @@ RSpec.describe "Api::V1::ListInvites", type: :request do
       expect(response).to have_http_status(:created)
       expect(json_response["invite"]["max_uses"]).to eq(5)
     end
+
+    it "returns 400 when invite payload is not an object" do
+      post "/api/v1/lists/#{list.id}/invites",
+           params: { invite: "invalid" }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:bad_request)
+      expect(json_response["error"]["message"]).to eq("invite must be an object")
+    end
+
+    it "ignores non-scalar invite attributes" do
+      post "/api/v1/lists/#{list.id}/invites",
+           params: { invite: { role: { bad: "input" }, max_uses: [ 5 ] } }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      expect(json_response["invite"]["role"]).to eq("viewer")
+      expect(json_response["invite"]["max_uses"]).to be_nil
+    end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      post "/api/v1/lists/#{list.id}/invites",
+           params: { invite: {} }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
   end
 
   describe "DELETE /api/v1/lists/:list_id/invites/:id" do
@@ -77,6 +114,23 @@ RSpec.describe "Api::V1::ListInvites", type: :request do
       }.to change(ListInvite, :count).by(-1)
 
       expect(response).to have_http_status(:no_content)
+    end
+
+    it "returns 404 for invite in different list" do
+      other_list = create(:list, user: user)
+      other_invite = create(:list_invite, list: other_list, inviter: user)
+
+      delete "/api/v1/lists/#{list.id}/invites/#{other_invite.id}", headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "returns 404 for a deleted list" do
+      list.soft_delete!
+
+      delete "/api/v1/lists/#{list.id}/invites/#{invite.id}", headers: headers
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 

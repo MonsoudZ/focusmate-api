@@ -59,10 +59,10 @@ RSpec.describe "Lists API", type: :request do
     end
 
     context "as stranger" do
-      it "returns forbidden" do
+      it "returns not found (no info leakage)" do
         auth_get "/api/v1/lists/#{list.id}", user: other_user
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
 
@@ -149,10 +149,10 @@ RSpec.describe "Lists API", type: :request do
     end
 
     context "as stranger" do
-      it "returns forbidden" do
+      it "returns not found (no info leakage)" do
         auth_delete "/api/v1/lists/#{list.id}", user: other_user
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end

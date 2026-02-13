@@ -2,6 +2,8 @@
 
 module Devices
   class Upsert
+    ALLOWED_ATTRIBUTES = %i[platform bundle_id device_name os_version app_version fcm_token].freeze
+
     def self.call!(user:, apns_token:, **attrs)
       new(user:, apns_token:, attrs:).call!
     end
@@ -9,7 +11,7 @@ module Devices
     def initialize(user:, apns_token:, attrs:)
       @user = user
       @token = apns_token.to_s.strip
-      @attrs = attrs.compact
+      @attrs = attrs.compact.slice(*ALLOWED_ATTRIBUTES)
     end
 
     def call!
@@ -18,7 +20,7 @@ module Devices
       device = @user.devices.find_or_initialize_by(apns_token: @token)
       device.assign_attributes(@attrs)
       device.platform ||= "ios"
-      device.last_seen_at = Time.current if device.respond_to?(:last_seen_at)
+      device.last_seen_at = Time.current
       device.save!
       device
     end

@@ -12,7 +12,8 @@ RSpec.describe StreakService do
       creator: creator,
       due_at: date.to_date.noon,
       status: status,
-      parent_task_id: nil
+      parent_task_id: nil,
+      skip_due_at_validation: true
     )
   end
 
@@ -229,6 +230,30 @@ RSpec.describe StreakService do
           described_class.new(user).update_streak!
           user.reload
         }.not_to change(user, :current_streak)
+      end
+    end
+
+    context "query efficiency" do
+      it "uses a single tasks query to evaluate day completion" do
+        target_date = Date.new(2025, 6, 15)
+        create_task_due_on(target_date, status: "done")
+        create_task_due_on(target_date, status: "pending")
+
+        queries = []
+        callback = lambda do |_name, _start, _finish, _id, payload|
+          sql = payload[:sql].to_s
+          next if sql.include?("SCHEMA")
+          next if sql.start_with?("BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE SAVEPOINT")
+
+          queries << sql
+        end
+
+        ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
+          described_class.new(user).send(:check_day_completion, target_date)
+        end
+
+        task_selects = queries.count { |sql| sql.start_with?("SELECT") && sql.include?("FROM \"tasks\"") }
+        expect(task_selects).to eq(1)
       end
     end
   end

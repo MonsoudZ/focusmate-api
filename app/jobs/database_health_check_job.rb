@@ -2,12 +2,12 @@
 
 class DatabaseHealthCheckJob < ApplicationJob
   queue_as :critical
+  SENTRY_FAILURE_TTL = ApplicationMonitor::SENTRY_FAILURE_TTL
 
   # Thresholds for alerting
   THRESHOLDS = {
     jwt_denylist_max: 50_000,
     analytics_events_max: 10_000_000,
-    dead_tuples_ratio_max: 0.1,  # 10% dead tuples
     connection_usage_max: 0.8    # 80% of pool
   }.freeze
 
@@ -24,18 +24,7 @@ class DatabaseHealthCheckJob < ApplicationJob
       alerts: alerts
     )
 
-    # Send alerts to Sentry
-    alerts.each do |alert|
-      Sentry.capture_message(
-        "Database health alert: #{alert[:issue]}",
-        level: :warning,
-        extra: {
-          metric: alert[:metric],
-          current_value: alert[:value],
-          threshold: alert[:threshold]
-        }
-      )
-    end
+    alerts.each { |alert| report_alert_to_sentry(alert) }
 
     { metrics: metrics, alerts: alerts }
   end
@@ -114,5 +103,31 @@ class DatabaseHealthCheckJob < ApplicationJob
     end
 
     alerts
+  end
+
+  def report_alert_to_sentry(alert)
+    return unless defined?(Sentry)
+
+    Sentry.capture_message(
+      "Database health alert: #{alert[:issue]}",
+      level: :warning,
+      extra: {
+        metric: alert[:metric],
+        current_value: alert[:value],
+        threshold: alert[:threshold]
+      }
+    )
+  rescue StandardError => e
+    digest = Digest::SHA256.hexdigest(e.message.to_s)[0, 16]
+    cache_key = "database_health_check:sentry_failure:#{alert[:metric]}:#{e.class.name}:#{digest}"
+    return if Rails.cache.read(cache_key).present?
+
+    Rails.cache.write(cache_key, true, expires_in: SENTRY_FAILURE_TTL)
+    Rails.logger.error(
+      event: "database_health_check_sentry_failure",
+      metric: alert[:metric],
+      error_class: e.class.name,
+      error_message: e.message
+    )
   end
 end

@@ -63,8 +63,8 @@ RSpec.describe ApplicationMonitor do
       described_class.alert("High error rate", severity: :warning)
     end
 
-    it "logs warning for critical severity" do
-      expect(Rails.logger).to receive(:warn).with(hash_including(
+    it "logs error for critical severity" do
+      expect(Rails.logger).to receive(:error).with(hash_including(
                                                     event: "alert",
                                                     message: "Critical failure",
                                                     severity: :critical
@@ -73,8 +73,8 @@ RSpec.describe ApplicationMonitor do
       described_class.alert("Critical failure", severity: :critical)
     end
 
-    it "logs warning for error severity" do
-      expect(Rails.logger).to receive(:warn).with(hash_including(
+    it "logs error for error severity" do
+      expect(Rails.logger).to receive(:error).with(hash_including(
                                                     event: "alert",
                                                     message: "Error occurred",
                                                     severity: :error
@@ -134,8 +134,7 @@ RSpec.describe ApplicationMonitor do
 
       expect(snapshot).to have_key(:timestamp)
       expect(snapshot).to have_key(:database)
-      expect(snapshot).to have_key(:redis)
-      expect(snapshot).to have_key(:sidekiq)
+      expect(snapshot).to have_key(:queue)
       expect(snapshot).to have_key(:memory)
     end
 
@@ -158,25 +157,14 @@ RSpec.describe ApplicationMonitor do
       end
     end
 
-    context "when redis check fails" do
+    context "when queue check fails" do
       it "returns error info" do
-        allow(Redis).to receive(:new).and_raise(StandardError, "Redis connection failed")
+        allow(SolidQueue::Job).to receive(:where).and_raise(StandardError, "Queue unavailable")
 
         snapshot = described_class.health_snapshot
 
-        expect(snapshot[:redis][:connected]).to be false
-        expect(snapshot[:redis][:error]).to eq("Redis connection failed")
-      end
-    end
-
-    context "when sidekiq check fails" do
-      it "returns error info" do
-        allow(Sidekiq::Stats).to receive(:new).and_raise(StandardError, "Sidekiq unavailable")
-
-        snapshot = described_class.health_snapshot
-
-        expect(snapshot[:sidekiq]).to have_key(:error)
-        expect(snapshot[:sidekiq][:error]).to eq("Sidekiq unavailable")
+        expect(snapshot[:queue]).to have_key(:error)
+        expect(snapshot[:queue][:error]).to eq("Queue unavailable")
       end
     end
 
@@ -191,16 +179,47 @@ RSpec.describe ApplicationMonitor do
   end
 
   describe "send_to_sentry error handling" do
-    it "logs error if Sentry fails" do
+    around do |example|
+      original_cache = Rails.cache
+      Rails.cache = ActiveSupport::Cache::MemoryStore.new
+      example.run
+      Rails.cache = original_cache
+    end
+
+    it "logs structured metadata if Sentry capture_message fails" do
       if defined?(Sentry)
         allow(Sentry).to receive(:capture_message).and_raise(StandardError, "Sentry API error")
-        expect(Rails.logger).to receive(:error).with("Failed to send to Sentry: Sentry API error")
+        allow(Rails.logger).to receive(:error)
       end
 
-      # Should not raise, just log the error
-      expect {
-        described_class.track_event("test_event")
-      }.not_to raise_error
+      expect { described_class.track_event("test_event") }.not_to raise_error
+
+      if defined?(Sentry)
+        expect(Rails.logger).to have_received(:error).with(hash_including(
+          event: "application_monitor_sentry_failure",
+          operation: "capture_message",
+          error_class: "StandardError",
+          error_message: "Sentry API error"
+        ))
+      end
+    end
+
+    it "logs structured metadata if Sentry capture_exception fails" do
+      error = StandardError.new("Inner error")
+
+      if defined?(Sentry)
+        allow(Sentry).to receive(:capture_exception).and_raise(StandardError, "Sentry API error")
+        allow(Rails.logger).to receive(:error)
+      end
+
+      expect { described_class.track_error(error, context: "test") }.not_to raise_error
+
+      if defined?(Sentry)
+        expect(Rails.logger).to have_received(:error).with(hash_including(
+          event: "application_monitor_sentry_failure",
+          operation: "capture_exception"
+        ))
+      end
     end
   end
 end

@@ -1,24 +1,14 @@
 {
   "ignored_warnings": [
     {
-      "warning_type": "Mass Assignment",
-      "fingerprint": "e7d5787e3df88a95af204a1b619965e1f73d87da92048916a5bb367c2ad85ad1",
-      "check_name": "PermitAttributes",
-      "message": "Potentially dangerous key allowed for mass assignment",
-      "file": "app/controllers/api/v1/memberships_controller.rb",
-      "line": 72,
-      "note": "user_identifier is passed to Memberships::Create service which validates it — not used for direct mass assignment"
+      "fingerprint": "c4b02c8a07c83999e0aabd36ce4a750e04a7bbc3b15f8ea0bc02c853630cda17",
+      "note": "Role is whitelist-validated by model inclusion validator (owner/editor/viewer). Only list owners can update via Pundit policy."
     },
     {
-      "warning_type": "Mass Assignment",
-      "fingerprint": "8db8f86744c43faa0b1fa70528f11b7003667c2ce524ecd5c02cd534b84f1ed1",
-      "check_name": "PermitAttributes",
-      "message": "Potentially dangerous key allowed for mass assignment",
-      "file": "app/controllers/api/v1/memberships_controller.rb",
-      "line": 76,
-      "note": "role refers to membership role (viewer/editor), not user role — validated by Memberships::Update service"
+      "fingerprint": "2207c05bdd64b6b06de8f14f5f1826bdd09efa24019b3acbf00424444fad5ea6",
+      "note": "Role is whitelist-validated by model inclusion validator (viewer/editor). Only list owners can create invites via Pundit policy."
     }
   ],
-  "updated": "2026-01-28",
-  "brakeman_version": "7.1.1"
+  "updated": "2026-02-12",
+  "brakeman_version": "8.0.2"
 }

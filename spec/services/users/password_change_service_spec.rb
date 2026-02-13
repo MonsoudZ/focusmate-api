@@ -19,6 +19,20 @@ RSpec.describe Users::PasswordChangeService do
         expect(user.reload.valid_password?("newpassword456")).to be true
       end
 
+      it "revokes all refresh tokens" do
+        Auth::TokenService.issue_pair(user)
+        Auth::TokenService.issue_pair(user)
+
+        expect {
+          described_class.call!(
+            user: user,
+            current_password: "password123",
+            password: "newpassword456",
+            password_confirmation: "newpassword456"
+          )
+        }.to change { user.refresh_tokens.active.count }.from(2).to(0)
+      end
+
       it "invalidates the old password" do
         described_class.call!(
           user: user,

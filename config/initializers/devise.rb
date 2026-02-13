@@ -1,14 +1,9 @@
 # frozen_string_literal: true
 
 Devise.setup do |config|
-  # The secret key used by Devise.
-  # Devise uses this key to generate random tokens.
-  # If you change this key, all old tokens will become invalid.
-  config.secret_key = Rails.application.secret_key_base
-
   # ==> Mailer Configuration
   # Configure the e-mail address which will be shown in Devise::Mailer.
-  config.mailer_sender = "please-change-me-at-config-initializers-devise@example.com"
+  config.mailer_sender = ENV.fetch("DEVISE_MAILER_SENDER", "noreply@focusmate.app")
 
   # ==> ORM configuration
   require "devise/orm/active_record"
@@ -32,7 +27,8 @@ Devise.setup do |config|
 
   # ==> Password settings
   config.stretches = Rails.env.test? ? 1 : 12
-  config.pepper = ENV["DEVISE_PEPPER"] if ENV["DEVISE_PEPPER"].present?
+  pepper = Rails.application.credentials.dig(:devise, :pepper) || ENV["DEVISE_PEPPER"]
+  config.pepper = pepper if pepper.present?
 
   # ==> JWT configuration (Devise-JWT)
   config.jwt do |jwt|

@@ -4,13 +4,12 @@ class StaleDeviceCleanupJob < ApplicationJob
   queue_as :maintenance
 
   # Devices not seen in this many days are considered stale
-  STALE_THRESHOLD_DAYS = ENV.fetch("STALE_DEVICE_DAYS", 90).to_i
+  STALE_THRESHOLD_DAYS = Integer(ENV.fetch("STALE_DEVICE_DAYS", 90))
 
   # Run weekly to soft-delete devices that haven't been seen in a while
   # These are likely uninstalled apps or old devices
   #
-  # Schedule with sidekiq-cron or call from a cron job:
-  #   StaleDeviceCleanupJob.perform_later
+  # Scheduled via Solid Queue recurring tasks (config/recurring.yml)
   #
   def perform
     cutoff_date = STALE_THRESHOLD_DAYS.days.ago
@@ -19,12 +18,8 @@ class StaleDeviceCleanupJob < ApplicationJob
                       .where("last_seen_at < ? OR last_seen_at IS NULL", cutoff_date)
                       .where(deleted_at: nil)
 
-    stale_count = stale_devices.count
-
-    # Soft delete in batches to avoid long transactions
-    stale_devices.find_each do |device|
-      device.soft_delete!
-    end
+    # Soft delete in batches with bulk updates to avoid per-row instantiation.
+    stale_count = bulk_soft_delete(stale_devices)
 
     Rails.logger.info(
       event: "stale_device_cleanup_completed",
@@ -35,5 +30,18 @@ class StaleDeviceCleanupJob < ApplicationJob
     )
 
     stale_count
+  end
+
+  private
+
+  def bulk_soft_delete(scope)
+    deleted = 0
+    timestamp = Time.current
+
+    scope.in_batches(of: 1000) do |batch|
+      deleted += batch.update_all(deleted_at: timestamp, updated_at: timestamp)
+    end
+
+    deleted
   end
 end

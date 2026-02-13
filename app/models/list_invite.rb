@@ -5,7 +5,7 @@ class ListInvite < ApplicationRecord
   ROLES = %w[viewer editor].freeze
   CODE_LENGTH = 8
 
-  validates :code, presence: true, uniqueness: true
+  validates :code, presence: true, uniqueness: true, length: { is: CODE_LENGTH }
   validates :role, presence: true, inclusion: { in: ROLES }
   validates :max_uses, numericality: { greater_than: 0 }, allow_nil: true
 

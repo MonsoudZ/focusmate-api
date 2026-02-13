@@ -10,6 +10,8 @@ RSpec.describe Memberships::Create do
     let(:target_user) { create(:user) }
 
     context "with valid params using email identifier" do
+      before { Friendship.create_mutual!(inviter, target_user) }
+
       it "creates a membership" do
         expect {
           described_class.call!(
@@ -38,6 +40,8 @@ RSpec.describe Memberships::Create do
     end
 
     context "role defaulting" do
+      before { Friendship.create_mutual!(inviter, target_user) }
+
       it "defaults role to viewer when role is empty string" do
         result = described_class.call!(
           list: list,
@@ -62,6 +66,8 @@ RSpec.describe Memberships::Create do
     end
 
     context "finding user by email" do
+      before { Friendship.create_mutual!(inviter, target_user) }
+
       it "finds the user by email address" do
         result = described_class.call!(
           list: list,
@@ -75,6 +81,8 @@ RSpec.describe Memberships::Create do
     end
 
     context "finding user by numeric ID" do
+      before { Friendship.create_mutual!(inviter, target_user) }
+
       it "finds the user by ID" do
         result = described_class.call!(
           list: list,
@@ -108,6 +116,19 @@ RSpec.describe Memberships::Create do
             role: "viewer"
           )
         }.to raise_error(ApplicationError::BadRequest, "user_identifier or friend_id is required")
+      end
+    end
+
+    context "when user_identifier has an invalid type" do
+      it "raises BadRequest for non-string values" do
+        expect {
+          described_class.call!(
+            list: list,
+            inviter: inviter,
+            user_identifier: { bad: "input" },
+            role: "viewer"
+          )
+        }.to raise_error(ApplicationError::BadRequest, "user_identifier must be a string")
       end
     end
 
@@ -149,7 +170,7 @@ RSpec.describe Memberships::Create do
     end
 
     context "when inviting self" do
-      it "raises Conflict" do
+      it "raises Forbidden (can't befriend yourself)" do
         expect {
           described_class.call!(
             list: list,
@@ -157,12 +178,13 @@ RSpec.describe Memberships::Create do
             user_identifier: inviter.email,
             role: "viewer"
           )
-        }.to raise_error(ApplicationError::Conflict, "Cannot invite yourself")
+        }.to raise_error(ApplicationError::Forbidden, "You can only add friends to lists")
       end
     end
 
     context "when user is already a member" do
       before do
+        Friendship.create_mutual!(inviter, target_user)
         create(:membership, list: list, user: target_user, role: "viewer")
       end
 
@@ -175,6 +197,36 @@ RSpec.describe Memberships::Create do
             role: "editor"
           )
         }.to raise_error(ApplicationError::Conflict, "User is already a member of this list")
+      end
+    end
+
+    context "when membership insert hits a uniqueness race" do
+      before { Friendship.create_mutual!(inviter, target_user) }
+
+      it "maps RecordNotUnique to Conflict" do
+        allow(list.memberships).to receive(:create!).and_raise(ActiveRecord::RecordNotUnique)
+
+        expect {
+          described_class.call!(
+            list: list,
+            inviter: inviter,
+            user_identifier: target_user.email,
+            role: "editor"
+          )
+        }.to raise_error(ApplicationError::Conflict, "User is already a member of this list")
+      end
+    end
+
+    context "when target user is not a friend (via user_identifier)" do
+      it "raises Forbidden" do
+        expect {
+          described_class.call!(
+            list: list,
+            inviter: inviter,
+            user_identifier: target_user.email,
+            role: "viewer"
+          )
+        }.to raise_error(ApplicationError::Forbidden, "You can only add friends to lists")
       end
     end
 
@@ -220,6 +272,17 @@ RSpec.describe Memberships::Create do
             role: "viewer"
           )
         }.to raise_error(ApplicationError::Forbidden, "You can only add friends to lists")
+      end
+
+      it "raises BadRequest for non-integer friend_id" do
+        expect {
+          described_class.call!(
+            list: list,
+            inviter: inviter,
+            friend_id: "abc",
+            role: "viewer"
+          )
+        }.to raise_error(ApplicationError::BadRequest, "friend_id must be a positive integer")
       end
     end
   end

@@ -20,7 +20,7 @@ class Nudge < ApplicationRecord
     recent_nudges = Nudge.where(
       task: task,
       from_user: from_user,
-      created_at: 1.hour.ago..
+      created_at: 1.hour.ago..Time.current
     ).count
 
     if recent_nudges >= 3

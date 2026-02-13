@@ -63,6 +63,47 @@ RSpec.describe AnalyticsEventJob, type: :job do
       }.not_to raise_error
     end
 
+    it "reports failures to Sentry with context" do
+      allow(AnalyticsEvent).to receive(:create!).and_raise(StandardError.new("db down"))
+      allow(Rails.cache).to receive(:read).and_return(nil)
+      allow(Rails.cache).to receive(:write)
+
+      stub_const("Sentry", Class.new) unless defined?(Sentry)
+      allow(Sentry).to receive(:capture_exception)
+
+      described_class.new.perform(
+        user_id: user.id,
+        event_type: "task_created",
+        task_id: task.id,
+        list_id: list.id,
+        metadata: {}
+      )
+
+      expect(Sentry).to have_received(:capture_exception).with(
+        instance_of(StandardError),
+        hash_including(extra: hash_including(user_id: user.id, event_type: "task_created"))
+      )
+    end
+
+    it "throttles repeated Sentry reports for the same error" do
+      allow(AnalyticsEvent).to receive(:create!).and_raise(StandardError.new("db down"))
+      allow(Rails.cache).to receive(:read).and_return(nil, true)
+      allow(Rails.cache).to receive(:write)
+
+      stub_const("Sentry", Class.new) unless defined?(Sentry)
+      allow(Sentry).to receive(:capture_exception)
+
+      2.times do
+        described_class.new.perform(
+          user_id: user.id,
+          event_type: "task_created",
+          metadata: {}
+        )
+      end
+
+      expect(Sentry).to have_received(:capture_exception).once
+    end
+
     it "is enqueued to the default queue" do
       expect(described_class.new.queue_name).to eq("default")
     end

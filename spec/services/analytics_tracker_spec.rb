@@ -195,7 +195,7 @@ RSpec.describe AnalyticsTracker do
 
   describe "error handling" do
     it "does not raise when job enqueueing fails" do
-      allow(AnalyticsEventJob).to receive(:perform_later).and_raise(StandardError.new("Redis down"))
+      allow(AnalyticsEventJob).to receive(:perform_later).and_raise(StandardError.new("Queue unavailable"))
 
       expect {
         described_class.app_opened(user, platform: "ios")
@@ -203,11 +203,40 @@ RSpec.describe AnalyticsTracker do
     end
 
     it "logs the error when enqueueing fails" do
-      allow(AnalyticsEventJob).to receive(:perform_later).and_raise(StandardError.new("Redis down"))
+      allow(AnalyticsEventJob).to receive(:perform_later).and_raise(StandardError.new("Queue unavailable"))
 
-      expect(Rails.logger).to receive(:error).with(/AnalyticsTracker failed to enqueue: Redis down/)
+      expect(Rails.logger).to receive(:error).with(/AnalyticsTracker failed to enqueue: Queue unavailable/)
 
       described_class.task_created(task, user)
+    end
+
+    it "reports enqueue failures to Sentry with context" do
+      allow(AnalyticsEventJob).to receive(:perform_later).and_raise(StandardError.new("Queue unavailable"))
+      allow(Rails.cache).to receive(:read).and_return(nil)
+      allow(Rails.cache).to receive(:write)
+
+      stub_const("Sentry", Class.new) unless defined?(Sentry)
+      allow(Sentry).to receive(:capture_exception)
+
+      described_class.app_opened(user, platform: "ios")
+
+      expect(Sentry).to have_received(:capture_exception).with(
+        instance_of(StandardError),
+        hash_including(extra: hash_including(user_id: user.id, event_type: "app_opened"))
+      )
+    end
+
+    it "throttles repeated Sentry reports for the same enqueue error" do
+      allow(AnalyticsEventJob).to receive(:perform_later).and_raise(StandardError.new("Queue unavailable"))
+      allow(Rails.cache).to receive(:read).and_return(nil, true)
+      allow(Rails.cache).to receive(:write)
+
+      stub_const("Sentry", Class.new) unless defined?(Sentry)
+      allow(Sentry).to receive(:capture_exception)
+
+      2.times { described_class.app_opened(user, platform: "ios") }
+
+      expect(Sentry).to have_received(:capture_exception).once
     end
   end
 end
