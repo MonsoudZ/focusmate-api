@@ -36,6 +36,7 @@ Rails.application.routes.draw do
       post "auth/apple", to: "apple_auth#create"
       post "auth/refresh", to: "auth/refresh#create"
       get "today", to: "today#index"
+      resource :notification_preference, only: %i[show update]
       post "analytics/app_opened", to: "analytics#app_opened"
       get "tasks/search", to: "tasks#search"
       resources :tasks, only: %i[index show]

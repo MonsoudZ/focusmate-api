@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_13_051315) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_13_064613) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -128,6 +128,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_13_051315) do
     t.index ["user_id", "list_id"], name: "index_memberships_on_user_id_and_list_id", unique: true
     t.index ["user_id"], name: "index_memberships_on_user_id"
     t.check_constraint "role::text = ANY (ARRAY['editor'::character varying::text, 'viewer'::character varying::text])", name: "memberships_role_check"
+  end
+
+  create_table "notification_preferences", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "list_joined_enabled", default: true, null: false
+    t.boolean "nudge_enabled", default: true, null: false
+    t.boolean "task_assigned_enabled", default: true, null: false
+    t.boolean "task_reminder_enabled", default: true, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id"], name: "index_notification_preferences_on_user_id", unique: true
   end
 
   create_table "nudges", force: :cascade do |t|
@@ -458,6 +469,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_13_051315) do
   add_foreign_key "lists", "users", on_delete: :cascade
   add_foreign_key "memberships", "lists", on_delete: :cascade
   add_foreign_key "memberships", "users", on_delete: :cascade
+  add_foreign_key "notification_preferences", "users", on_delete: :cascade
   add_foreign_key "nudges", "tasks", on_delete: :cascade
   add_foreign_key "nudges", "users", column: "from_user_id", on_delete: :cascade
   add_foreign_key "nudges", "users", column: "to_user_id", on_delete: :cascade
