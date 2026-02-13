@@ -25,14 +25,6 @@ class User < ApplicationRecord
   has_many :friendships, dependent: :destroy
   has_many :friends, through: :friendships, source: :friend
 
-  def coach?
-    role == "coach"
-  end
-
-  def client?
-    role == "client"
-  end
-
   private
 
   def set_default_name

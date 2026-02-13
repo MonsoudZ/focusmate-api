@@ -99,24 +99,6 @@ RSpec.describe User, type: :model do
     end
   end
 
-  describe 'methods' do
-    it 'checks if user is coach' do
-      coach = create(:user, role: "coach")
-      client = create(:user, role: "client")
-
-      expect(coach.coach?).to be true
-      expect(client.coach?).to be false
-    end
-
-    it 'checks if user is client' do
-      coach = create(:user, role: "coach")
-      client = create(:user, role: "client")
-
-      expect(client.client?).to be true
-      expect(coach.client?).to be false
-    end
-  end
-
   describe 'callbacks' do
     it 'validates timezone' do
       user = build(:user, timezone: "Invalid/Timezone")
@@ -153,18 +135,6 @@ RSpec.describe User, type: :model do
     it 'strips whitespace from email' do
       user = create(:user, email: " whitespace#{SecureRandom.hex(4)}@example.com ")
       expect(user.email).to eq(user.email.strip)
-    end
-  end
-
-  describe 'role methods' do
-    it 'returns correct role methods' do
-      coach = create(:user, role: "coach")
-      client = create(:user, role: "client")
-
-      expect(coach.coach?).to be true
-      expect(coach.client?).to be false
-      expect(client.coach?).to be false
-      expect(client.client?).to be true
     end
   end
 end
