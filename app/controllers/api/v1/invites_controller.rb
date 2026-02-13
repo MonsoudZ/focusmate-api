@@ -27,10 +27,13 @@ module Api
           atomically_increment_uses!(invite)
           create_membership!(list, invite.role)
           Friendship.ensure_mutual!(invite.inviter, current_user)
+
+          # Enqueue inside transaction — Solid Queue uses the same DB,
+          # so the job commits atomically with the membership.
+          SendListJoinedNotificationJob.perform_later(list_id: list.id, new_member_id: current_user.id)
         end
 
         AnalyticsTracker.list_shared(list, invite.inviter, shared_with: current_user, role: invite.role)
-        PushNotifications::Sender.send_list_joined(to_user: list.user, new_member: current_user, list: list)
 
         render json: {
           message: "Successfully joined list",

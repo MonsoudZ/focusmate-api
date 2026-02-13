@@ -31,15 +31,12 @@ class TaskAssignmentService < ApplicationService
       end
 
       @task.update!(assigned_to_id: assigned_to_id)
-    end
 
-    # Notify assignee (unless assigning to self)
-    if assignee.id != @user.id
-      PushNotifications::Sender.send_task_assigned(
-        to_user: assignee,
-        task: @task,
-        assigned_by: @user
-      )
+      # Enqueue inside transaction — Solid Queue uses the same DB,
+      # so the job commits atomically with the assignment.
+      if assignee.id != @user.id
+        SendTaskAssignedNotificationJob.perform_later(task_id: @task.id, assigned_by_id: @user.id)
+      end
     end
 
     @task

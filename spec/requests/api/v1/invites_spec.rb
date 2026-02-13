@@ -44,7 +44,7 @@ RSpec.describe "Api::V1::Invites", type: :request do
     let(:headers) { auth_headers(user) }
 
     before do
-      allow(PushNotifications::Sender).to receive(:send_list_joined)
+      ActiveJob::Base.queue_adapter = :test
     end
 
     it "adds user to the list" do
@@ -77,14 +77,10 @@ RSpec.describe "Api::V1::Invites", type: :request do
       expect(Friendship.friends?(owner, user)).to be true
     end
 
-    it "sends push notification to list owner" do
-      post "/api/v1/invites/#{invite.code}/accept", headers: headers
-
-      expect(PushNotifications::Sender).to have_received(:send_list_joined).with(
-        to_user: owner,
-        new_member: user,
-        list: list
-      )
+    it "enqueues notification job to list owner" do
+      expect {
+        post "/api/v1/invites/#{invite.code}/accept", headers: headers
+      }.to have_enqueued_job(SendListJoinedNotificationJob).with(list_id: list.id, new_member_id: user.id)
     end
 
     it "does not duplicate friendship if already friends" do

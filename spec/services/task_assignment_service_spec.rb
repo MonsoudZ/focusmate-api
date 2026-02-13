@@ -9,7 +9,7 @@ RSpec.describe TaskAssignmentService do
   let(:service) { described_class.new(task: task, user: user) }
 
   before do
-    allow(PushNotifications::Sender).to receive(:send_task_assigned)
+    ActiveJob::Base.queue_adapter = :test
   end
 
   describe "#assign!" do
@@ -22,23 +22,19 @@ RSpec.describe TaskAssignmentService do
       expect(task.reload.assigned_to_id).to eq(assignee.id)
     end
 
-    it "sends push notification to assignee" do
+    it "enqueues notification job for assignee" do
       assignee = create(:user)
       create(:membership, list: list, user: assignee, role: "editor")
 
-      service.assign!(assigned_to_id: assignee.id)
-
-      expect(PushNotifications::Sender).to have_received(:send_task_assigned).with(
-        to_user: assignee,
-        task: task,
-        assigned_by: user
-      )
+      expect {
+        service.assign!(assigned_to_id: assignee.id)
+      }.to have_enqueued_job(SendTaskAssignedNotificationJob).with(task_id: task.id, assigned_by_id: user.id)
     end
 
-    it "does not send notification when assigning to self" do
-      service.assign!(assigned_to_id: user.id)
-
-      expect(PushNotifications::Sender).not_to have_received(:send_task_assigned)
+    it "does not enqueue notification when assigning to self" do
+      expect {
+        service.assign!(assigned_to_id: user.id)
+      }.not_to have_enqueued_job(SendTaskAssignedNotificationJob)
     end
 
     it "allows assigning the list owner" do
