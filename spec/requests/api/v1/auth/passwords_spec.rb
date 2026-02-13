@@ -6,13 +6,6 @@ RSpec.describe "Auth Passwords", type: :request do
   describe "POST /api/v1/auth/password" do
     let(:user) { create(:user, email: "test@example.com") }
 
-    before do
-      # Devise mailer references edit_user_password_url which doesn't exist in
-      # this API-only app (password reset link is built by the frontend).
-      # Stub out the email delivery to test the controller's HTTP behavior.
-      allow(User).to receive(:send_reset_password_instructions).and_return(user)
-    end
-
     it "returns success message for existing email" do
       post "/api/v1/auth/password",
            params: { user: { email: user.email } }.to_json,
@@ -20,6 +13,18 @@ RSpec.describe "Auth Passwords", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(json_response["message"]).to match(/reset instructions/i)
+    end
+
+    it "sends a reset email with frontend URL for existing email" do
+      post "/api/v1/auth/password",
+           params: { user: { email: user.email } }.to_json,
+           headers: { "Content-Type" => "application/json" }
+
+      expect(ActionMailer::Base.deliveries.size).to eq(1)
+      email = ActionMailer::Base.deliveries.last
+      expect(email.to).to eq([ user.email ])
+      expect(email.text_part.body.to_s).to include("/reset-password?token=")
+      expect(email.html_part.body.to_s).to include("/reset-password?token=")
     end
 
     it "returns same success message for non-existent email" do
@@ -31,12 +36,22 @@ RSpec.describe "Auth Passwords", type: :request do
       expect(json_response["message"]).to match(/reset instructions/i)
     end
 
+    it "does not send an email for non-existent email" do
+      post "/api/v1/auth/password",
+           params: { user: { email: "nonexistent@example.com" } }.to_json,
+           headers: { "Content-Type" => "application/json" }
+
+      expect(ActionMailer::Base.deliveries).to be_empty
+    end
+
     it "always returns 200 regardless of email existence" do
       # Security: response is identical for existing and non-existing emails
       post "/api/v1/auth/password",
            params: { user: { email: user.email } }.to_json,
            headers: { "Content-Type" => "application/json" }
       existing_body = json_response
+
+      ActionMailer::Base.deliveries.clear
 
       post "/api/v1/auth/password",
            params: { user: { email: "fake@nowhere.com" } }.to_json,
