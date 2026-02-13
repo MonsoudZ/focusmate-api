@@ -7,8 +7,12 @@
     {
       "fingerprint": "2207c05bdd64b6b06de8f14f5f1826bdd09efa24019b3acbf00424444fad5ea6",
       "note": "Role is whitelist-validated by model inclusion validator (viewer/editor). Only list owners can create invites via Pundit policy."
+    },
+    {
+      "fingerprint": "80547597249eecea97668d29ccf85e3d3edadc859a1982b0bfdd252fc0c2d25f",
+      "note": "False positive: Zlib.crc32 always returns an integer. apple_user_id comes from verified Apple JWT claims, not user input."
     }
   ],
-  "updated": "2026-02-12",
+  "updated": "2026-02-13",
   "brakeman_version": "8.0.2"
 }

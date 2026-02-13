@@ -8,7 +8,7 @@ class FriendSerializer
   def as_json
     {
       id: @user.id,
-      name: @user.name,
+      name: @user.name
     }
   end
 end
