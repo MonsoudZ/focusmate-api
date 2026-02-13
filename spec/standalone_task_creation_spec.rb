@@ -107,11 +107,11 @@ RSpec.describe "Standalone Task Creation", type: :model do
     device = user.devices.create!(
       platform: "ios",
       apns_token: "test_token_#{SecureRandom.hex(8)}",
-      bundle_id: "com.focusmate.app"
+      bundle_id: "com.intentia.app"
     )
 
     expect(device.platform).to eq("ios")
-    expect(device.bundle_id).to eq("com.focusmate.app")
+    expect(device.bundle_id).to eq("com.intentia.app")
     expect(user.devices).to include(device)
   end
 end

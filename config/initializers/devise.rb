@@ -3,7 +3,7 @@
 Devise.setup do |config|
   # ==> Mailer Configuration
   # Configure the e-mail address which will be shown in Devise::Mailer.
-  config.mailer_sender = ENV.fetch("DEVISE_MAILER_SENDER", "noreply@focusmate.app")
+  config.mailer_sender = ENV.fetch("DEVISE_MAILER_SENDER", "noreply@intentia.app")
 
   # ==> ORM configuration
   require "devise/orm/active_record"

@@ -2,8 +2,8 @@
 # check=error=true
 
 # This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
-# docker build -t focusmate_api .
-# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name focusmate_api focusmate_api
+# docker build -t intentia_api .
+# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name intentia_api intentia_api
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 

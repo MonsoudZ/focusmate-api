@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# Focusmate API Development Setup Script
+# Intentia API Development Setup Script
 
-echo "🚀 Starting Focusmate API development environment..."
+echo "🚀 Starting Intentia API development environment..."
 
 # Check if Redis is running
 if ! redis-cli ping > /dev/null 2>&1; then

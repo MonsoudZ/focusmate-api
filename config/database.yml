@@ -7,11 +7,11 @@ default: &default
 
 development:
   <<: *default
-  database: focusmate_api_development
+  database: intentia_api_development
 
 test:
   <<: *default
-  database: focusmate_api_test
+  database: intentia_api_test
 
 production:
   <<: *default

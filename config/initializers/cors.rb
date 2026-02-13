@@ -12,7 +12,7 @@
 #
 # Configuration via environment variables:
 #   CORS_ORIGINS - Comma-separated list of allowed origins
-#                  Example: "https://app.focusmate.com,https://admin.focusmate.com"
+#                  Example: "https://app.intentia.com,https://admin.intentia.com"
 #                  Default: Allows localhost in development, none in production
 #
 Rails.application.config.middleware.insert_before 0, Rack::Cors do

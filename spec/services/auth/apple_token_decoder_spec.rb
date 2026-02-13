@@ -12,7 +12,7 @@ RSpec.describe Auth::AppleTokenDecoder do
         "sub" => "apple-user-123",
         "email" => "user@example.com",
         "iss" => "https://appleid.apple.com",
-        "aud" => "com.focusmate.app"
+        "aud" => "com.intentia.app"
       }
     end
 
@@ -24,7 +24,7 @@ RSpec.describe Auth::AppleTokenDecoder do
 
     before do
       allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with("APPLE_BUNDLE_ID").and_return("com.focusmate.app")
+      allow(ENV).to receive(:[]).with("APPLE_BUNDLE_ID").and_return("com.intentia.app")
       allow_any_instance_of(described_class).to receive(:fetch_apple_public_keys)
         .and_return([ jwk.export.transform_keys(&:to_s) ])
     end

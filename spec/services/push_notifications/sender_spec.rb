@@ -121,7 +121,7 @@ RSpec.describe PushNotifications::Sender do
     before do
       described_class.instance_variable_set(:@connection, mock_connection)
       allow(mock_connection).to receive(:push_async).and_return(mock_push)
-      allow(ENV).to receive(:fetch).with("APNS_BUNDLE_ID").and_return("com.focusmate.app")
+      allow(ENV).to receive(:fetch).with("APNS_BUNDLE_ID").and_return("com.intentia.app")
     end
 
     it "builds and sends a notification" do

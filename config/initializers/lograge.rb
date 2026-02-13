@@ -20,7 +20,7 @@ Rails.application.configure do
     {
       time: Time.current.iso8601,
       level: "INFO",
-      service: "focusmate-api"
+      service: "intentia-api"
     }
   end
 end

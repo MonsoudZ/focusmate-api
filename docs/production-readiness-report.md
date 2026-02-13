@@ -1,7 +1,7 @@
 # Production Readiness Report
 
 Date: 2026-02-05 09:55 EST
-Repo: `focusmate-api`
+Repo: `intentia-api`
 
 ## Executive Status
 

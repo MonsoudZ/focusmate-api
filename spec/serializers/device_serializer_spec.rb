@@ -8,7 +8,7 @@ RSpec.describe DeviceSerializer do
     create(:device,
       user: user,
       platform: "ios",
-      bundle_id: "com.focusmate.app",
+      bundle_id: "com.intentia.app",
       device_name: "iPhone 15",
       os_version: "18.0",
       app_version: "2.1.0")
@@ -20,7 +20,7 @@ RSpec.describe DeviceSerializer do
 
       expect(json[:id]).to eq(device.id)
       expect(json[:platform]).to eq("ios")
-      expect(json[:bundle_id]).to eq("com.focusmate.app")
+      expect(json[:bundle_id]).to eq("com.intentia.app")
       expect(json[:device_name]).to eq("iPhone 15")
       expect(json[:os_version]).to eq("18.0")
       expect(json[:app_version]).to eq("2.1.0")

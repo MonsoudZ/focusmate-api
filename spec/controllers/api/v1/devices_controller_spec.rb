@@ -33,7 +33,7 @@ RSpec.describe "Api::V1::Devices", type: :request do
           device_name: "iPhone",
           os_version: "17.3",
           app_version: "1.2.3",
-          bundle_id: "com.focusmate.app"
+          bundle_id: "com.intentia.app"
         }
       }
     end
@@ -79,7 +79,7 @@ RSpec.describe "Api::V1::Devices", type: :request do
         device_name: "iPhone",
         os_version: "17.0",
         app_version: "1.0.0",
-        bundle_id: "com.focusmate.app"
+        bundle_id: "com.intentia.app"
       )
     end
 
@@ -98,7 +98,7 @@ RSpec.describe "Api::V1::Devices", type: :request do
         device_name: "Pixel",
         os_version: "14",
         app_version: "1.0.0",
-        bundle_id: "com.focusmate.app"
+        bundle_id: "com.intentia.app"
       )
 
       delete "/api/v1/devices/#{other_device.id}", headers: headers

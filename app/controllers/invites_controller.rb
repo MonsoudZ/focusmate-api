@@ -18,7 +18,7 @@ class InvitesController < ActionController::Base
     @app_store_url = ENV["APP_STORE_URL"]
     # UNIVERSAL_LINK_DOMAIN is for iOS/Android deep links (requires apple-app-site-association)
     # Falls back to APP_URL if not set
-    universal_domain = ENV["UNIVERSAL_LINK_DOMAIN"] || ENV.fetch("APP_URL", "https://focusmate.app")
+    universal_domain = ENV["UNIVERSAL_LINK_DOMAIN"] || ENV.fetch("APP_URL", "https://intentia.app")
     @universal_link = "#{universal_domain}/invite/#{params[:code]}"
   end
 end

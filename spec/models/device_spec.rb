@@ -31,7 +31,7 @@ RSpec.describe Device do
     end
 
     it 'requires fcm_token for android' do
-      device = Device.new(user: user, platform: 'android', bundle_id: 'com.focusmate.app', apns_token: nil, fcm_token: nil)
+      device = Device.new(user: user, platform: 'android', bundle_id: 'com.intentia.app', apns_token: nil, fcm_token: nil)
       expect(device).not_to be_valid
       expect(device.errors[:fcm_token]).to include("can't be blank")
     end

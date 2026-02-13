@@ -94,7 +94,7 @@ RSpec.describe ListInvite, type: :model do
   describe "#invite_url" do
     it "returns the full invite URL" do
       invite = create(:list_invite)
-      expect(invite.invite_url).to eq("https://focusmate.app/invite/#{invite.code}")
+      expect(invite.invite_url).to eq("https://intentia.app/invite/#{invite.code}")
     end
   end
 

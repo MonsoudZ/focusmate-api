@@ -44,6 +44,6 @@ class ListInvite < ApplicationRecord
   end
 
   def base_url
-    ENV.fetch("APP_URL", "https://focusmate.app")
+    ENV.fetch("APP_URL", "https://intentia.app")
   end
 end

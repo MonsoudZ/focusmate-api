@@ -29,14 +29,14 @@ RSpec.describe Devise::Mailer, type: :mailer do
     context "with APP_WEB_BASE configured" do
       around do |example|
         original = ENV["APP_WEB_BASE"]
-        ENV["APP_WEB_BASE"] = "https://app.focusmate.com"
+        ENV["APP_WEB_BASE"] = "https://app.intentia.com"
         example.run
       ensure
         ENV["APP_WEB_BASE"] = original
       end
 
       it "uses APP_WEB_BASE in the reset URL" do
-        expected_url = "https://app.focusmate.com/reset-password?token=#{token}"
+        expected_url = "https://app.intentia.com/reset-password?token=#{token}"
         expect(mail.text_part.body.to_s).to include(expected_url)
       end
     end

@@ -6,7 +6,7 @@ RSpec.describe Devices::Upsert do
   let(:user) { create(:user) }
 
   describe ".call!" do
-    let(:valid_attrs) { { platform: "ios", bundle_id: "com.focusmate.app" } }
+    let(:valid_attrs) { { platform: "ios", bundle_id: "com.intentia.app" } }
 
     it "creates a device when token is new" do
       device = described_class.call!(user: user, apns_token: "abc", **valid_attrs)

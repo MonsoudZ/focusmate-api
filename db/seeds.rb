@@ -1,5 +1,5 @@
 # db/seeds.rb
-# Seeds for Focusmate MVP Testing
+# Seeds for Intentia MVP Testing
 # Run: rails db:seed
 
 puts "🌱 Starting seed process..."
@@ -21,7 +21,7 @@ puts "Creating test users..."
 
 # Main test user
 user1 = User.create!(
-  email: 'test@focusmate.app',
+  email: 'test@intentia.app',
   password: 'password123',
   password_confirmation: 'password123',
   name: 'Test User',
@@ -30,7 +30,7 @@ user1 = User.create!(
 
 # Secondary user for sharing tests
 user2 = User.create!(
-  email: 'shared@focusmate.app',
+  email: 'shared@intentia.app',
   password: 'password123',
   password_confirmation: 'password123',
   name: 'Shared User',
@@ -218,6 +218,6 @@ puts "    - Overdue: #{Task.where('due_at < ? AND completed_at IS NULL', Time.cu
 puts "    - Due today: #{Task.where('due_at >= ? AND due_at < ? AND completed_at IS NULL', Time.current.beginning_of_day, Time.current.end_of_day).count}"
 puts "    - Completed: #{Task.where.not(completed_at: nil).count}"
 puts "\n🔑 Test Credentials:"
-puts "  Main user: test@focusmate.app / password123"
-puts "  Shared user: shared@focusmate.app / password123"
+puts "  Main user: test@intentia.app / password123"
+puts "  Shared user: shared@intentia.app / password123"
 puts "=" * 60

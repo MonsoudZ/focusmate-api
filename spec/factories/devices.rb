@@ -2,7 +2,7 @@ FactoryBot.define do
   factory :device do
     platform { "ios" }
     apns_token { SecureRandom.hex(32) }  # 64 hex characters
-    bundle_id { "com.focusmate.app" }
+    bundle_id { "com.intentia.app" }
     user { association :user }
 
     # Auto-set FCM token for Android devices (only if not already set)
