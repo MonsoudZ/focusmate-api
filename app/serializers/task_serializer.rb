@@ -103,7 +103,6 @@ class TaskSerializer
 
     {
       id: creator.id,
-      email: creator.email,
       name: creator.name,
       role: creator.role
     }

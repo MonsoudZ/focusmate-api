@@ -34,7 +34,7 @@ RSpec.describe "Api::V1::Memberships", type: :request do
 
         expect(json_response["owner"]["id"]).to eq(owner.id)
         expect(json_response["owner"]["name"]).to eq("Owner")
-        expect(json_response["owner"]["email"]).to eq(owner.email)
+        expect(json_response["owner"]).not_to have_key("email")
       end
 
       it "includes member details in memberships array" do

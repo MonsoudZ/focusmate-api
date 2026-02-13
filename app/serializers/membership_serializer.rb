@@ -11,7 +11,6 @@ class MembershipSerializer
       id: @membership.id,
       user: {
         id: @membership.user_id,
-        email: @membership.user&.email,
         name: @membership.user&.name
       },
       role: @membership.role,

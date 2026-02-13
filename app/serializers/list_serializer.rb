@@ -16,7 +16,7 @@ class ListSerializer
       description: list.description,
       visibility: list.visibility,
       color: list.color || "blue",
-      user: UserSerializer.one(list.user),
+      user: { id: list.user.id, name: list.user.name },
       role: role_for_current_user,
       tasks_count: list.parent_tasks_count,
       completed_tasks_count: completed_tasks_count,
@@ -118,7 +118,6 @@ class ListSerializer
     members << {
       id: list.user.id,
       name: list.user.name,
-      email: list.user.email,
       role: "owner"
     }
 
@@ -130,7 +129,6 @@ class ListSerializer
       members << {
         id: m.user.id,
         name: m.user.name,
-        email: m.user.email,
         role: m.role
       }
     end

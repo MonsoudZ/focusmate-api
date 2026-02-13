@@ -23,7 +23,6 @@ module Api
         render json: {
           owner: {
             id: owner.id,
-            email: owner.email,
             name: owner.name
           },
           memberships: memberships.map { |m| MembershipSerializer.new(m).as_json }

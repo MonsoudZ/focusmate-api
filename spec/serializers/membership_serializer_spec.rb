@@ -22,8 +22,8 @@ RSpec.describe MembershipSerializer do
       json = described_class.new(membership).as_json
 
       expect(json[:user][:id]).to eq(member.id)
-      expect(json[:user][:email]).to eq(member.email)
       expect(json[:user][:name]).to eq("Carol")
+      expect(json[:user]).not_to have_key(:email)
     end
   end
 end

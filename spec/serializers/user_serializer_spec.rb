@@ -28,5 +28,11 @@ RSpec.describe UserSerializer do
 
       expect(json[:has_password]).to be false
     end
+
+    it "always returns email for the user's own profile" do
+      json = described_class.one(user)
+
+      expect(json[:email]).to eq(user.email)
+    end
   end
 end

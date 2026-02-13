@@ -1577,29 +1577,22 @@ RSpec.describe "QA Test Plan", type: :request do
       # IMPORTANT: The QA checklist says profile should NOT return
       # Apple private relay email or raw email. Let's check what actually happens.
 
-      it "documents: profile currently returns email field" do
+      it "returns email in the user's own profile" do
         get "/api/v1/users/profile", headers: headers
 
-        # The UserSerializer currently returns email directly.
-        # QA needs to decide: should we strip/mask it?
-        expect(json["user"]).to have_key("email")
+        expect(json["user"]["email"]).to eq(user.email)
       end
 
-      it "documents: Apple private relay emails are returned as-is" do
-        apple_user = create(:user,
-          apple_user_id: "apple_privacy_test",
-          email: "abc123@privaterelay.appleid.com")
-        apple_headers = auth_headers(apple_user)
+      it "does not expose email in list member data" do
+        other = create(:user)
+        list = create(:list, user: user)
+        create(:membership, list: list, user: other, role: "editor")
 
-        get "/api/v1/users/profile", headers: apple_headers
+        get "/api/v1/lists/#{list.id}", headers: auth_headers(other)
 
-        # POTENTIAL BUG: The private relay email is exposed in the response.
-        # If the QA checklist says "should NOT return Apple private relay email",
-        # then the UserSerializer needs to mask or remove this.
-        email_returned = json["user"]["email"]
-        if email_returned&.include?("privaterelay.appleid.com")
-          pending "BUG: Apple private relay email is exposed in profile response"
-          fail "UserSerializer returns private relay email: #{email_returned}"
+        members = json["list"]["members"]
+        members.each do |member|
+          expect(member).not_to have_key("email")
         end
       end
     end

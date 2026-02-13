@@ -145,8 +145,8 @@ RSpec.describe TaskSerializer do
       json = serialize(task)
 
       expect(json[:creator][:id]).to eq(user.id)
-      expect(json[:creator][:email]).to eq(user.email)
       expect(json[:creator][:name]).to eq(user.name)
+      expect(json[:creator]).not_to have_key(:email)
     end
 
     it "falls back to list user if creator is nil" do
