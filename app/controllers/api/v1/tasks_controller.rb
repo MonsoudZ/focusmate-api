@@ -257,7 +257,7 @@ module Api
       end
 
       def permitted_create_attributes
-        permitted_base_attributes + %i[list_id parent_task_id]
+        permitted_base_attributes + %i[list_id parent_task_id] + [ subtasks: [] ]
       end
 
       def permitted_update_attributes

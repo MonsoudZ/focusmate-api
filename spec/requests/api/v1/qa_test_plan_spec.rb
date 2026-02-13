@@ -487,10 +487,7 @@ RSpec.describe "QA Test Plan", type: :request do
         expect(Task.where(parent_task_id: parent.id, deleted_at: nil).count).to eq(2)
       end
 
-      it "BUG: inline subtask creation via task params is not supported" do
-        # TaskCreationService supports subtasks: ["title1", "title2"],
-        # but the controller strong params don't permit the :subtasks array.
-        # This means inline subtask creation silently drops the subtasks.
+      it "creates task with inline subtasks" do
         post "/api/v1/lists/#{list.id}/tasks", params: {
           task: {
             title: "Parent Task",
@@ -501,11 +498,9 @@ RSpec.describe "QA Test Plan", type: :request do
 
         expect(response).to have_http_status(:created)
         parent = Task.find(json["task"]["id"])
-        subtask_count = Task.where(parent_task_id: parent.id, deleted_at: nil).count
-        # BUG: Subtasks are silently dropped because controller doesn't permit :subtasks
-        expect(subtask_count).to eq(0),
-          "KNOWN BUG: Controller strong params don't include :subtasks. " \
-          "TaskCreationService supports it but the param never gets through."
+        subtasks = Task.where(parent_task_id: parent.id, deleted_at: nil)
+        expect(subtasks.count).to eq(2)
+        expect(subtasks.pluck(:title)).to match_array([ "Subtask 1", "Subtask 2" ])
       end
 
       it "rejects task without title" do
