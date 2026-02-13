@@ -84,6 +84,32 @@ RSpec.describe PushNotifications::Sender do
       expect(described_class).not_to receive(:send_to_device)
       described_class.send_to_user(user: user, title: "Test", body: "Body")
     end
+
+    it "returns false when notification type is disabled for user" do
+      create(:device, user: user, platform: "ios")
+      create(:notification_preference, user: user, nudge_enabled: false)
+
+      expect(described_class).not_to receive(:send_to_device)
+      result = described_class.send_to_user(user: user, title: "Test", body: "Body", data: { type: "nudge" })
+      expect(result).to be(false)
+    end
+
+    it "sends when notification type is enabled for user" do
+      create(:device, user: user, platform: "ios")
+      create(:notification_preference, user: user, nudge_enabled: true)
+      allow(described_class).to receive(:send_to_device).and_return(true)
+
+      result = described_class.send_to_user(user: user, title: "Test", body: "Body", data: { type: "nudge" })
+      expect(result).to be(true)
+    end
+
+    it "sends when no notification preference record exists" do
+      create(:device, user: user, platform: "ios")
+      allow(described_class).to receive(:send_to_device).and_return(true)
+
+      result = described_class.send_to_user(user: user, title: "Test", body: "Body", data: { type: "nudge" })
+      expect(result).to be(true)
+    end
   end
 
   describe ".send_to_device" do

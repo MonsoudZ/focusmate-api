@@ -11,6 +11,9 @@ module PushNotifications
 
     class << self
       def send_to_user(user:, title:, body:, data: {})
+        notification_type = data[:type]&.to_sym
+        return false if notification_type && !NotificationPreference.enabled_for_user?(user, notification_type)
+
         devices = user.devices.ios.active
 
         return false if devices.empty?
