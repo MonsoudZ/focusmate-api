@@ -256,5 +256,23 @@ RSpec.describe StreakService do
         expect(task_selects).to eq(1)
       end
     end
+
+    context "concurrency safety" do
+      it "uses the reloaded user timezone, not the pre-lock value" do
+        user.update!(timezone: "America/New_York", last_streak_date: Date.new(2025, 6, 14), current_streak: 1)
+
+        # Another request changes timezone after we initialize but before lock
+        service = described_class.new(user)
+        user.update_column(:timezone, "Asia/Tokyo")
+
+        travel_to Time.zone.local(2025, 6, 15, 10, 0, 0) do
+          service.update_streak!
+        end
+
+        # The service should have used Asia/Tokyo (from the reloaded record inside the lock),
+        # not America/New_York (from the stale pre-lock state)
+        expect(user.reload.last_streak_date).to eq(Date.new(2025, 6, 15))
+      end
+    end
   end
 end

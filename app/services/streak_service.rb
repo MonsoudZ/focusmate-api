@@ -3,12 +3,19 @@
 class StreakService
   def initialize(user)
     @user = user
-    @user_zone = resolve_timezone(user.timezone)
   end
 
-  # Call this when user opens the app or completes a task
+  # Call this when user opens the app or completes a task.
+  #
+  # with_lock wraps in a transaction and reloads @user via SELECT FOR UPDATE,
+  # so concurrent StreakUpdateJobs serialize cleanly — the second caller
+  # always sees the first caller's committed streak values.
+  #
+  # Timezone is resolved AFTER reload so we use the freshest user data.
   def update_streak!
     @user.with_lock do
+      # Reset memoized timezone so it's resolved from the reloaded user
+      @user_zone = nil
       check_previous_days!
       check_today!
       @user.save!
@@ -17,8 +24,12 @@ class StreakService
 
   private
 
+  def user_zone
+    @user_zone ||= resolve_timezone(@user.timezone)
+  end
+
   def user_today
-    Time.current.in_time_zone(@user_zone).to_date
+    Time.current.in_time_zone(user_zone).to_date
   end
 
   def resolve_timezone(value)
@@ -87,7 +98,7 @@ class StreakService
   end
 
   def tasks_due_on(date)
-    zone = ActiveSupport::TimeZone[@user_zone]
+    zone = ActiveSupport::TimeZone[user_zone]
     day_start = zone.local(date.year, date.month, date.day).beginning_of_day
     day_end = day_start.end_of_day
 

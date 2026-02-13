@@ -38,10 +38,13 @@ class TaskCompletionService < ApplicationService
 
       @task.complete!
       track_completion_analytics
-    end
 
-    enqueue_recurring_task_generation
-    enqueue_streak_update
+      # Enqueue inside the transaction — Solid Queue uses the same DB,
+      # so jobs are committed atomically with the task completion.
+      # If the transaction rolls back, the jobs are never persisted.
+      enqueue_recurring_task_generation
+      enqueue_streak_update
+    end
 
     @task
   end

@@ -251,6 +251,17 @@ RSpec.describe TaskCompletionService do
     end
   end
 
+  describe 'transactional side-effects' do
+    it 'does not enqueue jobs if the transaction rolls back' do
+      # Force save to fail after complete! — simulates a DB error inside the transaction
+      allow_any_instance_of(Task).to receive(:complete!).and_raise(ActiveRecord::RecordInvalid)
+
+      expect {
+        described_class.complete!(task: task, user: list_owner) rescue nil
+      }.not_to have_enqueued_job(StreakUpdateJob)
+    end
+  end
+
   describe 'access control via membership' do
     it 'allows completion by list member' do
       # Create membership for a user who is not list owner or task creator
