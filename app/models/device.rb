@@ -20,6 +20,7 @@ class Device < ApplicationRecord
   validates :apns_token, presence: true, if: :ios?
   validates :apns_token, uniqueness: true, allow_nil: true
   validates :fcm_token, presence: true, if: :android?
+  validates :fcm_token, uniqueness: { scope: :user_id }, allow_nil: true
   validates :device_name, length: { maximum: 255 }, allow_nil: true
   validates :os_version, length: { maximum: 50 }, allow_nil: true
   validates :app_version, length: { maximum: 50 }, allow_nil: true

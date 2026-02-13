@@ -2,14 +2,14 @@
 
 class FriendshipPolicy < ApplicationPolicy
   # Headless policy — controller passes :friendship as the record.
-  # All actions are safe because FriendsController already scopes
+  # Actions require an authenticated user; the controller further scopes
   # queries through current_user.friends.
 
   def index?
-    true
+    user.present?
   end
 
   def destroy?
-    true
+    user.present?
   end
 end

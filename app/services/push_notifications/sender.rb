@@ -136,6 +136,7 @@ module PushNotifications
         )
       end
 
+      # Called inside CONNECTION_MUTEX from create_connection → connection
       def resolve_cert_path
         apns_key_content = Rails.application.credentials.dig(:apns, :key_content) || ENV["APNS_KEY_CONTENT"]
         if apns_key_content.present?
@@ -157,6 +158,7 @@ module PushNotifications
         end
       end
 
+      # Always called inside CONNECTION_MUTEX (from reset_connection! or resolve_cert_path)
       def cleanup_temp_file!
         return unless @temp_key_file
 

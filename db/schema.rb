@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_13_045103) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_13_051315) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -51,7 +51,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_13_045103) do
     t.index ["active"], name: "index_devices_on_active"
     t.index ["apns_token"], name: "index_devices_on_apns_token", unique: true
     t.index ["deleted_at"], name: "index_devices_on_deleted_at"
-    t.index ["fcm_token"], name: "index_devices_on_fcm_token"
     t.index ["platform"], name: "index_devices_on_platform"
     t.index ["user_id", "fcm_token"], name: "index_devices_on_user_id_and_fcm_token", unique: true
     t.index ["user_id"], name: "index_devices_on_user_id"
