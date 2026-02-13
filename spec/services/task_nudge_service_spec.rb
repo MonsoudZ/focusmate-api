@@ -10,7 +10,7 @@ RSpec.describe TaskNudgeService do
   let(:task) { create(:task, list: list, creator: list_owner, title: "Do homework") }
 
   before do
-    allow(PushNotifications::Sender).to receive(:send_nudge)
+    ActiveJob::Base.queue_adapter = :test
   end
 
   describe "#call!" do
@@ -27,29 +27,20 @@ RSpec.describe TaskNudgeService do
         expect { service.call! }.to change(Nudge, :count).by(2)
       end
 
-      it "sends push notifications to all recipients" do
+      it "enqueues notification jobs for all recipients" do
         service = described_class.new(task: task, from_user: member1)
-        service.call!
 
-        expect(PushNotifications::Sender).to have_received(:send_nudge).with(
-          from_user: member1,
-          to_user: list_owner,
-          task: task
-        )
-        expect(PushNotifications::Sender).to have_received(:send_nudge).with(
-          from_user: member1,
-          to_user: member2,
-          task: task
-        )
+        expect {
+          service.call!
+        }.to have_enqueued_job(SendNudgeNotificationJob).exactly(2).times
       end
 
-      it "does not send a nudge to the sender" do
+      it "does not enqueue a notification for the sender" do
         service = described_class.new(task: task, from_user: member1)
-        service.call!
+        nudges = service.call!
 
-        expect(PushNotifications::Sender).not_to have_received(:send_nudge).with(
-          hash_including(to_user: member1)
-        )
+        nudge_recipient_ids = nudges.map(&:to_user_id)
+        expect(nudge_recipient_ids).not_to include(member1.id)
       end
 
       it "returns an array of nudges" do
@@ -77,15 +68,10 @@ RSpec.describe TaskNudgeService do
 
         # Should only create nudge for member2 (owner was recently nudged)
         expect { service.call! }.to change(Nudge, :count).by(1)
+          .and have_enqueued_job(SendNudgeNotificationJob).exactly(1).times
 
-        expect(PushNotifications::Sender).to have_received(:send_nudge).with(
-          from_user: member1,
-          to_user: member2,
-          task: task
-        )
-        expect(PushNotifications::Sender).not_to have_received(:send_nudge).with(
-          hash_including(to_user: list_owner)
-        )
+        nudge = Nudge.last
+        expect(nudge.to_user).to eq(member2)
       end
 
       it "allows nudging after the rate limit window" do
@@ -151,14 +137,12 @@ RSpec.describe TaskNudgeService do
         }.to raise_error(ApplicationError::UnprocessableEntity, /only member/)
       end
 
-      it "does not send any notifications" do
+      it "does not enqueue any notification jobs" do
         service = described_class.new(task: hidden_task, from_user: list_owner)
 
         expect {
-          service.call!
-        }.to raise_error(ApplicationError::UnprocessableEntity)
-
-        expect(PushNotifications::Sender).not_to have_received(:send_nudge)
+          service.call! rescue nil # rubocop:disable Style/RescueModifier
+        }.not_to have_enqueued_job(SendNudgeNotificationJob)
       end
     end
   end

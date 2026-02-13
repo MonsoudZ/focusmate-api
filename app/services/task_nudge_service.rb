@@ -29,24 +29,16 @@ class TaskNudgeService < ApplicationService
       )
     end
 
-    # All-or-nothing for database writes
-    nudges = ActiveRecord::Base.transaction do
+    # All-or-nothing: nudge records + notification jobs commit atomically.
+    # Solid Queue shares the same DB, so if the transaction rolls back
+    # neither the nudges nor the jobs are persisted.
+    ActiveRecord::Base.transaction do
       eligible_recipients.map do |recipient|
-        Nudge.create!(task: @task, from_user: @from_user, to_user: recipient)
+        nudge = Nudge.create!(task: @task, from_user: @from_user, to_user: recipient)
+        SendNudgeNotificationJob.perform_later(nudge_id: nudge.id)
+        nudge
       end
     end
-
-    # Send notifications after commit (can't roll these back anyway)
-    # Keep synchronous for immediate feedback (important for ADHD users)
-    nudges.each do |nudge|
-      PushNotifications::Sender.send_nudge(
-        from_user: @from_user,
-        to_user: nudge.to_user,
-        task: @task
-      )
-    end
-
-    nudges
   end
 
   private
