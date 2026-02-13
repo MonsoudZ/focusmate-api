@@ -104,11 +104,6 @@ class ApplicationError < StandardError
     def default_message = "Token has expired"
   end
 
-  class TokenRevoked < Unauthorized
-    def default_code = "token_revoked"
-    def default_message = "Token has been revoked"
-  end
-
   class TokenReused < Unauthorized
     def default_code = "token_reused"
     def default_message = "Token has already been used"

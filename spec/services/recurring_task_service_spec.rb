@@ -202,18 +202,36 @@ RSpec.describe RecurringTaskService do
     end
 
     context "with unknown recurrence pattern" do
-      it "returns nil for unknown patterns" do
+      it "raises for unknown patterns" do
         result = service.create_recurring_task(
           list: list,
           params: { title: "Unknown", due_at: Time.zone.parse("2026-02-01 10:00:00") },
           recurrence_params: { pattern: "daily", interval: 1 }
         )
 
-        # Manually set an invalid pattern to test else branch
-        result[:template].update_column(:recurrence_pattern, "unknown_pattern")
-
+        template = result[:template]
         instance = result[:instance]
-        expect(service.generate_next_instance(instance)).to be_nil
+
+        # Stub on the template the instance will load via its association —
+        # the DB check constraint prevents writing invalid values directly.
+        allow(instance).to receive(:template).and_return(template)
+        allow(template).to receive(:recurrence_pattern).and_return("unknown_pattern")
+
+        expect {
+          service.generate_next_instance(instance)
+        }.to raise_error(ApplicationError::Validation, /Unknown recurrence pattern/)
+      end
+
+      it "rejects invalid patterns at the database level" do
+        result = service.create_recurring_task(
+          list: list,
+          params: { title: "BadPattern", due_at: Time.zone.parse("2026-02-01 10:00:00") },
+          recurrence_params: { pattern: "daily", interval: 1 }
+        )
+
+        expect {
+          result[:template].update_column(:recurrence_pattern, "bogus")
+        }.to raise_error(ActiveRecord::StatementInvalid, /tasks_recurrence_pattern_check/)
       end
     end
 

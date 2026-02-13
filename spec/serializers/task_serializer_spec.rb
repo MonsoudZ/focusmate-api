@@ -99,12 +99,11 @@ RSpec.describe TaskSerializer do
       end
     end
 
-    context "when task has nil status" do
-      it "treats nil status as overdue when past due" do
-        overdue_task = create(:task, list: list, creator: user, due_at: 30.minutes.ago)
-        overdue_task.update_column(:status, nil)
+    context "when task is pending and past due" do
+      it "is overdue" do
+        overdue_task = create(:task, list: list, creator: user, status: :pending, due_at: 30.minutes.ago)
 
-        json = serialize(overdue_task.reload)
+        json = serialize(overdue_task)
 
         expect(json[:overdue]).to be true
       end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_12_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_13_045103) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -174,25 +174,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_130000) do
     t.index ["task_id", "created_at"], name: "index_reschedule_events_on_task_id_and_created_at"
     t.index ["task_id"], name: "index_reschedule_events_on_task_id"
     t.index ["user_id"], name: "index_reschedule_events_on_user_id"
-  end
-
-  create_table "revenue_plans", force: :cascade do |t|
-    t.decimal "call_to_close_rate", precision: 5, scale: 4, default: "0.2", null: false
-    t.datetime "created_at", null: false
-    t.string "currency_code", limit: 3, default: "USD", null: false
-    t.integer "goal_cents", null: false
-    t.decimal "lead_to_call_rate", precision: 5, scale: 4, default: "0.2", null: false
-    t.string "name", null: false
-    t.text "notes"
-    t.decimal "outbound_reply_rate", precision: 5, scale: 4, default: "0.1", null: false
-    t.string "period", default: "month", null: false
-    t.integer "price_cents", null: false
-    t.string "status", default: "active", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
-    t.integer "working_days", default: 20, null: false
-    t.index ["user_id", "status"], name: "index_revenue_plans_on_user_id_and_status"
-    t.index ["user_id"], name: "index_revenue_plans_on_user_id"
   end
 
   create_table "solid_queue_blocked_executions", force: :cascade do |t|
@@ -390,7 +371,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_130000) do
     t.datetime "reminder_sent_at"
     t.boolean "requires_explanation_if_missed", default: false
     t.boolean "starred", default: false, null: false
-    t.integer "status"
+    t.integer "status", default: 0, null: false
     t.boolean "strict_mode"
     t.integer "subtasks_count", default: 0, null: false
     t.bigint "template_id"
@@ -441,6 +422,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_130000) do
     t.check_constraint "notification_interval_minutes > 0", name: "tasks_notification_interval_positive"
     t.check_constraint "priority = ANY (ARRAY[0, 1, 2, 3, 4])", name: "tasks_priority_check"
     t.check_constraint "recurrence_interval > 0", name: "tasks_recurrence_interval_positive"
+    t.check_constraint "recurrence_pattern IS NULL OR (recurrence_pattern::text = ANY (ARRAY['daily'::text, 'weekly'::text, 'monthly'::text, 'yearly'::text]))", name: "tasks_recurrence_pattern_check"
     t.check_constraint "status = ANY (ARRAY[0, 1, 2])", name: "tasks_status_check"
     t.check_constraint "visibility = ANY (ARRAY[0, 1])", name: "tasks_visibility_check"
   end
@@ -483,7 +465,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_130000) do
   add_foreign_key "refresh_tokens", "users", on_delete: :cascade
   add_foreign_key "reschedule_events", "tasks"
   add_foreign_key "reschedule_events", "users", on_delete: :nullify
-  add_foreign_key "revenue_plans", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

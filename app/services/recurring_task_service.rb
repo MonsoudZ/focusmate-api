@@ -106,12 +106,10 @@ class RecurringTaskService
       next_date = last_due_date.to_date + interval.years
       combine_date_and_time(next_date, base_time)
     else
-      Rails.logger.warn(
-        event: "unknown_recurrence_pattern",
-        pattern: template.recurrence_pattern,
-        template_id: template.id
+      raise ApplicationError::Validation.new(
+        "Unknown recurrence pattern: #{template.recurrence_pattern}",
+        details: { recurrence_pattern: [ template.recurrence_pattern ] }
       )
-      nil
     end
   end
 

@@ -89,7 +89,7 @@ class TaskSerializer
   def overdue?
     task.due_at.present? &&
       task.due_at < Time.current &&
-      (task.status.nil? || task.status == "pending" || task.status == "in_progress")
+      (task.status == "pending" || task.status == "in_progress")
   end
 
   def minutes_overdue

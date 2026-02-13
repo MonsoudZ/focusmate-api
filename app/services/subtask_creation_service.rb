@@ -8,19 +8,21 @@ class SubtaskCreationService < ApplicationService
   end
 
   def call!
-    next_position = (@parent_task.subtasks.where(deleted_at: nil).maximum(:position) || 0) + 1
+    ActiveRecord::Base.transaction do
+      @parent_task.lock!
 
-    subtask = @parent_task.list.tasks.new(
-      title: @params[:title],
-      note: @params[:note],
-      parent_task: @parent_task,
-      creator: @user,
-      due_at: @parent_task.due_at,
-      strict_mode: @parent_task.strict_mode,
-      status: :pending,
-      position: next_position
-    )
-    subtask.save!
-    subtask
+      next_position = (@parent_task.subtasks.where(deleted_at: nil).maximum(:position) || 0) + 1
+
+      @parent_task.list.tasks.create!(
+        title: @params[:title],
+        note: @params[:note],
+        parent_task: @parent_task,
+        creator: @user,
+        due_at: @parent_task.due_at,
+        strict_mode: @parent_task.strict_mode,
+        status: :pending,
+        position: next_position
+      )
+    end
   end
 end

@@ -140,5 +140,31 @@ RSpec.describe UserFinder do
         expect(result.email).to eq("#{apple_user_id}@privaterelay.appleid.com")
       end
     end
+
+    context "concurrency safety" do
+      it "acquires an advisory lock scoped to the apple_user_id" do
+        lock_key = Zlib.crc32("apple_auth:#{apple_user_id}")
+
+        expect(User.connection).to receive(:execute)
+          .with("SELECT pg_advisory_xact_lock(#{lock_key})")
+          .and_call_original
+
+        described_class.find_or_create_by_apple(
+          apple_user_id: apple_user_id,
+          email: email,
+          name: name
+        )
+      end
+
+      it "runs the entire find-or-create inside a transaction" do
+        expect(User).to receive(:transaction).and_call_original
+
+        described_class.find_or_create_by_apple(
+          apple_user_id: apple_user_id,
+          email: email,
+          name: name
+        )
+      end
+    end
   end
 end

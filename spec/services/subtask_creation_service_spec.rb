@@ -111,5 +111,31 @@ RSpec.describe SubtaskCreationService do
 
       expect { service.call! }.to raise_error(ActiveRecord::RecordInvalid)
     end
+
+    it "locks the parent task to prevent concurrent position conflicts" do
+      expect(parent_task).to receive(:lock!).and_call_original
+
+      service = described_class.new(
+        parent_task: parent_task,
+        user: user,
+        params: { title: "Locked subtask" }
+      )
+
+      service.call!
+    end
+
+    it "rolls back on failure — no orphaned subtask" do
+      # Create a valid subtask first so we know position calc works
+      create(:task, list: list, creator: user, parent_task: parent_task, position: 0)
+
+      service = described_class.new(
+        parent_task: parent_task,
+        user: user,
+        params: { title: "" } # blank title triggers validation error
+      )
+
+      expect { service.call! }.to raise_error(ActiveRecord::RecordInvalid)
+      expect(parent_task.subtasks.where(deleted_at: nil).count).to eq(1)
+    end
   end
 end
