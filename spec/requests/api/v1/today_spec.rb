@@ -115,6 +115,52 @@ RSpec.describe "Today API", type: :request do
       end
     end
 
+    context "with timezone query param" do
+      it "uses param timezone over stored user timezone" do
+        # User stored as UTC, but request says America/New_York (UTC-5).
+        # Task at 04:59 UTC Jan 16 = 23:59 EST Jan 15 → due_today in NY, but
+        # in UTC that's already Jan 16 → would NOT be due_today without the param.
+        task = create(:task, list: list, creator: user,
+                      due_at: Time.utc(2024, 1, 16, 4, 59, 0),
+                      status: :pending, title: "Late in NY")
+
+        auth_get "/api/v1/today", user: user, params: { timezone: "America/New_York" }
+
+        expect(response).to have_http_status(:ok)
+        today_ids = json_response["due_today"].map { |t| t["id"] }
+        expect(today_ids).to include(task.id)
+      end
+
+      it "falls back to stored timezone when param is absent" do
+        ny_user = create(:user, timezone: "America/New_York")
+        ny_list = create(:list, user: ny_user)
+        task = create(:task, list: ny_list, creator: ny_user,
+                      due_at: Time.utc(2024, 1, 16, 4, 59, 0),
+                      status: :pending, title: "Late in NY")
+
+        auth_get "/api/v1/today", user: ny_user
+
+        today_ids = json_response["due_today"].map { |t| t["id"] }
+        expect(today_ids).to include(task.id)
+      end
+
+      it "falls back to stored timezone when param is invalid" do
+        ny_user = create(:user, timezone: "America/New_York")
+        ny_list = create(:list, user: ny_user)
+        # 04:59 UTC Jan 16 = 23:59 EST Jan 15 → due_today in NY
+        task = create(:task, list: ny_list, creator: ny_user,
+                      due_at: Time.utc(2024, 1, 16, 4, 59, 0),
+                      status: :pending, title: "Late in NY")
+
+        auth_get "/api/v1/today", user: ny_user, params: { timezone: "Fake/Zone" }
+
+        expect(response).to have_http_status(:ok)
+        # Invalid param falls back to stored timezone (America/New_York), not UTC
+        today_ids = json_response["due_today"].map { |t| t["id"] }
+        expect(today_ids).to include(task.id)
+      end
+    end
+
     context "when not authenticated" do
       it "returns unauthorized" do
         get "/api/v1/today"

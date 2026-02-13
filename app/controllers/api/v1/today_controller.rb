@@ -11,7 +11,7 @@ module Api
 
       # GET /api/v1/today
       def index
-        query = TodayTasksQuery.new(current_user, timezone: current_user.timezone)
+        query = TodayTasksQuery.new(current_user, timezone: resolve_timezone)
         data = query.fetch_all  # Single call, no duplicate queries
         ids = editable_list_ids
 
@@ -25,6 +25,19 @@ module Api
       end
 
       private
+
+      def resolve_timezone
+        param_tz = params[:timezone].presence
+        return current_user.timezone if param_tz.nil?
+        return param_tz if ActiveSupport::TimeZone[param_tz]
+
+        Rails.logger.warn(
+          event: "today_invalid_timezone_param",
+          user_id: current_user.id,
+          timezone: param_tz
+        )
+        current_user.timezone
+      end
 
       def serialize_tasks(tasks, editable_list_ids:)
         tasks.map do |task|
