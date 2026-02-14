@@ -27,14 +27,7 @@ module Api
         result = paginate(tasks, page: params[:page], per_page: params[:per_page])
 
         render json: {
-          tasks: result[:records].map do |t|
-            TaskSerializer.new(
-              t,
-              current_user: current_user,
-              include_reschedule_events: false,
-              editable_list_ids: editable_list_ids
-            ).as_json
-          end,
+          tasks: serialize_tasks(result[:records]),
           tombstones: [],
           pagination: result[:pagination]
         }, status: :ok
@@ -158,19 +151,14 @@ module Api
                   .includes(:tags, :creator, :subtasks, :list)
                   .limit(50)
 
-        render json: {
-          tasks: tasks.map do |t|
-            TaskSerializer.new(
-              t,
-              current_user: current_user,
-              include_reschedule_events: false,
-              editable_list_ids: editable_list_ids
-            ).as_json
-          end
-        }, status: :ok
+        render json: { tasks: serialize_tasks(tasks) }, status: :ok
       end
 
       private
+
+      def serialize_tasks(tasks)
+        tasks.map { |t| TaskSerializer.new(t, current_user: current_user, include_reschedule_events: false, editable_list_ids: editable_list_ids).as_json }
+      end
 
       def set_list
         list_id = params[:list_id] || params[:listId]
