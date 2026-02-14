@@ -17,7 +17,18 @@ module Devices
     def call!
       raise ApplicationError::BadRequest, "apns_token is required" if @token.blank?
 
+      # Check for soft-deleted device first — the global unique index on
+      # apns_token covers deleted rows, so we must restore rather than create.
       device = @user.devices.find_or_initialize_by(apns_token: @token)
+
+      if device.new_record?
+        deleted_device = Device.with_deleted.find_by(apns_token: @token, user_id: @user.id)
+        if deleted_device&.deleted?
+          deleted_device.restore!
+          device = deleted_device
+        end
+      end
+
       device.assign_attributes(@attrs)
       device.platform ||= "ios"
       device.last_seen_at = Time.current

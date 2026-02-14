@@ -41,5 +41,16 @@ RSpec.describe Devices::Upsert do
         expect(device.last_seen_at).to be_present
       end
     end
+
+    it "restores a soft-deleted device instead of failing on unique index" do
+      device = described_class.call!(user: user, apns_token: "restore-me", **valid_attrs)
+      device.soft_delete!
+      expect(device.reload.deleted?).to be true
+
+      restored = described_class.call!(user: user, apns_token: "restore-me", **valid_attrs)
+      expect(restored.id).to eq(device.id)
+      expect(restored.deleted?).to be false
+      expect(restored.last_seen_at).to be_present
+    end
   end
 end

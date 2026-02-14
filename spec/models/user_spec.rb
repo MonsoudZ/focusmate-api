@@ -31,9 +31,9 @@ RSpec.describe User, type: :model do
     end
 
     it 'does not create user with short password' do
-      user = build(:user, password: "123")
+      user = build(:user, password: "short7!")
       expect(user).not_to be_valid
-      expect(user.errors[:password]).to include("is too short (minimum is 6 characters)")
+      expect(user.errors[:password]).to include("is too short (minimum is 8 characters)")
     end
 
     it 'does not create user with duplicate email' do

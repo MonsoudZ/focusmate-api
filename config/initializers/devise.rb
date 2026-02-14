@@ -26,6 +26,7 @@ Devise.setup do |config|
   config.navigational_formats = []
 
   # ==> Password settings
+  config.password_length = 8..128
   config.stretches = Rails.env.test? ? 1 : 12
   pepper = Rails.application.credentials.dig(:devise, :pepper) || ENV["DEVISE_PEPPER"]
   config.pepper = pepper if pepper.present?

@@ -16,7 +16,7 @@ Sentry.init do |config|
 
     # Remove sensitive headers
     if event.request&.headers
-      event.request.headers = event.request.headers.except("Authorization", "X-API-Key")
+      event.request.headers = event.request.headers.except("Authorization", "X-API-Key", "X-Refresh-Token")
     end
 
     event
